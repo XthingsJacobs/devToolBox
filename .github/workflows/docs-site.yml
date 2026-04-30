@@ -1,0 +1,31 @@
+name: Docs Site
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'docs-site/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'docs-site/**'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r docs-site/requirements.txt
+      - name: Build docs
+        run: mkdocs build -f docs-site/mkdocs.yml --strict
