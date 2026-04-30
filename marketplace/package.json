@@ -1,0 +1,12 @@
+{
+  "name": "@devtoolbox/marketplace",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r --filter \"./modules/*\" build",
+    "pack": "node scripts/pack-local.mjs",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

@@ -1,0 +1,46 @@
+name: Marketplace
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'marketplace/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'marketplace/**'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Marketplace Typecheck
+        run: pnpm -C marketplace typecheck
+
+      - name: Marketplace Lint
+        run: pnpm -C marketplace lint
+
+      - name: Marketplace Build
+        run: pnpm -C marketplace build

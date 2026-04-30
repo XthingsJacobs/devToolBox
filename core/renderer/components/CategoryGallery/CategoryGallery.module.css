@@ -1,0 +1,179 @@
+.wrap {
+  width: 100%;
+  height: 100%;
+  padding: 22px 28px;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 18px;
+}
+
+.mainCol {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.rightCol {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.sideList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.quickTitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  letter-spacing: 0.3px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.quickGrid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.filterRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.searchWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0 12px;
+  min-width: 320px;
+  flex-shrink: 0;
+  width: min(520px, 100%);
+}
+
+.letterBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  user-select: none;
+}
+
+.letterBtn {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(33, 37, 43, 0.6);
+  color: var(--text-secondary);
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  line-height: 1;
+  padding: 7px 9px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.letterBtn:hover {
+  border-color: rgba(97, 175, 239, 0.35);
+  color: var(--text-active);
+}
+
+.letterBtnActive {
+  border-color: rgba(97, 175, 239, 0.6);
+  background: rgba(97, 175, 239, 0.16);
+  color: var(--text-active);
+}
+
+.letterBtnDisabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.letterBtnDisabled:hover {
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+.searchIcon {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.55;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 10px 0;
+  font-size: var(--font-size-base);
+  font-family: var(--font-family);
+}
+
+.searchInput::placeholder {
+  color: var(--text-secondary);
+}
+
+.body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.scroll {
+  height: 100%;
+  overflow: auto;
+  padding-right: 12px;
+  box-sizing: border-box;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.empty {
+  padding: 12px 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: var(--font-size-small);
+}
+
+@media (max-width: 980px) {
+  .wrap {
+    grid-template-columns: 1fr;
+  }
+
+  .rightCol {
+    overflow: visible;
+    padding-right: 0;
+  }
+}

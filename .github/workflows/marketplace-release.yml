@@ -1,0 +1,143 @@
+name: Marketplace Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag for marketplace assets (keep stable, e.g. marketplace)
+        required: false
+        default: marketplace
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+concurrency:
+  group: marketplace-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build marketplace modules
+        run: pnpm -C marketplace build
+
+      - name: Pack marketplace release artifacts
+        run: node marketplace/scripts/pack-release.mjs
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          MARKETPLACE_TAG: ${{ github.event.inputs.tag }}
+
+      - name: Write keep list
+        run: node -e "const fs=require('node:fs'); const path=require('node:path'); const dir='marketplace/release-dist'; const zips=fs.existsSync(dir)?fs.readdirSync(dir).filter(f=>f.endsWith('.zip')):[]; fs.writeFileSync(path.join(dir,'keep-zips.json'), JSON.stringify({ zips }, null, 2), 'utf8');"
+
+      - name: List release artifacts
+        run: |
+          ls -la marketplace/release-dist
+          ls -la marketplace/release-dist/*.zip || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketplace-release
+          path: |
+            marketplace/release-dist/registry.json
+            marketplace/release-dist/keep-zips.json
+            marketplace/release-dist/*.zip
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: marketplace-release
+          path: marketplace-release
+
+      - name: Prune stale assets
+        run: node marketplace/scripts/prune-release-assets.mjs marketplace-release/keep-zips.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          MARKETPLACE_TAG: ${{ github.event.inputs.tag }}
+
+      - name: Release (Attempt 1)
+        id: release1
+        uses: softprops/action-gh-release@v2
+        continue-on-error: true
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          name: Marketplace ${{ github.event.inputs.tag }}
+          target_commitish: main
+          files: |
+            marketplace-release/registry.json
+            marketplace-release/*.zip
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait (Retry)
+        if: steps.release1.outcome == 'failure'
+        run: sleep 180
+
+      - name: Release (Attempt 2)
+        id: release2
+        if: steps.release1.outcome == 'failure'
+        uses: softprops/action-gh-release@v2
+        continue-on-error: true
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          name: Marketplace ${{ github.event.inputs.tag }}
+          target_commitish: main
+          files: |
+            marketplace-release/registry.json
+            marketplace-release/*.zip
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait (Retry)
+        if: steps.release2.outcome == 'failure'
+        run: sleep 420
+
+      - name: Release (Attempt 3)
+        if: steps.release2.outcome == 'failure'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          name: Marketplace ${{ github.event.inputs.tag }}
+          target_commitish: main
+          files: |
+            marketplace-release/registry.json
+            marketplace-release/*.zip
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

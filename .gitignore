@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-electron/
+
+# Release artifacts
+release/
+
+# Marketplace build output
+marketplace/modules/*/package/
+marketplace/modules/*/dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+
+# Backup builtin key (generated in CI)
+key.txt
+
+# Marketplace local dev artifacts
+marketplace/.local-dist/
+marketplace/registry.local.json
+
+# Docs site build output
+docs-site/site/
+
+# Docs local venv
+docs-site/.venv/

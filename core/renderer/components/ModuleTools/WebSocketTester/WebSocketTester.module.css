@@ -1,0 +1,242 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.connectionWrap {
+  padding: 8px 12px 0;
+  box-sizing: border-box;
+}
+
+.connGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot_disconnected {
+  background-color: #888;
+}
+
+.dot_connecting {
+  background-color: #f5a623;
+}
+
+.dot_connected {
+  background-color: #3fb950;
+}
+
+.dot_error {
+  background-color: #f48771;
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 12px 12px;
+  box-sizing: border-box;
+}
+
+.splitContainer {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-sidebar);
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  background-color: transparent;
+  padding: 6px;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.divider {
+  width: 8px;
+  margin: 0 -3px;
+  flex-shrink: 0;
+  background-color: transparent;
+  cursor: col-resize;
+  position: relative;
+}
+
+.divider::after {
+  content: '';
+  display: none;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 -8px 0 rgba(255, 255, 255, 0.18),
+    0 8px 0 rgba(255, 255, 255, 0.18);
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+  opacity: 0.75;
+}
+
+.divider:hover::before {
+  background-color: rgba(97, 175, 239, 0.9);
+  box-shadow:
+    0 -8px 0 rgba(97, 175, 239, 0.9),
+    0 8px 0 rgba(97, 175, 239, 0.9);
+  opacity: 1;
+}
+
+.divider:active::before {
+  background-color: rgba(97, 175, 239, 0.95);
+  box-shadow:
+    0 -8px 0 rgba(97, 175, 239, 0.95),
+    0 8px 0 rgba(97, 175, 239, 0.95);
+}
+
+.messageInputWrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.messageContent {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.messageTextarea {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 10px 12px;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  box-sizing: border-box;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.messageTextarea::placeholder {
+  color: var(--text-secondary);
+}
+
+.jsonPreviewWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border-top: 1px solid var(--border-color);
+  background-color: rgba(0, 0, 0, 0.18);
+}
+
+.jsonPreview {
+  margin: 0;
+  padding: 12px;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+}
+
+.logWrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.logTextarea {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 10px 12px;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  box-sizing: border-box;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.bottomBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  font-size: var(--font-size-small);
+  color: var(--text-secondary);
+  background-color: var(--bg-panel);
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.bottomRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.checkbox input {
+  margin: 0;
+}
+
+.statusText {
+  font-variant-numeric: tabular-nums;
+}
+
+.actionsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.searchOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}

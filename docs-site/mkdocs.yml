@@ -1,0 +1,51 @@
+site_name: DevToolBox
+site_url: https://dtb.256th.com
+repo_url: https://github.com/XthingsJacobs/devToolBox
+repo_name: XthingsJacobs/devToolBox
+
+docs_dir: ../docs
+site_dir: site
+
+exclude_docs: |
+  README.md
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+  - git-revision-date-localized:
+      type: date
+
+nav:
+  - Product Overview:
+      - Home: index.md
+      - Architecture: architecture.md
+      - Codebase: codebase.md
+      - Developer Guide: dev-guide.md
+  - Installation Guide:
+      - Installation: installation.md
+      - CLI: cli.md
+      - Troubleshooting: troubleshooting.md
+  - Plugin Development:
+      - Plugin SDK: plugin-sdk.md
+      - Marketplace Packaging: marketplace.md
+      - IPC API: ipc-api.md
+      - Module API: module-api.md
+      - UI Guidelines: ui-guidelines.md
+  - Open Source:
+      - Overview: open-source.md
+      - Contributing: CONTRIBUTING.md
+      - Code of Conduct: CODE_OF_CONDUCT.md
+      - Security: SECURITY.md
+      - Support: SUPPORT.md
+      - Changelog: CHANGELOG.md
+      - Notice: notice.md
