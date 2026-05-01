@@ -1,0 +1,15 @@
+{
+  "id": "market-matter-catalog",
+  "name": "Matter Catalog",
+  "description": "Query Matter Device Library by spec version, device type, and required clusters",
+  "version": "0.1.0",
+  "sdkVersion": "1.0",
+  "entry": "package/index.html",
+  "categoryId": "dev-tools",
+  "author": "DevToolBox",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/XthingsJacobs/devToolBox",
+  "repository": "https://github.com/XthingsJacobs/devToolBox",
+  "permissions": ["storage:kv", "http:proxy", "http:external"],
+  "httpDomains": ["leconiot.com"]
+}
