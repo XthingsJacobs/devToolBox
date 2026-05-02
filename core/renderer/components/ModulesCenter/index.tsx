@@ -31,11 +31,12 @@ export default function ModulesCenter({ onUpdated }: ModulesCenterProps) {
     }
   }, [onUpdated]);
 
-  const refreshRegistry = useCallback(async () => {
+  const refreshRegistry = useCallback(
+    async (options?: { force?: boolean }) => {
     const url = loadMarketplaceRegistryUrl() || DEFAULT_MARKETPLACE_REGISTRY_URL;
     try {
       if (import.meta.env.DEV) console.info('[marketplace] registry:fetch:start', url);
-      const remote = await fetchMarketplaceRegistry(url);
+        const remote = await fetchMarketplaceRegistry(url, options);
       if (import.meta.env.DEV) console.info('[marketplace] registry:fetch:ok', { plugins: remote.plugins?.length ?? 0 });
       setRegistry(remote);
     } catch (e: unknown) {
@@ -43,19 +44,24 @@ export default function ModulesCenter({ onUpdated }: ModulesCenterProps) {
       setRegistry(bundledRegistry);
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [bundledRegistry]);
+    },
+    [bundledRegistry],
+  );
 
-  const refreshAll = useCallback(async () => {
+  const refreshAll = useCallback(
+    async (options?: { force?: boolean }) => {
     await refreshInstalled();
-    await refreshRegistry();
-  }, [refreshInstalled, refreshRegistry]);
+      await refreshRegistry(options);
+    },
+    [refreshInstalled, refreshRegistry],
+  );
 
   useEffect(() => {
     void refreshAll();
   }, [refreshAll]);
 
   useEffect(() => {
-    const handler = () => void refreshRegistry();
+    const handler = () => void refreshRegistry({ force: true });
     window.addEventListener('devtoolbox:registryUrlChanged', handler);
     return () => window.removeEventListener('devtoolbox:registryUrlChanged', handler);
   }, [refreshRegistry]);
@@ -107,7 +113,7 @@ export default function ModulesCenter({ onUpdated }: ModulesCenterProps) {
     <main className={styles.wrap} aria-label="Modules Center">
       <div className={styles.header}>
         <div className={styles.title}>Modules</div>
-        <button type="button" className={styles.btn} onClick={() => void refreshAll()}>
+        <button type="button" className={styles.btn} onClick={() => void refreshAll({ force: true })}>
           Refresh
         </button>
       </div>

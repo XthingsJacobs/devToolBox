@@ -35,28 +35,34 @@ export default function PluginManager({ onUpdated }: PluginManagerProps) {
     }
   }, [onUpdated]);
 
-  const refreshRegistry = useCallback(async () => {
-    const url = loadMarketplaceRegistryUrl() || DEFAULT_MARKETPLACE_REGISTRY_URL;
-    try {
-      const remote = await fetchMarketplaceRegistry(url);
-      setRegistry(remote);
-    } catch (e: unknown) {
-      setRegistry(bundledRegistry);
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [bundledRegistry]);
+  const refreshRegistry = useCallback(
+    async (options?: { force?: boolean }) => {
+      const url = loadMarketplaceRegistryUrl() || DEFAULT_MARKETPLACE_REGISTRY_URL;
+      try {
+        const remote = await fetchMarketplaceRegistry(url, options);
+        setRegistry(remote);
+      } catch (e: unknown) {
+        setRegistry(bundledRegistry);
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [bundledRegistry],
+  );
 
-  const refreshAll = useCallback(async () => {
-    await refreshInstalled();
-    await refreshRegistry();
-  }, [refreshInstalled, refreshRegistry]);
+  const refreshAll = useCallback(
+    async (options?: { force?: boolean }) => {
+      await refreshInstalled();
+      await refreshRegistry(options);
+    },
+    [refreshInstalled, refreshRegistry],
+  );
 
   useEffect(() => {
     void refreshAll();
   }, [refreshAll]);
 
   useEffect(() => {
-    const handler = () => void refreshRegistry();
+    const handler = () => void refreshRegistry({ force: true });
     window.addEventListener('devtoolbox:registryUrlChanged', handler);
     return () => window.removeEventListener('devtoolbox:registryUrlChanged', handler);
   }, [refreshRegistry]);
@@ -134,7 +140,7 @@ export default function PluginManager({ onUpdated }: PluginManagerProps) {
             Marketplace
           </button>
         </div>
-        <button type="button" className={styles.btn} onClick={() => void refreshAll()}>
+        <button type="button" className={styles.btn} onClick={() => void refreshAll({ force: true })}>
           Refresh
         </button>
       </div>
@@ -218,4 +224,3 @@ export default function PluginManager({ onUpdated }: PluginManagerProps) {
     </div>
   );
 }
-

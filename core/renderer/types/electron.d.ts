@@ -142,7 +142,10 @@ export interface ElectronAPI {
   marketplaceInstall: (entry: any) => Promise<{ success: boolean; error?: string }>;
   marketplaceUninstall: (id: string) => Promise<{ success: boolean; error?: string }>;
   marketplaceSetEnabled: (id: string, enabled: boolean) => Promise<{ success: boolean; error?: string }>;
-  marketplaceFetchRegistry: (url: string) => Promise<{ success: boolean; registry?: unknown; error?: string }>;
+  marketplaceFetchRegistry: (
+    url: string,
+    options?: { force?: boolean },
+  ) => Promise<{ success: boolean; registry?: unknown; error?: string }>;
 
   // Plugin SDK (host-implemented)
   pluginHttpRequest: (pluginId: string, params: any) => Promise<{ ok: boolean; data?: any; error?: any }>;

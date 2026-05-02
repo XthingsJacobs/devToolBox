@@ -381,10 +381,11 @@ function assertInstalledPlugin(pluginId: string): InstalledPluginRecord | undefi
 }
 
 export function register(): void {
-  ipcMain.handle('marketplace:fetchRegistry', async (_event, url: string) => {
+  ipcMain.handle('marketplace:fetchRegistry', async (_event, url: string, options?: { force?: boolean }) => {
     try {
       const u = new URL(String(url ?? '').trim());
       const isDev = Boolean(process.env.VITE_DEV_SERVER_URL) || !app.isPackaged;
+      const force = Boolean(options?.force);
       if (u.protocol === 'file:') {
         if (!isDev) return { success: false, error: 'Only https is allowed' };
         const p = fileURLToPath(u);
@@ -412,7 +413,7 @@ export function register(): void {
       const cachedLastModified = isRecord(cached) && typeof cached.lastModified === 'string' ? cached.lastModified : undefined;
 
       const ttlMs = 6 * 60 * 60 * 1000;
-      if (cachedRegistry && Date.now() - cachedFetchedAt < ttlMs) {
+      if (!force && cachedRegistry && Date.now() - cachedFetchedAt < ttlMs) {
         dbg('marketplace', 'registry:cache:hit', { cachePath });
         return { success: true, registry: cachedRegistry };
       }
@@ -422,10 +423,21 @@ export function register(): void {
       if (cachedLastModified) headers['if-modified-since'] = cachedLastModified;
       headers['user-agent'] = `DevToolBox/${app.getVersion()} (${process.platform}; ${process.arch})`;
       headers.accept = 'application/json, text/plain, */*';
+      if (force) {
+        headers['cache-control'] = 'no-cache';
+        headers.pragma = 'no-cache';
+      }
+
+      const requestUrl = (() => {
+        if (!force) return u.toString();
+        const uu = new URL(u.toString());
+        uu.searchParams.set('_', String(Date.now()));
+        return uu.toString();
+      })();
 
       const ac = new AbortController();
       const timer = setTimeout(() => ac.abort(), 30000);
-      const res = await fetch(u.toString(), { redirect: 'follow', headers, signal: ac.signal });
+      const res = await fetch(requestUrl, { redirect: 'follow', headers, signal: ac.signal });
       clearTimeout(timer);
 
       if (res.status === 304 && cachedRegistry) {

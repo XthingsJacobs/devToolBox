@@ -1,0 +1,15 @@
+{
+  "id": "market-ip-lookup",
+  "name": "IP Lookup",
+  "description": "Look up IP geolocation and network details (ip2location-like)",
+  "version": "0.1.0",
+  "sdkVersion": "1.0",
+  "entry": "package/index.html",
+  "categoryId": "dev-tools",
+  "author": "DevToolBox",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/XthingsJacobs/devToolBox",
+  "repository": "https://github.com/XthingsJacobs/devToolBox",
+  "permissions": ["storage:kv", "http:proxy", "http:external"],
+  "httpDomains": ["api.ip2location.io", "ipinfo.io", "ipapi.co"]
+}

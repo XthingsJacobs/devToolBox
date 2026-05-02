@@ -149,7 +149,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   marketplaceUninstall: (id: string) => ipcRenderer.invoke('marketplace:uninstall', id),
   marketplaceSetEnabled: (id: string, enabled: boolean) =>
     ipcRenderer.invoke('marketplace:setEnabled', id, enabled),
-  marketplaceFetchRegistry: (url: string) => ipcRenderer.invoke('marketplace:fetchRegistry', url),
+  marketplaceFetchRegistry: (url: string, options?: { force?: boolean }) =>
+    ipcRenderer.invoke('marketplace:fetchRegistry', url, options),
 
   // Plugin SDK
   pluginHttpRequest: (pluginId: string, params: unknown) => ipcRenderer.invoke('plugin:httpRequest', pluginId, params),

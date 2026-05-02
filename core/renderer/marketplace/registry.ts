@@ -43,10 +43,10 @@ function isMarketplaceRegistry(v: unknown): v is MarketplaceRegistry {
   return true;
 }
 
-export async function fetchMarketplaceRegistry(url: string): Promise<MarketplaceRegistry> {
+export async function fetchMarketplaceRegistry(url: string, options?: { force?: boolean }): Promise<MarketplaceRegistry> {
   const api = window.electronAPI;
   if (!api?.marketplaceFetchRegistry) throw new Error('marketplaceFetchRegistry not available');
-  const res = await api.marketplaceFetchRegistry(url);
+  const res = await api.marketplaceFetchRegistry(url, options);
   if (!res?.success) throw new Error(res?.error ?? 'Failed to fetch registry');
   if (!isMarketplaceRegistry(res.registry)) throw new Error('Invalid registry payload');
   return res.registry;
