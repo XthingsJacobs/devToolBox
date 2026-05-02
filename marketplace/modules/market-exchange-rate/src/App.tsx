@@ -218,9 +218,13 @@ export default function App() {
         if (!res.ok) throw new Error(res.error.message);
         const body = res.data?.data;
         if (!body || typeof body !== 'object') throw new Error('Invalid rates response');
-        const r = body as LatestResponse;
-        setRates(r.rates || {});
-        setRateDate(String(r.date || ''));
+        if (!('rates' in body) || !('date' in body)) throw new Error('Invalid rates response');
+        const ratesValue = (body as { rates?: unknown }).rates;
+        const dateValue = (body as { date?: unknown }).date;
+        const nextRates =
+          ratesValue && typeof ratesValue === 'object' ? (ratesValue as Record<string, number>) : ({} as Record<string, number>);
+        setRates(nextRates);
+        setRateDate(typeof dateValue === 'string' ? dateValue : String(dateValue ?? ''));
         setLastUpdated(nowText());
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : String(e));
