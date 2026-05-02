@@ -22,7 +22,7 @@ export function callSdk<T = unknown>(method: string, params?: unknown, timeoutMs
   const payload = { type: 'devtoolbox:sdk:request', requestId, method, params };
   window.parent.postMessage(payload, '*');
   return new Promise((resolve) => {
-    pending.set(requestId, resolve as any);
+    pending.set(requestId, (res) => resolve(res as SdkResult<T>));
     window.setTimeout(() => {
       const cb = pending.get(requestId);
       if (!cb) return;
@@ -65,4 +65,3 @@ export const sdk = {
     error: (message: string, data?: unknown) => callSdk('log.error', { message, data }),
   },
 };
-

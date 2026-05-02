@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sdk } from './sdk';
 
 type ParsedTable = { headers: string[]; rows: string[][] };
@@ -48,15 +48,15 @@ function collectSectionElements(start: Element): Element[] {
 }
 
 function findNextTable(from: Element): HTMLTableElement | null {
-  const inside = from.querySelector?.('table') as HTMLTableElement | null;
-  if (inside) return inside;
-  if (from.tagName === 'TABLE') return from as HTMLTableElement;
+  const inside = from.querySelector?.('table') ?? null;
+  if (inside instanceof HTMLTableElement) return inside;
+  if (from instanceof HTMLTableElement) return from;
 
   let cur = from.nextElementSibling;
   for (let i = 0; i < 20 && cur; i += 1) {
-    const t = cur.querySelector?.('table') as HTMLTableElement | null;
-    if (t) return t;
-    if (cur.tagName === 'TABLE') return cur as HTMLTableElement;
+    const t = cur.querySelector?.('table') ?? null;
+    if (t instanceof HTMLTableElement) return t;
+    if (cur instanceof HTMLTableElement) return cur;
     if (isHeading(cur)) break;
     cur = cur.nextElementSibling;
   }
@@ -162,7 +162,7 @@ export default function App() {
   const loadSettings = async () => {
     const res = await sdk.storage.get('matter.catalog.settings');
     if (!res.ok) return;
-    const raw = res.data as unknown;
+    const raw = res.data;
     if (!raw || typeof raw !== 'object') return;
     const r = raw as Partial<MatterCatalogSettings>;
     setSettings((s) => ({
@@ -180,37 +180,40 @@ export default function App() {
     }, 250);
   };
 
-  const refresh = async (opts?: { silent?: boolean }) => {
-    const silent = Boolean(opts?.silent);
-    setError('');
-    if (!silent) setLoading(true);
-    try {
-      const url = buildDocUrl(settings.version);
-      const res = await sdk.http.request<string>({ url, responseType: 'text', timeoutMs: 30000 });
-      if (!res.ok) throw new Error(res.error.message);
-      const status = Number((res.data as any)?.status ?? 0);
-      const html = String((res.data as any)?.data ?? '');
-      if (!html) throw new Error('Empty response');
-      const parsed = parseDeviceLibraryHtml(html);
-      setDocTitle(parsed.title);
-      setDeviceTypes(parsed.deviceTypes);
-      setParsedCount(parsed.deviceTypes.length);
-      if (parsed.deviceTypes.length === 0) {
-        throw new Error(status ? `No device types parsed (HTTP ${status})` : 'No device types parsed');
-      }
+  const refresh = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      const silent = Boolean(opts?.silent);
+      setError('');
+      if (!silent) setLoading(true);
+      try {
+        const url = buildDocUrl(settings.version);
+        const res = await sdk.http.request<string>({ url, responseType: 'text', timeoutMs: 30000 });
+        if (!res.ok) throw new Error(res.error.message);
+        const status = res.data?.status ?? 0;
+        const html = String(res.data?.data ?? '');
+        if (!html) throw new Error('Empty response');
+        const parsed = parseDeviceLibraryHtml(html);
+        setDocTitle(parsed.title);
+        setDeviceTypes(parsed.deviceTypes);
+        setParsedCount(parsed.deviceTypes.length);
+        if (parsed.deviceTypes.length === 0) {
+          throw new Error(status ? `No device types parsed (HTTP ${status})` : 'No device types parsed');
+        }
 
-      setLastUpdated(new Date().toISOString());
-      if (parsed.deviceTypes.length && !parsed.deviceTypes.some((d) => d.anchorId === settings.deviceAnchorId)) {
-        setSettings((s) => ({ ...s, deviceAnchorId: parsed.deviceTypes[0].anchorId }));
+        setLastUpdated(new Date().toISOString());
+        if (parsed.deviceTypes.length && !parsed.deviceTypes.some((d) => d.anchorId === settings.deviceAnchorId)) {
+          setSettings((s) => ({ ...s, deviceAnchorId: parsed.deviceTypes[0].anchorId }));
+        }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg);
+        void sdk.log.error('Failed to load Matter Device Library', { message: msg, version: settings.version });
+      } finally {
+        setLoading(false);
       }
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg);
-      void sdk.log.error('Failed to load Matter Device Library', { message: msg, version: settings.version });
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [settings.deviceAnchorId, settings.version],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -227,7 +230,7 @@ export default function App() {
 
   useEffect(() => {
     void refresh({ silent: true });
-  }, [settings.version]);
+  }, [refresh]);
 
   return (
     <div className="app">

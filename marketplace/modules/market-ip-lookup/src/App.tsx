@@ -3,6 +3,10 @@ import { sdk } from './sdk';
 
 type Row = { k: string; v: string };
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null;
+}
+
 function toText(v: unknown): string {
   if (v === null || v === undefined) return '';
   if (typeof v === 'string') return v;
@@ -146,8 +150,9 @@ function buildRows(data: UnifiedResult | null): Row[] {
 async function requestJson<T = unknown>(url: string): Promise<{ status: number; data: T }> {
   const res = await sdk.http.request<T>({ url, responseType: 'json', timeoutMs: 20000 });
   if (!res.ok) throw new Error(res.error.message);
-  const status = Number((res.data as any)?.status ?? 0);
-  const data = (res.data as any)?.data as T;
+  const status = res.data?.status ?? 0;
+  const data = res.data?.data;
+  if (data === undefined) throw new Error('Empty response');
   return { status, data };
 }
 
@@ -198,8 +203,8 @@ async function queryIpInfo(ip: string, token: string): Promise<UnifiedResult> {
   if (data.error) throw new Error(data.error.message || data.error.title || `Lookup failed (HTTP ${status})`);
 
   const loc = String(data.loc || '').split(',');
-  const lat = loc.length === 2 ? Number(loc[0]) : undefined;
-  const lng = loc.length === 2 ? Number(loc[1]) : undefined;
+  const lat = loc.length === 2 ? Number(loc[0]) : NaN;
+  const lng = loc.length === 2 ? Number(loc[1]) : NaN;
 
   return {
     provider: 'ipinfo',
@@ -210,8 +215,8 @@ async function queryIpInfo(ip: string, token: string): Promise<UnifiedResult> {
     regionName: data.region,
     cityName: data.city,
     zipCode: data.postal,
-    latitude: Number.isFinite(lat as number) ? (lat as number) : undefined,
-    longitude: Number.isFinite(lng as number) ? (lng as number) : undefined,
+    latitude: Number.isFinite(lat) ? lat : undefined,
+    longitude: Number.isFinite(lng) ? lng : undefined,
     timeZone: data.timezone,
     org: data.org,
     domain: data.hostname,
@@ -260,14 +265,14 @@ async function getCache(ip: string): Promise<UnifiedResult | null> {
   const k = `ip.lookup.cache.${ip || 'me'}`;
   const res = await sdk.storage.get(k);
   if (!res.ok) return null;
-  const v = (res.data as any)?.data;
-  if (!v || typeof v !== 'object') return null;
-  const fetchedAt = String((v as any).fetchedAt || '');
+  const v = res.data;
+  if (!isRecord(v)) return null;
+  const fetchedAt = typeof v.fetchedAt === 'string' ? v.fetchedAt : '';
   if (!fetchedAt) return null;
   const ts = Date.parse(fetchedAt);
   if (!Number.isFinite(ts)) return null;
   if (Date.now() - ts > 24 * 60 * 60 * 1000) return null;
-  return v as UnifiedResult;
+  return v as unknown as UnifiedResult;
 }
 
 async function setCache(ip: string, value: UnifiedResult): Promise<void> {
@@ -291,16 +296,16 @@ export default function App() {
     void (async () => {
       const res = await sdk.storage.get('ip.lookup.settings');
       if (!res.ok) return;
-      const v = (res.data as any)?.data;
-      if (!v || typeof v !== 'object') return;
-      const m = (v as any).mode;
-      const k = (v as any).keys;
-      if (m && typeof m === 'string' && ['auto', 'ip2location', 'ipinfo', 'ipapi'].includes(m)) setMode(m as ProviderId);
-      if (k && typeof k === 'object') {
+      const v = res.data;
+      if (!isRecord(v)) return;
+      const m = v.mode;
+      const k = v.keys;
+      if (m === 'auto' || m === 'ip2location' || m === 'ipinfo' || m === 'ipapi') setMode(m);
+      if (isRecord(k)) {
         setKeys({
-          ip2location: typeof (k as any).ip2location === 'string' ? (k as any).ip2location : '',
-          ipinfo: typeof (k as any).ipinfo === 'string' ? (k as any).ipinfo : '',
-          ipapi: typeof (k as any).ipapi === 'string' ? (k as any).ipapi : '',
+          ip2location: typeof k.ip2location === 'string' ? k.ip2location : '',
+          ipinfo: typeof k.ipinfo === 'string' ? k.ipinfo : '',
+          ipapi: typeof k.ipapi === 'string' ? k.ipapi : '',
         });
       }
     })();
@@ -343,7 +348,7 @@ export default function App() {
         return queryIpApi(q);
       };
 
-      const order: Exclude<ProviderId, 'auto'>[] = mode === 'auto' ? ['ip2location', 'ipinfo', 'ipapi'] : [mode as any];
+      const order: Exclude<ProviderId, 'auto'>[] = mode === 'auto' ? ['ip2location', 'ipinfo', 'ipapi'] : [mode];
       let out: UnifiedResult | null = null;
 
       for (const p of order) {

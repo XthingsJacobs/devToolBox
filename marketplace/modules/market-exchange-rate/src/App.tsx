@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sdk } from './sdk';
 
 type CurrenciesMap = Record<string, string>;
@@ -127,6 +127,7 @@ export default function App() {
 
   const base = settings.base;
   const targets = settings.targets;
+  const targetsKey = useMemo(() => targets.filter(Boolean).join(','), [targets]);
 
   const amountNum = useMemo(() => num(settings.amount) ?? 0, [settings.amount]);
   const spreadPct = useMemo(() => num(settings.spreadPct) ?? 0, [settings.spreadPct]);
@@ -179,7 +180,7 @@ export default function App() {
   const loadSettings = async () => {
     const res = await sdk.storage.get('exchange.settings');
     if (!res.ok) return;
-    const raw = res.data as unknown;
+    const raw = res.data;
     if (!raw || typeof raw !== 'object') return;
     const r = raw as Partial<Settings>;
     setSettings((s) => ({
@@ -201,32 +202,34 @@ export default function App() {
     }, 250);
   };
 
-  const refresh = async (opts?: { silent?: boolean }) => {
-    setError('');
-    if (!opts?.silent) setLoading(true);
-    try {
-      const to = targets.filter(Boolean).join(',');
-      const url = new URL('https://api.frankfurter.app/latest');
-      url.searchParams.set('from', base);
-      if (to) url.searchParams.set('to', to);
-      const res = await sdk.http.request<LatestResponse>({
-        url: url.toString(),
-        responseType: 'json',
-        timeoutMs: 15000,
-      });
-      if (!res.ok) throw new Error(res.error.message);
-      const body = res.data?.data as unknown;
-      if (!body || typeof body !== 'object') throw new Error('Invalid rates response');
-      const r = body as LatestResponse;
-      setRates(r.rates || {});
-      setRateDate(String(r.date || ''));
-      setLastUpdated(nowText());
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const refresh = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setError('');
+      if (!opts?.silent) setLoading(true);
+      try {
+        const url = new URL('https://api.frankfurter.app/latest');
+        url.searchParams.set('from', base);
+        if (targetsKey) url.searchParams.set('to', targetsKey);
+        const res = await sdk.http.request<LatestResponse>({
+          url: url.toString(),
+          responseType: 'json',
+          timeoutMs: 15000,
+        });
+        if (!res.ok) throw new Error(res.error.message);
+        const body = res.data?.data;
+        if (!body || typeof body !== 'object') throw new Error('Invalid rates response');
+        const r = body as LatestResponse;
+        setRates(r.rates || {});
+        setRateDate(String(r.date || ''));
+        setLastUpdated(nowText());
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [base, targetsKey],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -252,18 +255,18 @@ export default function App() {
 
   useEffect(() => {
     void refresh({ silent: true });
-  }, [base, targets.join(',')]);
+  }, [refresh]);
 
   useEffect(() => {
     if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current);
     const mins = num(settings.autoRefreshMin) ?? 0;
     if (!mins || mins <= 0) return;
     const ms = Math.max(10_000, Math.floor(mins * 60_000));
-    refreshTimerRef.current = window.setInterval(() => void refresh({ silent: true }), ms) as unknown as number;
+    refreshTimerRef.current = window.setInterval(() => void refresh({ silent: true }), ms);
     return () => {
       if (refreshTimerRef.current) window.clearInterval(refreshTimerRef.current);
     };
-  }, [settings.autoRefreshMin, base, targets.join(',')]);
+  }, [settings.autoRefreshMin, refresh]);
 
   const toggleTarget = (code: string) => {
     setSettings((s) => {
