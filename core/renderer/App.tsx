@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { VscArrowSwap, VscCircuitBoard, VscExtensions, VscGear, VscHome, VscLayout, VscLocation, VscTools } from 'react-icons/vsc';
 import { HelpModal } from '@devtoolbox/ui';
 
-import type { InstalledMarketplacePlugin } from './marketplace/types';
-import type { MarketplaceRegistryEntry } from './marketplace/types';
+import type { InstalledMarketplacePlugin, MarketplaceRegistryEntry } from './marketplace/types';
 import { DEFAULT_MARKETPLACE_REGISTRY_URL, fetchMarketplaceRegistry, getBundledRegistry, loadMarketplaceRegistryUrl } from './marketplace/registry';
 import { compareVersions, isNewerVersion } from './marketplace/version';
 

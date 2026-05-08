@@ -13,6 +13,7 @@ type FlatTool = {
 
 type AppInfo = { version?: string; build?: string };
 type NetworkInfo = { localIPs: string[]; publicIP: string; dnsStatus: string; internetStatus: string };
+type NavigatorLike = Navigator & { vendor?: string; platform?: string };
 
 function categoryColor(categoryId: string): string {
   switch (categoryId) {
@@ -272,9 +273,9 @@ export default function DashboardPage({
             icon={<VscDeviceMobile />}
             iconColor="var(--cat-security)"
             items={[
-              { label: 'Browser vendor', value: String((navigator as any).vendor ?? '-') },
+              { label: 'Browser vendor', value: String((navigator as NavigatorLike).vendor ?? '-') },
               { label: 'Languages', value: Array.isArray(navigator.languages) ? navigator.languages.join(', ') : String(navigator.language ?? '-') },
-              { label: 'Platform', value: String((navigator as any).platform ?? 'Unknown') },
+              { label: 'Platform', value: String((navigator as NavigatorLike).platform ?? 'Unknown') },
               { label: 'User agent', value: navigator.userAgent, wrap: true, mono: false },
             ]}
           />
