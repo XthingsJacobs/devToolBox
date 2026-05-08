@@ -9,9 +9,17 @@ import { checkForUpdatesInteractive, initUpdater } from './updater';
 import {
   register as registerLocaleIpc,
   getCurrentLocale,
+  getCurrentLocaleSetting,
   broadcastLocaleChange,
-  setCurrentLocale,
+  setCurrentLocaleSetting,
 } from './ipc/locale';
+import {
+  register as registerThemeIpc,
+  getCurrentTheme,
+  getCurrentThemeSetting,
+  broadcastThemeChange,
+  setCurrentThemeSetting,
+} from './ipc/theme';
 
 // Auto-scan module-level IPC (removing a module folder removes its IPC automatically)
 const moduleIpcFiles = import.meta.glob<{ register: () => void }>(
@@ -21,7 +29,7 @@ const moduleIpcFiles = import.meta.glob<{ register: () => void }>(
   { eager: true },
 );
 
-type Locale = 'en';
+type Locale = ReturnType<typeof getCurrentLocale>;
 
 const APP_VERSION = app.getVersion().split('-')[0];
 const BUILD_NUMBER = '20260317';
@@ -62,8 +70,39 @@ const menuText: Record<Locale, Record<string, string>> = {
     settings: 'Settings…',
     exportData: 'Export…',
     importData: 'Import…',
+    view: 'View',
+    language: 'Language',
+    langAuto: 'Auto',
+    langEn: 'English',
+    langZhCN: '简体中文',
+    theme: 'Theme',
+    themeAuto: 'Auto',
+    themeDark: 'Dark',
+    themeLight: 'Light',
     help: 'Help',
     checkUpdates: 'Check for Updates…',
+  },
+  'zh-CN': {
+    about: '关于',
+    aboutTitle: '关于 DevToolBox',
+    company: '公司',
+    developer: '开发者',
+    version: '版本',
+    build: '构建号',
+    settings: '设置…',
+    exportData: '导出…',
+    importData: '导入…',
+    view: '窗口',
+    language: '语言',
+    langAuto: '自动',
+    langEn: 'English',
+    langZhCN: '简体中文',
+    theme: '主题',
+    themeAuto: '自动',
+    themeDark: '深色',
+    themeLight: '浅色',
+    help: '帮助',
+    checkUpdates: '检查更新…',
   },
 };
 
@@ -85,7 +124,7 @@ function getMenuIcon(): Electron.NativeImage {
   return getAboutIcon().resize({ width: 16, height: 16 });
 }
 
-async function showAbout(): Promise<void> {
+async function showAboutMessageBox(): Promise<void> {
   const locale = getCurrentLocale();
   const txt = menuText[locale];
   await dialog.showMessageBox({
@@ -99,10 +138,88 @@ async function showAbout(): Promise<void> {
   });
 }
 
+function openAbout(): void {
+  if (!mainWindow) {
+    void showAboutMessageBox();
+    return;
+  }
+  mainWindow.show();
+  mainWindow.focus();
+  mainWindow.webContents.send('app:openAbout');
+}
+
 function buildMenu(): void {
   const isMac = process.platform === 'darwin';
   const locale = getCurrentLocale();
   const txt = menuText[locale];
+  const setting = getCurrentLocaleSetting();
+  const themeSetting = getCurrentThemeSetting();
+
+  const languageItems: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: txt.langAuto,
+      type: 'radio' as const,
+      checked: setting === 'auto',
+      click: () => {
+        setCurrentLocaleSetting('auto');
+        broadcastLocaleChange(getCurrentLocale());
+        buildMenu();
+      },
+    },
+    {
+      label: txt.langEn,
+      type: 'radio' as const,
+      checked: setting === 'en',
+      click: () => {
+        setCurrentLocaleSetting('en');
+        broadcastLocaleChange(getCurrentLocale());
+        buildMenu();
+      },
+    },
+    {
+      label: txt.langZhCN,
+      type: 'radio' as const,
+      checked: setting === 'zh-CN',
+      click: () => {
+        setCurrentLocaleSetting('zh-CN');
+        broadcastLocaleChange(getCurrentLocale());
+        buildMenu();
+      },
+    },
+  ];
+
+  const themeItems: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: txt.themeAuto,
+      type: 'radio' as const,
+      checked: themeSetting === 'auto',
+      click: () => {
+        setCurrentThemeSetting('auto');
+        broadcastThemeChange(getCurrentTheme());
+        buildMenu();
+      },
+    },
+    {
+      label: txt.themeDark,
+      type: 'radio' as const,
+      checked: themeSetting === 'dark',
+      click: () => {
+        setCurrentThemeSetting('dark');
+        broadcastThemeChange(getCurrentTheme());
+        buildMenu();
+      },
+    },
+    {
+      label: txt.themeLight,
+      type: 'radio' as const,
+      checked: themeSetting === 'light',
+      click: () => {
+        setCurrentThemeSetting('light');
+        broadcastThemeChange(getCurrentTheme());
+        buildMenu();
+      },
+    },
+  ];
 
   const template: Electron.MenuItemConstructorOptions[] = [
     ...(isMac
@@ -113,7 +230,7 @@ function buildMenu(): void {
               {
                 label: txt.aboutTitle,
                 click: () => {
-                  void showAbout();
+                  openAbout();
                 },
               },
               { type: 'separator' as const },
@@ -157,6 +274,19 @@ function buildMenu(): void {
       : []),
     { role: 'editMenu' as const },
     {
+      label: txt.view,
+      submenu: [
+        {
+          label: txt.language,
+          submenu: languageItems,
+        },
+        {
+          label: txt.theme,
+          submenu: themeItems,
+        },
+      ],
+    },
+    {
       label: txt.help,
       submenu: [
         {
@@ -170,7 +300,7 @@ function buildMenu(): void {
           label: txt.about,
           icon: getMenuIcon(),
           click: () => {
-            void showAbout();
+            openAbout();
           },
         },
       ],
@@ -212,8 +342,13 @@ function createWindow(): void {
 
 // Register framework-level IPC handlers
 registerLocaleIpc((locale) => {
-  setCurrentLocale(locale as Locale);
-  broadcastLocaleChange(locale as Locale);
+  void locale;
+  broadcastLocaleChange(getCurrentLocale());
+  buildMenu();
+});
+registerThemeIpc((theme) => {
+  void theme;
+  broadcastThemeChange(getCurrentTheme());
   buildMenu();
 });
 registerFileIpc();
@@ -247,8 +382,8 @@ app.on('before-quit', (e) => {
   if (typeof s.flushStorageData !== 'function') return;
   flushingStorage = true;
   e.preventDefault();
-  void s
-    .flushStorageData()
+  void Promise.resolve()
+    .then(() => s.flushStorageData?.())
     .catch(() => undefined)
     .then(() => {
       app.quit();
@@ -258,3 +393,13 @@ app.on('before-quit', (e) => {
 app.on('window-all-closed', () => {
   app.quit();
 });
+
+const handleSignal = () => {
+  try {
+    app.quit();
+  } catch {
+    void 0;
+  }
+};
+process.on('SIGINT', handleSignal);
+process.on('SIGTERM', handleSignal);

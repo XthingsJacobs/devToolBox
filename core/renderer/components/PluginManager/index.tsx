@@ -8,6 +8,7 @@ import {
   loadMarketplaceRegistryUrl,
 } from '../../marketplace/registry';
 import { installPlugin, listInstalledPlugins, setPluginEnabled, uninstallPlugin } from '../../marketplace/api';
+import { compareVersions, isNewerVersion } from '../../marketplace/version';
 
 interface PluginManagerProps {
   onUpdated?: (installed: InstalledMarketplacePlugin[]) => void;
@@ -78,6 +79,22 @@ export default function PluginManager({ onUpdated }: PluginManagerProps) {
   );
 
   const installedMap = useMemo(() => new Map(installed.map((p) => [p.id, p])), [installed]);
+  const registryLatestMap = useMemo(() => {
+    const m = new Map<string, MarketplaceRegistryEntry>();
+    for (const e of registry.plugins) {
+      const id = e.manifest?.id;
+      if (!id) continue;
+      const cur = m.get(id);
+      if (!cur) {
+        m.set(id, e);
+        continue;
+      }
+      const nextV = String(e.manifest?.version ?? '');
+      const curV = String(cur.manifest?.version ?? '');
+      if (compareVersions(nextV, curV) > 0) m.set(id, e);
+    }
+    return m;
+  }, [registry.plugins]);
 
   const handleInstall = useCallback(
     async (entry: MarketplaceRegistryEntry) => {
@@ -157,32 +174,52 @@ export default function PluginManager({ onUpdated }: PluginManagerProps) {
       {activeTab === 'installed' ? (
         <div className={styles.list} role="tabpanel" aria-label="Installed plugins">
           {installedFiltered.length === 0 && <div className={styles.pill}>No installed modules</div>}
-          {installedFiltered.map((p) => (
-            <div key={p.id} className={styles.card}>
-              <div className={styles.row}>
-                <div className={styles.meta}>
-                  <div className={styles.name}>
-                    {p.manifest.name} <span className={styles.pill}>v{p.version}</span>
+          {installedFiltered.map((p) => {
+            const latest = registryLatestMap.get(p.id);
+            const hasUpdate = latest ? isNewerVersion(String(latest.manifest.version ?? ''), String(p.version ?? '')) : false;
+            return (
+              <div key={p.id} className={styles.card}>
+                <div className={styles.row}>
+                  <div className={styles.meta}>
+                    <div className={styles.name}>
+                      {p.manifest.name} <span className={styles.pill}>v{p.version}</span>
+                      {hasUpdate && latest ? (
+                        <span className={styles.pill} style={{ marginLeft: 8 }}>
+                          v{latest.manifest.version}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className={styles.desc}>{p.manifest.description}</div>
                   </div>
-                  <div className={styles.desc}>{p.manifest.description}</div>
-                </div>
-                <div className={styles.actions}>
-                  <label className={styles.toggle}>
-                    <input
-                      className={styles.checkbox}
-                      type="checkbox"
-                      checked={p.enabled}
-                      onChange={(e) => void handleToggle(p.id, e.target.checked)}
-                    />
-                    Enabled
-                  </label>
-                  <button type="button" className={styles.btn} onClick={() => void handleUninstall(p.id)}>
-                    Uninstall
-                  </button>
+                  <div className={styles.actions}>
+                    <label className={styles.toggle}>
+                      <input
+                        className={styles.checkbox}
+                        type="checkbox"
+                        checked={p.enabled}
+                        disabled={installingId === p.id}
+                        onChange={(e) => void handleToggle(p.id, e.target.checked)}
+                      />
+                      Enabled
+                    </label>
+                    {hasUpdate && latest ? (
+                      <button
+                        type="button"
+                        className={styles.btn}
+                        disabled={installingId === p.id}
+                        onClick={() => void handleInstall(latest)}
+                      >
+                        {installingId === p.id ? 'Upgrading...' : 'Upgrade'}
+                      </button>
+                    ) : null}
+                    <button type="button" className={styles.btn} disabled={installingId === p.id} onClick={() => void handleUninstall(p.id)}>
+                      Uninstall
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className={styles.list} role="tabpanel" aria-label="Marketplace plugins">
@@ -190,6 +227,7 @@ export default function PluginManager({ onUpdated }: PluginManagerProps) {
           {registryFiltered.map((entry) => {
             const id = entry.manifest.id;
             const inst = installedMap.get(id);
+            const hasUpdate = inst ? isNewerVersion(String(entry.manifest.version ?? ''), String(inst.version ?? '')) : false;
             return (
               <div key={id} className={styles.card}>
                 <div className={styles.row}>
@@ -200,7 +238,16 @@ export default function PluginManager({ onUpdated }: PluginManagerProps) {
                     <div className={styles.desc}>{entry.manifest.description}</div>
                   </div>
                   <div className={styles.actions}>
-                    {inst ? (
+                    {inst ? hasUpdate ? (
+                      <button
+                        type="button"
+                        className={styles.btn}
+                        disabled={installingId === id}
+                        onClick={() => void handleInstall(entry)}
+                      >
+                        {installingId === id ? 'Upgrading...' : 'Upgrade'}
+                      </button>
+                    ) : (
                       <span className={styles.pill}>Installed</span>
                     ) : (
                       <button

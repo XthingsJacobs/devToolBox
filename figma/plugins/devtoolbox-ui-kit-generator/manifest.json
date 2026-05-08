@@ -1,0 +1,11 @@
+{
+  "name": "DevToolBox UI Kit Generator",
+  "id": "devtoolbox-ui-kit-generator",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "ui.html",
+  "editorType": [
+    "figma"
+  ]
+}
+

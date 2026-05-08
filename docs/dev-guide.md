@@ -64,7 +64,7 @@ export default config;
 Notes:
 
 - Built-in module `id` must start with `core-`.
-- Available `categoryId` values are defined in `core/renderer/data/placeholder.ts` (for example: `dev-tools`, `text-tools`, `network-tools`, `security-tools`, `system-tools`).
+- Available `categoryId` values are defined in `core/renderer/data/placeholder.ts` (for example: `dev-tools`, `text-tools`, `network-tools`, `security-tools`, `other-tools`).
 
 ## Adding IPC
 

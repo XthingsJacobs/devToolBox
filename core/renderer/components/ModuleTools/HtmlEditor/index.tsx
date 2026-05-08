@@ -62,6 +62,11 @@ export default function HtmlEditor() {
   const dragging = useRef(false);
 
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const didInitSplitRef = useRef(false);
+
+  const PREVIEW_DEFAULT_PX = 520;
+  const PANE_MIN_PX = 360;
+  const DIVIDER_PX = 8;
 
   // Initialize CodeMirror
   useEffect(() => {
@@ -136,8 +141,11 @@ export default function HtmlEditor() {
     const onMouseMove = (e: MouseEvent) => {
       if (!dragging.current || !containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const percent = ((e.clientX - rect.left) / rect.width) * 100;
-      setSplitPercent(Math.min(80, Math.max(20, percent)));
+      const rawPercent = ((e.clientX - rect.left) / rect.width) * 100;
+      const minPercent = (PANE_MIN_PX / rect.width) * 100;
+      const maxPercent = 100 - minPercent;
+      const percent = Math.min(maxPercent, Math.max(minPercent, rawPercent));
+      setSplitPercent(percent);
     };
 
     const onMouseUp = () => {
@@ -152,6 +160,21 @@ export default function HtmlEditor() {
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   };
+
+  useEffect(() => {
+    if (didInitSplitRef.current) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const preview = Math.min(PREVIEW_DEFAULT_PX, Math.max(PANE_MIN_PX, rect.width * 0.45));
+    const editorPx = Math.max(PANE_MIN_PX, rect.width - preview - DIVIDER_PX);
+    const percent = (editorPx / rect.width) * 100;
+    const minPercent = (PANE_MIN_PX / rect.width) * 100;
+    const maxPercent = 100 - minPercent;
+    setSplitPercent(Math.min(maxPercent, Math.max(minPercent, percent)));
+    didInitSplitRef.current = true;
+  }, []);
 
   const previewHtml = useMemo(() => {
     let html = input;
@@ -317,7 +340,7 @@ export default function HtmlEditor() {
 
   return (
     <div className={styles.container} ref={containerRef}>
-      <div className={styles.editorPane} style={{ width: `${splitPercent}%` }}>
+      <div className={styles.editorPane} style={{ width: `${splitPercent}%`, minWidth: PANE_MIN_PX }}>
         <ToolSection
           fill
           bodyVariant="noPad"
@@ -372,7 +395,13 @@ export default function HtmlEditor() {
 
       <div className={styles.divider} onMouseDown={handleMouseDown} />
 
-      <div className={styles.previewPane} style={{ width: `${100 - splitPercent}%` }}>
+      <div
+        className={styles.previewPane}
+        style={{
+          width: `${100 - splitPercent}%`,
+          minWidth: PANE_MIN_PX,
+        }}
+      >
         <ToolSection fill bodyVariant="noPad" title={mt('livePreview')} icon={<VscOpenPreview />}>
           <div className={styles.previewBody}>
             {isDragging && <div className={styles.dragOverlay} />}

@@ -7,9 +7,19 @@ ipcRenderer.on('locale:changed', (_event, locale: string) => {
   localeCallbacks.forEach((cb) => cb(_event, locale));
 });
 
+const themeCallbacks = new Set<(event: IpcRendererEvent, theme: string) => void>();
+ipcRenderer.on('theme:changed', (_event, theme: string) => {
+  themeCallbacks.forEach((cb) => cb(_event, theme));
+});
+
 const openSettingsCallbacks = new Set<() => void>();
 ipcRenderer.on('app:openSettings', () => {
   openSettingsCallbacks.forEach((cb) => cb());
+});
+
+const openAboutCallbacks = new Set<() => void>();
+ipcRenderer.on('app:openAbout', () => {
+  openAboutCallbacks.forEach((cb) => cb());
 });
 
 const openExportCallbacks = new Set<() => void>();
@@ -25,17 +35,31 @@ ipcRenderer.on('app:openImport', () => {
 contextBridge.exposeInMainWorld('electronAPI', {
   setLocale: (locale: string) => ipcRenderer.invoke('app:setLocale', locale),
   getLocale: () => ipcRenderer.invoke('app:getLocale'),
+  setTheme: (theme: string) => ipcRenderer.invoke('app:setTheme', theme),
+  getTheme: () => ipcRenderer.invoke('app:getTheme'),
   onLocaleChanged: (cb: (event: IpcRendererEvent, locale: string) => void) => {
     localeCallbacks.add(cb);
   },
   offLocaleChanged: (cb: (event: IpcRendererEvent, locale: string) => void) => {
     localeCallbacks.delete(cb);
   },
+  onThemeChanged: (cb: (event: IpcRendererEvent, theme: string) => void) => {
+    themeCallbacks.add(cb);
+  },
+  offThemeChanged: (cb: (event: IpcRendererEvent, theme: string) => void) => {
+    themeCallbacks.delete(cb);
+  },
   onOpenSettings: (cb: () => void) => {
     openSettingsCallbacks.add(cb);
   },
   offOpenSettings: (cb: () => void) => {
     openSettingsCallbacks.delete(cb);
+  },
+  onOpenAbout: (cb: () => void) => {
+    openAboutCallbacks.add(cb);
+  },
+  offOpenAbout: (cb: () => void) => {
+    openAboutCallbacks.delete(cb);
   },
   onOpenExport: (cb: () => void) => {
     openExportCallbacks.add(cb);
@@ -58,6 +82,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('file:saveAs', defaultName, content, filters),
   confirmOverwrite: (filePath: string) => ipcRenderer.invoke('file:confirmOverwrite', filePath),
   getAppInfo: () => ipcRenderer.invoke('app:getInfo'),
+  getAppIcon: (size?: 'small' | 'normal' | 'large') => ipcRenderer.invoke('app:getIcon', size),
   getSystemInfo: () => ipcRenderer.invoke('system:getInfo'),
   generateCSR: (params: {
     commonName?: string;
@@ -193,5 +218,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   offMqttEvent: (handler: unknown) => {
     if (typeof handler === 'function') ipcRenderer.removeListener('mqtt:event', handler as Listener);
+  },
+
+  wsServerStart: (params: unknown) => ipcRenderer.invoke('wsServer:start', params),
+  wsServerStop: () => ipcRenderer.invoke('wsServer:stop'),
+  wsServerStatus: () => ipcRenderer.invoke('wsServer:status'),
+  wsServerSend: (params: unknown) => ipcRenderer.invoke('wsServer:send', params),
+  wsServerKick: (params: unknown) => ipcRenderer.invoke('wsServer:kick', params),
+  wsServerStressStart: (params: unknown) => ipcRenderer.invoke('wsServer:stressStart', params),
+  wsServerStressStop: () => ipcRenderer.invoke('wsServer:stressStop'),
+  onWsServerEvent: (cb: (ev: unknown) => void) => {
+    const handler = (_e: IpcRendererEvent, ev: unknown) => cb(ev);
+    ipcRenderer.on('wsServer:event', handler);
+    return handler;
+  },
+  offWsServerEvent: (handler: unknown) => {
+    if (typeof handler === 'function') ipcRenderer.removeListener('wsServer:event', handler as Listener);
   },
 });

@@ -1,6 +1,6 @@
 {
   "name": "devtoolbox",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Cross-platform desktop toolbox",
   "author": "Jacobs",
   "license": "Apache-2.0",
@@ -58,13 +58,15 @@
     "javascript-obfuscator": "^5.3.0",
     "marked": "^17.0.4",
     "mqtt": "^5.15.0",
+    "lucide-react": "^0.469.0",
     "pinyin-pro": "^3.28.0",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-icons": "^5.6.0",
     "react18-json-view": "^0.2.9",
-    "terser": "^5.46.1"
+    "terser": "^5.46.1",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
@@ -79,6 +81,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^33.2.1",
     "electron-builder": "^25.1.8",

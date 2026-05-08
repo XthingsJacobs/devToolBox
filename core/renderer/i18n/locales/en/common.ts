@@ -10,8 +10,8 @@ export default {
     'dev-tools': 'Dev Tools',
     'text-tools': 'Text Tools',
     'network-tools': 'Network Tools',
+    'other-tools': 'Other Tools',
     'security-tools': 'Security',
-    'system-tools': 'System',
   },
   dashboard: {
     searchPlaceholder: 'Search tools...',
@@ -77,6 +77,7 @@ export default {
   },
   nav: {
     dashboard: 'Dashboard',
+    tools: 'Tools',
     modules: 'Modules',
     settings: 'Settings',
   },

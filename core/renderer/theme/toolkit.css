@@ -1,0 +1,42 @@
+.dtb-muted {
+  color: var(--text-quaternary);
+}
+
+.dtb-card {
+  border: 1px solid var(--border-default);
+  background: var(--bg-secondary);
+  border-radius: 12px;
+}
+
+.dtb-input {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.dtb-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.dtb-button {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.dtb-button:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--accent-primary) 60%, var(--border-subtle));
+  background: var(--bg-hover);
+}
+
+.dtb-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+

@@ -53,8 +53,9 @@
   outline: none;
 }
 
-.search:focus {
-  border-color: var(--focus-border);
+.search:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .btn {
@@ -153,4 +154,3 @@
   color: #ff6b6b;
   font-size: 12px;
 }
-

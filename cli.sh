@@ -231,7 +231,7 @@ cmd_plugin() {
     local sdk_version
     sdk_version="$(prompt 'SDK Version' '1.0')"
     local category_id
-    category_id="$(prompt 'categoryId (dev-tools/text-tools/network-tools/security-tools/system-tools)' 'dev-tools')"
+    category_id="$(prompt 'categoryId (dev-tools/text-tools/network-tools/security-tools/other-tools)' 'dev-tools')"
     local author
     author="$(prompt 'Author' 'DevToolBox')"
     local license
@@ -546,6 +546,32 @@ EOF
   fi
 
   local plugin_id="$action"
+  if [[ "$plugin_id" == "all" ]]; then
+    local ids=()
+    while IFS= read -r d; do
+      local base
+      base="$(basename "$d")"
+      [[ -z "$base" ]] && continue
+      ids+=("$base")
+    done < <(find marketplace/modules -maxdepth 1 -type d -name 'market-*' -print)
+
+    if [[ ${#ids[@]} -eq 0 ]]; then
+      print_error "No marketplace plugins found under marketplace/modules"
+      exit 1
+    fi
+
+    print_info "Building plugins: ${#ids[@]}"
+    for id in "${ids[@]}"; do
+      print_info "  build: $id"
+      pnpm --filter "@devtoolbox/plugin-$id" build
+    done
+    print_ok "All plugin builds completed"
+
+    print_info "Packing plugins into local registry zip (merge)"
+    node marketplace/scripts/pack-local.mjs --merge "${ids[@]}"
+    print_ok "Plugin pack completed"
+    return
+  fi
   if [[ -z "$plugin_id" ]]; then
     plugin_id="$(prompt 'Plugin ID (e.g. market-hello-tool)' '')"
   fi
@@ -571,8 +597,8 @@ EOF
   pnpm --filter "@devtoolbox/plugin-$plugin_id" build
   print_ok "Plugin build completed"
 
-  print_info "Packing plugin into local registry zip: $plugin_id"
-  node marketplace/scripts/pack-local.mjs "$plugin_id"
+  print_info "Packing plugin into local registry zip (merge): $plugin_id"
+  node marketplace/scripts/pack-local.mjs --merge "$plugin_id"
   print_ok "Plugin pack completed"
 }
 

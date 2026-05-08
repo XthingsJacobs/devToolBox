@@ -5,10 +5,11 @@ import { VscDebugDisconnect } from 'react-icons/vsc';
 const config: ModuleConfig = {
   id: 'core-websocket-tester',
   name: 'WebSocket Tester',
-  description: 'Connect to a WebSocket and send/receive messages',
+  description: 'WebSocket protocol debugging (client + local server)',
   categoryId: 'network-tools',
   component: WebSocketTester,
   icon: <VscDebugDisconnect />,
 };
 
 export default config;
+

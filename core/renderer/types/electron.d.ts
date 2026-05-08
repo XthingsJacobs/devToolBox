@@ -43,12 +43,18 @@ export interface SystemInfo {
 }
 
 export interface ElectronAPI {
-  setLocale: (locale: string) => Promise<void>;
-  getLocale: () => Promise<string>;
+  setLocale: (locale: 'auto' | 'en' | 'zh-CN') => Promise<void>;
+  getLocale: () => Promise<{ setting: 'auto' | 'en' | 'zh-CN'; locale: 'en' | 'zh-CN' }>;
+  setTheme: (theme: 'auto' | 'dark' | 'light') => Promise<void>;
+  getTheme: () => Promise<{ setting: 'auto' | 'dark' | 'light'; theme: 'dark' | 'light' }>;
   onLocaleChanged: (cb: (event: any, locale: string) => void) => void;
   offLocaleChanged: (cb: (event: any, locale: string) => void) => void;
+  onThemeChanged: (cb: (event: any, theme: string) => void) => void;
+  offThemeChanged: (cb: (event: any, theme: string) => void) => void;
   onOpenSettings: (cb: () => void) => void;
   offOpenSettings: (cb: () => void) => void;
+  onOpenAbout: (cb: () => void) => void;
+  offOpenAbout: (cb: () => void) => void;
   onOpenExport: (cb: () => void) => void;
   offOpenExport: (cb: () => void) => void;
   onOpenImport: (cb: () => void) => void;
@@ -125,6 +131,7 @@ export interface ElectronAPI {
   onTracertDone: (cb: () => void) => any;
   offTracertListeners: (dataHandler: any, errorHandler: any, doneHandler: any) => void;
   getAppInfo: () => Promise<AppInfo>;
+  getAppIcon: (size?: 'small' | 'normal' | 'large') => Promise<string | null>;
   getSystemInfo: () => Promise<SystemInfo>;
   convertAndSaveVideo: (webmBase64: string) => Promise<{ ok: boolean; filePath?: string; error?: string }>;
   // Marketplace
@@ -198,6 +205,16 @@ export interface ElectronAPI {
   ) => Promise<{ ok: boolean; data?: any; error?: any }>;
   onMqttEvent: (cb: (id: string, event: string, data?: any) => void) => any;
   offMqttEvent: (handler: any) => void;
+
+  wsServerStart: (params: any) => Promise<any>;
+  wsServerStop: () => Promise<any>;
+  wsServerStatus: () => Promise<any>;
+  wsServerSend: (params: any) => Promise<any>;
+  wsServerKick: (params: any) => Promise<any>;
+  wsServerStressStart: (params: any) => Promise<any>;
+  wsServerStressStop: () => Promise<any>;
+  onWsServerEvent: (cb: (ev: any) => void) => any;
+  offWsServerEvent: (handler: any) => void;
 }
 
 declare global {

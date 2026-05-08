@@ -658,10 +658,17 @@ export function register(): void {
       }
 
       const state = readState();
+      const prev = state.installed[registryManifest.id];
+      const prevEnabled = prev ? Boolean(prev.enabled) : true;
+      const prevVersion = prev?.version ? String(prev.version) : '';
+      if (prevVersion && prevVersion !== registryManifest.version) {
+        const oldDir = path.join(baseDir, registryManifest.id, prevVersion);
+        safeRemoveDir(oldDir);
+      }
       state.installed[registryManifest.id] = {
         id: registryManifest.id,
         version: registryManifest.version,
-        enabled: true,
+        enabled: prevEnabled,
         installedAt: new Date().toISOString(),
         manifest: parsed.data,
       };

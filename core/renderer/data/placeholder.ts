@@ -2,7 +2,7 @@ import type { Category, Module, ModuleConfig } from '../types';
 import type { Locale } from '../i18n/types';
 import { getCategoryName, getModuleLocale } from '../i18n';
 import { createElement } from 'react';
-import { VscCode, VscSymbolString, VscGlobe, VscShield, VscSettingsGear } from 'react-icons/vsc';
+import { VscCode, VscSymbolString, VscGlobe, VscShield, VscEllipsis } from 'react-icons/vsc';
 
 /**
  * Auto-scan all config.ts(x) files under ModuleTools via import.meta.glob.
@@ -43,7 +43,7 @@ export const categoryDefs: { id: string; icon: React.ReactNode }[] = [
   { id: 'text-tools', icon: createElement(VscSymbolString) },
   { id: 'network-tools', icon: createElement(VscGlobe) },
   { id: 'security-tools', icon: createElement(VscShield) },
-  { id: 'system-tools', icon: createElement(VscSettingsGear) },
+  { id: 'other-tools', icon: createElement(VscEllipsis) },
 ];
 
 /** Get localized categories and modules by locale */

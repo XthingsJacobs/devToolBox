@@ -14,6 +14,7 @@ interface ContentAreaProps {
   showDashboard?: boolean;
   dashboardCategories?: Category[];
   onModuleSelect: (categoryId: string, moduleId: string) => void;
+  onCategorySelect?: (categoryId: string) => void;
   onOpenGlobalSearch?: () => void;
   marketplacePlugins?: { id: string; entryUrl: string }[];
 }
@@ -25,6 +26,7 @@ export default function ContentArea({
   showDashboard = false,
   dashboardCategories,
   onModuleSelect,
+  onCategorySelect,
   onOpenGlobalSearch,
   marketplacePlugins = [],
 }: ContentAreaProps) {
@@ -49,6 +51,7 @@ export default function ContentArea({
           <Dashboard
             categories={dashboardCategories}
             onModuleSelect={onModuleSelect}
+            onCategorySelect={onCategorySelect}
             onOpenGlobalSearch={onOpenGlobalSearch}
           />
         </div>

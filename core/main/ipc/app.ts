@@ -1,7 +1,9 @@
-import { ipcMain } from 'electron';
+import { app, ipcMain, nativeImage } from 'electron';
 import type { IncomingMessage } from 'node:http';
+import * as fs from 'node:fs';
 import * as http from 'node:http';
 import * as https from 'node:https';
+import * as path from 'node:path';
 import * as dns from 'node:dns';
 import * as os from 'node:os';
 
@@ -17,6 +19,38 @@ export function register(appVersion: string, buildNumber: string): void {
       chrome: process.versions.chrome,
       node: process.versions.node,
     };
+  });
+
+  ipcMain.handle('app:getIcon', async (_event, size?: 'small' | 'normal' | 'large') => {
+    try {
+      const width = size === 'small' ? 16 : size === 'normal' ? 32 : 64;
+      const platform = process.platform;
+      if (platform === 'darwin') {
+        const exeDir = path.dirname(process.execPath);
+        const resourcesDir = path.resolve(exeDir, '..', 'Resources');
+        const name = app.getName();
+        const candidates = [
+          path.join(resourcesDir, `${name}.icns`),
+          path.join(resourcesDir, 'app.icns'),
+          path.join(resourcesDir, 'icon.icns'),
+          path.join(resourcesDir, 'electron.icns'),
+        ];
+        const hit = candidates.find((p) => fs.existsSync(p));
+        if (hit) {
+          const img = nativeImage.createFromPath(hit);
+          if (!img.isEmpty()) {
+            return img.resize({ width }).toDataURL();
+          }
+        }
+        return null;
+      }
+
+      const icon = await app.getFileIcon(process.execPath, { size: size ?? 'large' });
+      if (!icon || icon.isEmpty()) return null;
+      return icon.resize({ width }).toDataURL();
+    } catch {
+      return null;
+    }
   });
 
   // IPC: get system info

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './PluginHost.module.css';
+import { useTheme } from '../../theme';
 
 type RequestMessage = {
   type: 'devtoolbox:sdk:request';
@@ -109,8 +110,17 @@ interface PluginHostProps {
 export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [ready, setReady] = useState(false);
+  const { theme } = useTheme();
 
-  const src = useMemo(() => entryUrl, [entryUrl]);
+  const src = useMemo(() => {
+    try {
+      const u = new URL(entryUrl, window.location.href);
+      u.searchParams.set('theme', theme);
+      return u.toString();
+    } catch {
+      return entryUrl;
+    }
+  }, [entryUrl, theme]);
 
   useEffect(() => {
     setReady(false);
@@ -139,6 +149,13 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
   }, [pluginId]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const iframeWin = iframeRef.current?.contentWindow;
+    if (!iframeWin) return;
+    iframeWin.postMessage({ type: 'devtoolbox:theme', theme }, '*');
+  }, [ready, theme]);
 
   if (!src) return <div className={styles.empty}>Plugin not available.</div>;
 

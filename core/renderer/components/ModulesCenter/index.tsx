@@ -8,6 +8,7 @@ import {
 } from '../../marketplace/registry';
 import { installPlugin, listInstalledPlugins, setPluginEnabled, uninstallPlugin } from '../../marketplace/api';
 import type { InstalledMarketplacePlugin, MarketplaceRegistry, MarketplaceRegistryEntry } from '../../marketplace/types';
+import { isNewerVersion } from '../../marketplace/version';
 
 interface ModulesCenterProps {
   onUpdated?: (installed: InstalledMarketplacePlugin[]) => void;
@@ -67,6 +68,7 @@ export default function ModulesCenter({ onUpdated }: ModulesCenterProps) {
   }, [refreshRegistry]);
 
   const installedMap = useMemo(() => new Map(installed.map((p) => [p.id, p])), [installed]);
+  const registryMap = useMemo(() => new Map(registry.plugins.map((e) => [e.manifest.id, e])), [registry.plugins]);
 
   const handleInstall = useCallback(
     async (entry: MarketplaceRegistryEntry) => {
@@ -121,32 +123,47 @@ export default function ModulesCenter({ onUpdated }: ModulesCenterProps) {
       <div className={styles.sectionTitle}>Installed</div>
       <div className={styles.list}>
         {installed.length === 0 && <div className={styles.pill}>No installed modules</div>}
-        {installed.map((p) => (
-          <div key={p.id} className={styles.card}>
-            <div className={styles.row}>
-              <div className={styles.meta}>
-                <div className={styles.name}>
-                  {p.manifest.name} <span className={styles.pill}>v{p.version}</span>
+        {installed.map((p) => {
+          const latest = registryMap.get(p.id);
+          const hasUpdate = latest ? isNewerVersion(String(latest.manifest.version ?? ''), String(p.version ?? '')) : false;
+          return (
+            <div key={p.id} className={styles.card}>
+              <div className={styles.row}>
+                <div className={styles.meta}>
+                  <div className={styles.name}>
+                    {p.manifest.name} <span className={styles.pill}>v{p.version}</span>
+                    {hasUpdate && latest ? (
+                      <span className={styles.pill} style={{ marginLeft: 8 }}>
+                        v{latest.manifest.version}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className={styles.desc}>{p.manifest.description}</div>
                 </div>
-                <div className={styles.desc}>{p.manifest.description}</div>
-              </div>
-              <div className={styles.actions}>
-                <label className={styles.toggle}>
-                  <input
-                    className={styles.checkbox}
-                    type="checkbox"
-                    checked={p.enabled}
-                    onChange={(e) => void handleToggle(p.id, e.target.checked)}
-                  />
-                  Enabled
-                </label>
-                <button type="button" className={styles.btn} onClick={() => void handleUninstall(p.id)}>
-                  Uninstall
-                </button>
+                <div className={styles.actions}>
+                  <label className={styles.toggle}>
+                    <input
+                      className={styles.checkbox}
+                      type="checkbox"
+                      checked={p.enabled}
+                      disabled={installingId === p.id}
+                      onChange={(e) => void handleToggle(p.id, e.target.checked)}
+                    />
+                    Enabled
+                  </label>
+                  {hasUpdate && latest ? (
+                    <button type="button" className={styles.btn} disabled={installingId === p.id} onClick={() => void handleInstall(latest)}>
+                      {installingId === p.id ? 'Upgrading...' : 'Upgrade'}
+                    </button>
+                  ) : null}
+                  <button type="button" className={styles.btn} disabled={installingId === p.id} onClick={() => void handleUninstall(p.id)}>
+                    Uninstall
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className={styles.sectionTitle}>Marketplace</div>
@@ -155,6 +172,7 @@ export default function ModulesCenter({ onUpdated }: ModulesCenterProps) {
         {registry.plugins.map((entry) => {
           const id = entry.manifest.id;
           const inst = installedMap.get(id);
+          const hasUpdate = inst ? isNewerVersion(String(entry.manifest.version ?? ''), String(inst.version ?? '')) : false;
           return (
             <div key={id} className={styles.card}>
               <div className={styles.row}>
@@ -165,7 +183,11 @@ export default function ModulesCenter({ onUpdated }: ModulesCenterProps) {
                   <div className={styles.desc}>{entry.manifest.description}</div>
                 </div>
                 <div className={styles.actions}>
-                  {inst ? (
+                  {inst ? hasUpdate ? (
+                    <button type="button" className={styles.btn} disabled={installingId === id} onClick={() => void handleInstall(entry)}>
+                      {installingId === id ? 'Upgrading...' : 'Upgrade'}
+                    </button>
+                  ) : (
                     <span className={styles.pill}>Installed</span>
                   ) : (
                     <button

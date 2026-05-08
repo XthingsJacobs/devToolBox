@@ -29,6 +29,7 @@ Check local environment (Node/pnpm/Git):
 ./cli.sh build
 ./cli.sh plugin create
 ./cli.sh plugin <market-id>
+./cli.sh plugin all
 ./cli.sh package <macos|windows|all> [arm64|x64|universal]
 ./cli.sh check
 ./cli.sh tool new
@@ -122,6 +123,11 @@ Build + pack a marketplace plugin into a local registry zip:
 
 ```bash
 ./cli.sh plugin <market-id>
+```
+
+Build + pack all marketplace plugins into `marketplace/registry.local.json`:
+```bash
+./cli.sh plugin all
 ```
 
 See also: [Marketplace Packaging](marketplace.md)

@@ -28,6 +28,7 @@
     "vite.config.ts",
     "vitest.config.ts",
     "core/packages/**/*.ts",
-    "core/packages/**/*.tsx"
+    "core/packages/**/*.tsx",
+    "figma/plugins/**/*.ts"
   ]
 }

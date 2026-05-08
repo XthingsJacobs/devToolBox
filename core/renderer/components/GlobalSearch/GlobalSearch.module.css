@@ -46,6 +46,13 @@
   font-size: 16px;
   margin-right: 10px;
   opacity: 0.5;
+  color: var(--text-disabled);
+  transition: color 0.12s ease, opacity 0.12s ease;
+}
+
+.inputWrap:focus-within .icon {
+  opacity: 1;
+  color: var(--accent-secondary);
 }
 
 .input {
@@ -57,6 +64,11 @@
   font-size: var(--font-size-base);
   padding: 14px 0;
   font-family: var(--font-family);
+}
+
+.input:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .input::placeholder {

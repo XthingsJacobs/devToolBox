@@ -10,6 +10,7 @@ import WorldClocks from './WorldClocks';
 
 interface DashboardProps {
   onModuleSelect: (categoryId: string, moduleId: string) => void;
+  onCategorySelect?: (categoryId: string) => void;
   onOpenGlobalSearch?: () => void;
   categories?: Category[];
 }
@@ -72,7 +73,12 @@ function readDeviceInfo(): DeviceInfo {
   };
 }
 
-export default function Dashboard({ onModuleSelect, onOpenGlobalSearch, categories: injectedCategories }: DashboardProps) {
+export default function Dashboard({
+  onModuleSelect,
+  onCategorySelect,
+  onOpenGlobalSearch,
+  categories: injectedCategories,
+}: DashboardProps) {
   const { locale, t } = useI18n();
   const categories = useMemo(() => injectedCategories ?? getCategories(locale), [injectedCategories, locale]);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
@@ -146,6 +152,14 @@ export default function Dashboard({ onModuleSelect, onOpenGlobalSearch, categori
   return (
     <main className={styles.dashboard} aria-label="Dashboard">
       <div className={styles.mainCol}>
+        <div className={styles.hero}>
+          <div className={styles.heroLabel}>DASHBOARD</div>
+          <div className={styles.heroTitle}>Welcome back</div>
+          <div className={styles.heroDate}>
+            {now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
+        </div>
+
         <div className={styles.searchSection}>
           <button
             type="button"
@@ -157,8 +171,42 @@ export default function Dashboard({ onModuleSelect, onOpenGlobalSearch, categori
               <VscSearch />
             </span>
             <span className={styles.searchPlaceholder}>{t('dashboard.searchPlaceholder')}</span>
-            <kbd className={styles.shortcutHint}>Ctrl+Shift+F</kbd>
+            <kbd className={styles.shortcutHint}>⌘ K</kbd>
           </button>
+        </div>
+
+        <div className={styles.categoryRow}>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={styles.categoryChip}
+              onClick={() => onCategorySelect?.(c.id)}
+            >
+              <span className={styles.categoryChipIcon}>{c.icon}</span>
+              <span className={styles.categoryChipLabel}>{c.name}</span>
+              <span className={styles.categoryChipCount}>{c.modules.length}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>{t('dashboard.frequentTools')}</h3>
+        </div>
+        <div className={styles.tileGrid}>
+          {frequentModules.length > 0 ? (
+            frequentModules.map((x) => (
+              <ToolCard
+                key={`${x.categoryId}:${x.module.id}`}
+                icon={x.module.icon}
+                name={x.module.name}
+                meta={x.categoryName}
+                onClick={() => onModuleSelect(x.categoryId, x.module.id)}
+              />
+            ))
+          ) : (
+            <div className={styles.emptyHint}>{t('dashboard.frequentEmpty')}</div>
+          )}
         </div>
 
         <div className={styles.infoRow}>
