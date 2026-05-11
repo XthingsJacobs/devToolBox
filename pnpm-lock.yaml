@@ -8,12 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@aws-sdk/client-kinesis-video':
-        specifier: ^3.1015.0
-        version: 3.1031.0
-      '@aws-sdk/client-kinesis-video-signaling':
-        specifier: ^3.1015.0
-        version: 3.1031.0
       '@codemirror/commands':
         specifier: 6.10.3
         version: 6.10.3
@@ -53,9 +47,6 @@ importers:
       '@devtoolbox/ui':
         specifier: workspace:*
         version: link:core/packages/ui
-      amazon-kinesis-video-streams-webrtc:
-        specifier: ^2.6.1
-        version: 2.7.0(expo@55.0.15)(react-native@0.85.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1))
       bwip-js:
         specifier: ^4.8.0
         version: 4.9.2

@@ -30,8 +30,6 @@
     "package:all": "pnpm run build && electron-builder --mac --win --publish never"
   },
   "dependencies": {
-    "@aws-sdk/client-kinesis-video": "^3.1015.0",
-    "@aws-sdk/client-kinesis-video-signaling": "^3.1015.0",
     "@codemirror/commands": "6.10.3",
     "@codemirror/lang-html": "^6.4.11",
     "@codemirror/lang-json": "^6.0.2",
@@ -45,7 +43,6 @@
     "@codemirror/view": "^6.40.0",
     "@devtoolbox/core": "workspace:*",
     "@devtoolbox/ui": "workspace:*",
-    "amazon-kinesis-video-streams-webrtc": "^2.6.1",
     "bwip-js": "^4.8.0",
     "codemirror": "^6.0.2",
     "diff": "^8.0.3",
