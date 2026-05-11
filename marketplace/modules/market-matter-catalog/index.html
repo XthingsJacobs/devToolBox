@@ -4,6 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Matter Catalog</title>
+    <script>
+      (() => {
+        const apply = (t) => {
+          document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark';
+        };
+        const q = new URLSearchParams(location.search).get('theme');
+        if (q) apply(q);
+        window.addEventListener('message', (e) => {
+          const d = e.data;
+          if (!d || d.type !== 'devtoolbox:theme') return;
+          if (d.theme === 'dark' || d.theme === 'light') apply(d.theme);
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

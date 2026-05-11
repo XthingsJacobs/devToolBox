@@ -150,6 +150,27 @@
   border-bottom: 1px solid var(--border-default);
 }
 
+.menuActions {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.menuActionBtn {
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.menuActionBtn:hover {
+  border-color: color-mix(in oklab, var(--accent-primary) 45%, var(--border-subtle));
+  background: var(--bg-hover);
+}
+
 .menuList {
   max-height: 420px;
   overflow-y: auto;

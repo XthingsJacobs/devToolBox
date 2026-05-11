@@ -103,6 +103,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     keySize: number;
     validityDays: number;
   }) => ipcRenderer.invoke('crypto:generateCA', params),
+  generateRSAKeyPair: (params: { keySize: number }) => ipcRenderer.invoke('crypto:generateRSAKeyPair', params),
   generateClientCert: (params: {
     caCertPem: string;
     caKeyPem: string;

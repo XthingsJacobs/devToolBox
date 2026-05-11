@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { VscBroadcast, VscChevronRight, VscDeviceMobile, VscGraph, VscInfo, VscScreenFull, VscSearch, VscSparkle } from 'react-icons/vsc';
 import styles from './DashboardPage.module.css';
 import { loadModuleUsage, scoreUsage } from '../../data/moduleUsage';
@@ -14,6 +14,65 @@ type FlatTool = {
 type AppInfo = { version?: string; build?: string };
 type NetworkInfo = { localIPs: string[]; publicIP: string; dnsStatus: string; internetStatus: string };
 type NavigatorLike = Navigator & { vendor?: string; platform?: string };
+
+type WidgetId = 'frequent' | 'network' | 'appInfo' | 'screen' | 'device';
+type WidgetLayout = { order: WidgetId[]; spanById: Record<WidgetId, number> };
+
+const WIDGET_STORAGE_KEY = 'devtoolbox.dashboard.widgets.v2';
+const GRID_COLS = 24;
+const GRID_AUTO_ROW_PX = 8;
+
+function isWidgetId(v: unknown): v is WidgetId {
+  return v === 'frequent' || v === 'network' || v === 'appInfo' || v === 'screen' || v === 'device';
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null;
+}
+
+function clampSpan(v: number): number {
+  if (!Number.isFinite(v)) return 12;
+  const n = Math.round(v);
+  return Math.max(1, Math.min(GRID_COLS, n));
+}
+
+function loadWidgetLayout(): WidgetLayout {
+  const fallback: WidgetLayout = {
+    order: ['frequent', 'network', 'appInfo', 'screen', 'device'],
+    spanById: {
+      frequent: 24,
+      network: 12,
+      appInfo: 12,
+      screen: 12,
+      device: 12,
+    },
+  };
+  const raw = localStorage.getItem(WIDGET_STORAGE_KEY);
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isRecord(parsed)) return fallback;
+    const orderRaw = parsed.order;
+    const spanRaw = parsed.spanById;
+    if (!Array.isArray(orderRaw) || !isRecord(spanRaw)) return fallback;
+    const order = orderRaw.filter(isWidgetId) as WidgetId[];
+    const uniq = Array.from(new Set(order));
+    const allIds: WidgetId[] = ['frequent', 'network', 'appInfo', 'screen', 'device'];
+    const fullOrder = [...uniq, ...allIds.filter((id) => !uniq.includes(id))];
+    const spanById = { ...fallback.spanById };
+    for (const id of allIds) {
+      const v = spanRaw[id];
+      if (typeof v === 'number') spanById[id] = clampSpan(v);
+    }
+    return { order: fullOrder, spanById };
+  } catch {
+    return fallback;
+  }
+}
+
+function saveWidgetLayout(layout: WidgetLayout) {
+  localStorage.setItem(WIDGET_STORAGE_KEY, JSON.stringify(layout));
+}
 
 function categoryColor(categoryId: string): string {
   switch (categoryId) {
@@ -46,6 +105,22 @@ export default function DashboardPage({
   const [now, setNow] = useState(() => new Date());
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
+  const [layout, setLayout] = useState<WidgetLayout>(() => loadWidgetLayout());
+  const [draggingId, setDraggingId] = useState<WidgetId | null>(null);
+  const [overId, setOverId] = useState<WidgetId | null>(null);
+  const [resizingId, setResizingId] = useState<WidgetId | null>(null);
+  const [rowSpanById, setRowSpanById] = useState<Record<string, number>>({});
+  const widgetGridRef = useRef<HTMLDivElement | null>(null);
+  const widgetRefs = useRef<Record<WidgetId, HTMLDivElement | null>>({
+    frequent: null,
+    network: null,
+    appInfo: null,
+    screen: null,
+    device: null,
+  });
+  const layoutRef = useRef(layout);
+  const isResizingRef = useRef(false);
+  const recalcRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -112,71 +187,171 @@ export default function DashboardPage({
     return [...picked, ...fill];
   }, [flatTools]);
 
+  useEffect(() => {
+    layoutRef.current = layout;
+  }, [layout]);
+
+  useEffect(() => {
+    if (isResizingRef.current) return;
+    saveWidgetLayout(layout);
+  }, [layout]);
+
+  const moveWidget = useCallback((dragId: WidgetId, overId: WidgetId) => {
+    if (dragId === overId) return;
+    setLayout((prev) => {
+      const next = prev.order.filter((x) => x !== dragId);
+      const idx = next.indexOf(overId);
+      if (idx < 0) return prev;
+      next.splice(idx, 0, dragId);
+      return { ...prev, order: next };
+    });
+  }, []);
+
+  const setSpan = useCallback((id: WidgetId, span: number) => {
+    setLayout((prev) => {
+      const nextSpan = clampSpan(span);
+      if (prev.spanById[id] === nextSpan) return prev;
+      return { ...prev, spanById: { ...prev.spanById, [id]: nextSpan } };
+    });
+  }, []);
+
+  const handleWidgetDragStart = useCallback((id: WidgetId) => {
+    setDraggingId(id);
+    setOverId(null);
+  }, []);
+
+  const handleWidgetDragEnd = useCallback(() => {
+    setDraggingId(null);
+    setOverId(null);
+  }, []);
+
+  const handleResizeStart = useCallback((id: WidgetId) => {
+    isResizingRef.current = true;
+    setResizingId(id);
+  }, []);
+
+  const handleResizeEnd = useCallback(() => {
+    isResizingRef.current = false;
+    setResizingId(null);
+    saveWidgetLayout(layoutRef.current);
+  }, []);
+
+  const recalcMasonry = useCallback(() => {
+    const grid = widgetGridRef.current;
+    if (!grid) return;
+    const style = window.getComputedStyle(grid);
+    const rowGap = Number.parseFloat(style.rowGap || '0') || 0;
+    const rowUnit = GRID_AUTO_ROW_PX + rowGap;
+    const next: Record<string, number> = {};
+    (layout.order as WidgetId[]).forEach((id) => {
+      const el = widgetRefs.current[id];
+      if (!el) return;
+      const h = el.getBoundingClientRect().height;
+      const span = Math.max(1, Math.ceil((h + rowGap) / rowUnit));
+      next[id] = span;
+    });
+    setRowSpanById(next);
+  }, [layout.order]);
+
+  const scheduleRecalcMasonry = useCallback(() => {
+    if (recalcRafRef.current !== null) return;
+    recalcRafRef.current = window.requestAnimationFrame(() => {
+      recalcRafRef.current = null;
+      recalcMasonry();
+    });
+  }, [recalcMasonry]);
+
+  useEffect(() => {
+    const grid = widgetGridRef.current;
+    if (!grid) return;
+    scheduleRecalcMasonry();
+
+    const ro = new ResizeObserver(() => {
+      scheduleRecalcMasonry();
+    });
+    ro.observe(grid);
+    (layout.order as WidgetId[]).forEach((id) => {
+      const el = widgetRefs.current[id];
+      if (el) ro.observe(el);
+    });
+
+    return () => {
+      if (recalcRafRef.current !== null) {
+        window.cancelAnimationFrame(recalcRafRef.current);
+        recalcRafRef.current = null;
+      }
+      ro.disconnect();
+    };
+  }, [layout.order, layout.spanById, scheduleRecalcMasonry]);
+
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
         <div className={styles.header}>
-          <div className={styles.headerMeta}>
-            <div className={styles.headerIcon}>
-              <VscSparkle size={15} />
+          <div className={styles.headerTopRow}>
+            <div className={styles.headerMeta}>
+              <div className={styles.headerIcon}>
+                <VscSparkle size={15} />
+              </div>
+              <span className={styles.headerKicker}>Dashboard</span>
             </div>
-            <span className={styles.headerKicker}>Dashboard</span>
+
+            <div className={styles.searchWrap} data-focused={focused ? '1' : '0'}>
+              <div className={styles.searchBox} data-focused={focused ? '1' : '0'}>
+                <VscSearch className={styles.searchIcon} />
+                <input
+                  className={styles.searchInput}
+                  value={query}
+                  placeholder="Search tools…"
+                  onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
+                />
+                {query ? (
+                  <button className={styles.clearBtn} type="button" onClick={() => setQuery('')}>
+                    Clear
+                  </button>
+                ) : (
+                  <kbd className={styles.kbd}>⌘ K</kbd>
+                )}
+              </div>
+
+              {searchResults.length > 0 && (
+                <div className={`${styles.searchDropdown} fade-in`} role="listbox">
+                  <div className={styles.searchDropdownTitle}>
+                    {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
+                  </div>
+                  {searchResults.map((t) => (
+                    <button
+                      key={t.module.id}
+                      type="button"
+                      className={styles.searchItem}
+                      onClick={() => {
+                        setQuery('');
+                        onOpenTool(t.categoryId, t.module.id);
+                      }}
+                    >
+                      <div className={styles.searchItemIcon} style={{ color: t.categoryColor, background: `${t.categoryColor}18`, borderColor: `${t.categoryColor}30` }}>
+                        {t.module.icon}
+                      </div>
+                      <div className={styles.searchItemText}>
+                        <div className={styles.searchItemName}>{t.module.name}</div>
+                        <div className={styles.searchItemDesc}>{t.module.description}</div>
+                      </div>
+                      <span className={styles.searchItemPill} style={{ color: t.categoryColor, background: `${t.categoryColor}15`, borderColor: `${t.categoryColor}25` }}>
+                        {t.categoryName}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+
           <h1 className={styles.headerTitle}>Welcome back 👋</h1>
           <p className={styles.headerSub}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
-        </div>
-
-        <div className={styles.searchWrap} data-focused={focused ? '1' : '0'}>
-          <div className={styles.searchBox} data-focused={focused ? '1' : '0'}>
-            <VscSearch className={styles.searchIcon} />
-            <input
-              className={styles.searchInput}
-              value={query}
-              placeholder="Search tools…"
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-            />
-            {query ? (
-              <button className={styles.clearBtn} type="button" onClick={() => setQuery('')}>
-                Clear
-              </button>
-            ) : (
-              <kbd className={styles.kbd}>⌘ K</kbd>
-            )}
-          </div>
-
-          {searchResults.length > 0 && (
-            <div className={`${styles.searchDropdown} fade-in`} role="listbox">
-              <div className={styles.searchDropdownTitle}>
-                {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
-              </div>
-              {searchResults.map((t) => (
-                <button
-                  key={t.module.id}
-                  type="button"
-                  className={styles.searchItem}
-                  onClick={() => {
-                    setQuery('');
-                    onOpenTool(t.categoryId, t.module.id);
-                  }}
-                >
-                  <div className={styles.searchItemIcon} style={{ color: t.categoryColor, background: `${t.categoryColor}18`, borderColor: `${t.categoryColor}30` }}>
-                    {t.module.icon}
-                  </div>
-                  <div className={styles.searchItemText}>
-                    <div className={styles.searchItemName}>{t.module.name}</div>
-                    <div className={styles.searchItemDesc}>{t.module.description}</div>
-                  </div>
-                  <span className={styles.searchItemPill} style={{ color: t.categoryColor, background: `${t.categoryColor}15`, borderColor: `${t.categoryColor}25` }}>
-                    {t.categoryName}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className={`${styles.quickNav} no-scrollbar`}>
@@ -200,164 +375,390 @@ export default function DashboardPage({
           })}
         </div>
 
-        <Section title="Frequent Tools" icon={<VscGraph /> } action="View All Tools" onAction={() => onCategorySelect('all')}>
-          <div className={styles.grid}>
-            {frequent.slice(0, 8).map((t) => (
-              <button
-                key={t.module.id}
-                type="button"
-                className={styles.toolCard}
-                onClick={() => onOpenTool(t.categoryId, t.module.id)}
-              >
-                <div className={styles.toolCardTop}>
-                  <div className={styles.toolCardIcon} style={{ color: t.categoryColor, background: `${t.categoryColor}15`, borderColor: `${t.categoryColor}28` }}>
-                    {t.module.icon}
+        <div ref={widgetGridRef} className={styles.widgetGrid}>
+          {layout.order.map((id) => {
+            const span = layout.spanById[id];
+            const rowSpan = rowSpanById[id] ?? 1;
+            if (id === 'frequent') {
+              return (
+                <Widget
+                  key={id}
+                  id={id}
+                  span={span}
+                  rowSpan={rowSpan}
+                  gridRef={widgetGridRef}
+                  onRef={(wid, el) => {
+                    widgetRefs.current[wid] = el;
+                  }}
+                  title="Frequent Tools"
+                  icon={<VscGraph />}
+                  accentColor="var(--accent-secondary)"
+                  draggingId={draggingId}
+                  overId={overId}
+                  resizingId={resizingId}
+                  onOver={setOverId}
+                  onDragStart={handleWidgetDragStart}
+                  onDragEnd={handleWidgetDragEnd}
+                  onDrop={moveWidget}
+                  onResize={setSpan}
+                  onResizeStart={handleResizeStart}
+                  onResizeEnd={handleResizeEnd}
+                  action={
+                    <button type="button" className={styles.widgetAction} draggable={false} onClick={() => onCategorySelect('all')}>
+                      View All Tools
+                      <VscChevronRight />
+                    </button>
+                  }
+                >
+                  <div className={styles.grid}>
+                    {frequent.slice(0, 8).map((t) => (
+                      <button
+                        key={t.module.id}
+                        type="button"
+                        className={styles.toolCard}
+                        onClick={() => onOpenTool(t.categoryId, t.module.id)}
+                      >
+                        <div className={styles.toolCardTop}>
+                          <div
+                            className={styles.toolCardIcon}
+                            style={{ color: t.categoryColor, background: `${t.categoryColor}15`, borderColor: `${t.categoryColor}28` }}
+                          >
+                            {t.module.icon}
+                          </div>
+                          <div className={styles.toolCardMeta}>
+                            <div className={styles.toolCardName}>{t.module.name}</div>
+                            <span className={styles.toolCardPill} style={{ color: t.categoryColor, background: `${t.categoryColor}15` }}>
+                              {t.categoryName}
+                            </span>
+                          </div>
+                        </div>
+                        <div className={styles.toolCardDesc}>{t.module.description}</div>
+                      </button>
+                    ))}
                   </div>
-                  <div className={styles.toolCardMeta}>
-                    <div className={styles.toolCardName}>{t.module.name}</div>
-                    <span className={styles.toolCardPill} style={{ color: t.categoryColor, background: `${t.categoryColor}15` }}>
-                      {t.categoryName}
-                    </span>
-                  </div>
-                </div>
-                <div className={styles.toolCardDesc}>{t.module.description}</div>
-              </button>
-            ))}
-          </div>
-        </Section>
+                </Widget>
+              );
+            }
 
-        <div className={styles.infoGrid}>
-          <InfoCard
-            title="Network"
-            icon={<VscBroadcast />}
-            iconColor="var(--accent-secondary)"
-            items={[
-              {
-                label: 'Internet',
-                value: networkInfo?.internetStatus ?? (navigator.onLine ? 'Connected' : 'Disconnected'),
-                ok: (networkInfo?.internetStatus ?? (navigator.onLine ? 'Connected' : 'Disconnected')) === 'Connected',
-              },
-              { label: 'DNS', value: networkInfo?.dnsStatus ?? '-', ok: (networkInfo?.dnsStatus ?? '') === 'OK' },
-              { label: 'Public IP', value: networkInfo?.publicIP ?? '-' },
-              { label: 'Local IP', value: (networkInfo?.localIPs ?? ['-']).join('\n'), wrap: true, mono: true, pre: true },
-            ]}
-          />
-          <InfoCard
-            title="App Info"
-            icon={<VscInfo />}
-            iconColor="var(--accent-warning)"
-            items={[
-              { label: 'Version', value: appInfo?.version ?? '-' },
-              { label: 'Build', value: appInfo?.build ?? '-' },
-              { label: 'Local Time', value: now.toLocaleString() },
-              { label: 'Unix Timestamp', value: String(Math.floor(now.getTime() / 1000)) },
-              { label: 'Timezone', value: Intl.DateTimeFormat().resolvedOptions().timeZone },
-            ]}
-          />
-          <InfoCard
-            title="Screen"
-            icon={<VscScreenFull />}
-            iconColor="var(--accent-success)"
-            columns={2}
-            items={[
-              { label: 'Screen size', value: `${window.screen.width} × ${window.screen.height}` },
-              { label: 'Orientation', value: String(window.screen.orientation?.type ?? '-') },
-              { label: 'Orientation angle', value: `${Number(window.screen.orientation?.angle ?? 0)}°` },
-              { label: 'Color depth', value: `${window.screen.colorDepth} bits` },
-              { label: 'Pixel ratio', value: `${window.devicePixelRatio} dppx` },
-              { label: 'Window size', value: `${window.innerWidth} × ${window.innerHeight}` },
-            ]}
-          />
-          <InfoCard
-            title="Device"
-            icon={<VscDeviceMobile />}
-            iconColor="var(--cat-security)"
-            items={[
-              { label: 'Browser vendor', value: String((navigator as NavigatorLike).vendor ?? '-') },
-              { label: 'Languages', value: Array.isArray(navigator.languages) ? navigator.languages.join(', ') : String(navigator.language ?? '-') },
-              { label: 'Platform', value: String((navigator as NavigatorLike).platform ?? 'Unknown') },
-              { label: 'User agent', value: navigator.userAgent, wrap: true, mono: false },
-            ]}
-          />
+            if (id === 'network') {
+              return (
+                <Widget
+                  key={id}
+                  id={id}
+                  span={span}
+                  rowSpan={rowSpan}
+                  gridRef={widgetGridRef}
+                  onRef={(wid, el) => {
+                    widgetRefs.current[wid] = el;
+                  }}
+                  title="Network"
+                  icon={<VscBroadcast />}
+                  accentColor="var(--accent-secondary)"
+                  draggingId={draggingId}
+                  overId={overId}
+                  resizingId={resizingId}
+                  onOver={setOverId}
+                  onDragStart={handleWidgetDragStart}
+                  onDragEnd={handleWidgetDragEnd}
+                  onDrop={moveWidget}
+                  onResize={setSpan}
+                  onResizeStart={handleResizeStart}
+                  onResizeEnd={handleResizeEnd}
+                >
+                  <InfoBody
+                    items={[
+                      {
+                        label: 'Internet',
+                        value: networkInfo?.internetStatus ?? (navigator.onLine ? 'Connected' : 'Disconnected'),
+                        ok: (networkInfo?.internetStatus ?? (navigator.onLine ? 'Connected' : 'Disconnected')) === 'Connected',
+                      },
+                      { label: 'DNS', value: networkInfo?.dnsStatus ?? '-', ok: (networkInfo?.dnsStatus ?? '') === 'OK' },
+                      { label: 'Public IP', value: networkInfo?.publicIP ?? '-' },
+                      { label: 'Local IP', value: (networkInfo?.localIPs ?? ['-']).join('\n'), wrap: true, mono: true, pre: true },
+                    ]}
+                  />
+                </Widget>
+              );
+            }
+
+            if (id === 'appInfo') {
+              return (
+                <Widget
+                  key={id}
+                  id={id}
+                  span={span}
+                  rowSpan={rowSpan}
+                  gridRef={widgetGridRef}
+                  onRef={(wid, el) => {
+                    widgetRefs.current[wid] = el;
+                  }}
+                  title="App Info"
+                  icon={<VscInfo />}
+                  accentColor="var(--accent-warning)"
+                  draggingId={draggingId}
+                  overId={overId}
+                  resizingId={resizingId}
+                  onOver={setOverId}
+                  onDragStart={handleWidgetDragStart}
+                  onDragEnd={handleWidgetDragEnd}
+                  onDrop={moveWidget}
+                  onResize={setSpan}
+                  onResizeStart={handleResizeStart}
+                  onResizeEnd={handleResizeEnd}
+                >
+                  <InfoBody
+                    items={[
+                      { label: 'Version', value: appInfo?.version ?? '-' },
+                      { label: 'Build', value: appInfo?.build ?? '-' },
+                      { label: 'Local Time', value: now.toLocaleString() },
+                      { label: 'Unix Timestamp', value: String(Math.floor(now.getTime() / 1000)) },
+                      { label: 'Timezone', value: Intl.DateTimeFormat().resolvedOptions().timeZone },
+                    ]}
+                  />
+                </Widget>
+              );
+            }
+
+            if (id === 'screen') {
+              return (
+                <Widget
+                  key={id}
+                  id={id}
+                  span={span}
+                  rowSpan={rowSpan}
+                  gridRef={widgetGridRef}
+                  onRef={(wid, el) => {
+                    widgetRefs.current[wid] = el;
+                  }}
+                  title="Screen"
+                  icon={<VscScreenFull />}
+                  accentColor="var(--accent-success)"
+                  draggingId={draggingId}
+                  overId={overId}
+                  resizingId={resizingId}
+                  onOver={setOverId}
+                  onDragStart={handleWidgetDragStart}
+                  onDragEnd={handleWidgetDragEnd}
+                  onDrop={moveWidget}
+                  onResize={setSpan}
+                  onResizeStart={handleResizeStart}
+                  onResizeEnd={handleResizeEnd}
+                >
+                  <InfoBody
+                    columns={2}
+                    items={[
+                      { label: 'Screen size', value: `${window.screen.width} × ${window.screen.height}` },
+                      { label: 'Orientation', value: String(window.screen.orientation?.type ?? '-') },
+                      { label: 'Orientation angle', value: `${Number(window.screen.orientation?.angle ?? 0)}°` },
+                      { label: 'Color depth', value: `${window.screen.colorDepth} bits` },
+                      { label: 'Pixel ratio', value: `${window.devicePixelRatio} dppx` },
+                      { label: 'Window size', value: `${window.innerWidth} × ${window.innerHeight}` },
+                    ]}
+                  />
+                </Widget>
+              );
+            }
+
+            return (
+              <Widget
+                key={id}
+                id={id}
+                span={span}
+                rowSpan={rowSpan}
+                gridRef={widgetGridRef}
+                onRef={(wid, el) => {
+                  widgetRefs.current[wid] = el;
+                }}
+                title="Device"
+                icon={<VscDeviceMobile />}
+                accentColor="var(--cat-security)"
+                draggingId={draggingId}
+                overId={overId}
+                resizingId={resizingId}
+                onOver={setOverId}
+                onDragStart={handleWidgetDragStart}
+                onDragEnd={handleWidgetDragEnd}
+                onDrop={moveWidget}
+                onResize={setSpan}
+                onResizeStart={handleResizeStart}
+                onResizeEnd={handleResizeEnd}
+              >
+                <InfoBody
+                  items={[
+                    { label: 'Browser vendor', value: String((navigator as NavigatorLike).vendor ?? '-') },
+                    {
+                      label: 'Languages',
+                      value: Array.isArray(navigator.languages) ? navigator.languages.join(', ') : String(navigator.language ?? '-'),
+                    },
+                    { label: 'Platform', value: String((navigator as NavigatorLike).platform ?? 'Unknown') },
+                    { label: 'User agent', value: navigator.userAgent, wrap: true, mono: false },
+                  ]}
+                />
+              </Widget>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
 
-function Section({
+function Widget({
+  id,
+  span,
+  rowSpan,
+  gridRef,
+  onRef,
   title,
   icon,
+  accentColor,
   action,
-  onAction,
+  draggingId,
+  overId,
+  resizingId,
+  onOver,
+  onDragStart,
+  onDragEnd,
+  onDrop,
+  onResize,
+  onResizeStart,
+  onResizeEnd,
   children,
 }: {
+  id: WidgetId;
+  span: number;
+  rowSpan: number;
+  gridRef: { current: HTMLDivElement | null };
+  onRef: (id: WidgetId, el: HTMLDivElement | null) => void;
   title: string;
   icon?: React.ReactNode;
-  action?: string;
-  onAction?: () => void;
+  accentColor?: string;
+  action?: React.ReactNode;
+  draggingId: WidgetId | null;
+  overId: WidgetId | null;
+  resizingId: WidgetId | null;
+  onOver: (id: WidgetId | null) => void;
+  onDragStart: (id: WidgetId) => void;
+  onDragEnd: () => void;
+  onDrop: (dragId: WidgetId, overId: WidgetId) => void;
+  onResize: (id: WidgetId, span: number) => void;
+  onResizeStart: (id: WidgetId) => void;
+  onResizeEnd: () => void;
   children: React.ReactNode;
 }) {
+  const isDragging = draggingId === id;
+  const isOver = overId === id;
+  const isResizing = resizingId === id;
   return (
-    <div className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <div className={styles.sectionTitle}>
-          {icon}
-          <h2>{title}</h2>
+    <div
+      ref={(el) => onRef(id, el)}
+      className={styles.widget}
+      style={{ gridColumn: `span ${span}`, gridRowEnd: `span ${rowSpan}` }}
+      data-dragging={isDragging ? '1' : '0'}
+      data-over={isOver ? '1' : '0'}
+      data-resizing={isResizing ? '1' : '0'}
+      onDragOver={(e) => {
+        if (!draggingId || draggingId === id) return;
+        e.preventDefault();
+        if (!isOver) onOver(id);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const dragId = e.dataTransfer.getData('text/plain');
+        if (isWidgetId(dragId)) onDrop(dragId, id);
+        onOver(null);
+      }}
+    >
+      <div
+        className={styles.widgetHeader}
+        draggable
+        onDragStart={(e) => {
+          onDragStart(id);
+          e.dataTransfer.setData('text/plain', id);
+          e.dataTransfer.effectAllowed = 'move';
+        }}
+        onDragEnd={() => {
+          onOver(null);
+          onDragEnd();
+        }}
+        style={{ borderLeftColor: accentColor }}
+      >
+        <div className={styles.widgetHeaderLeft}>
+          {icon ? (
+            <span className={styles.widgetIcon} style={{ color: accentColor }}>
+              {icon}
+            </span>
+          ) : null}
+          <span className={styles.widgetTitle}>{title}</span>
         </div>
-        {action && (
-          <button type="button" className={styles.sectionAction} onClick={onAction}>
-            {action}
-            <VscChevronRight />
-          </button>
-        )}
+        <div className={styles.widgetHeaderRight} onMouseDown={(e) => e.stopPropagation()}>
+          {action}
+        </div>
       </div>
-      {children}
+      <div className={styles.widgetBody}>{children}</div>
+      <div
+        className={styles.widgetResizeHandle}
+        onPointerDown={(e) => {
+          if (e.button !== 0) return;
+          e.preventDefault();
+          e.stopPropagation();
+          onResizeStart(id);
+          const grid = gridRef.current;
+          if (!grid) return;
+          const style = window.getComputedStyle(grid);
+          const gap = Number.parseFloat(style.columnGap || style.gap || '0') || 0;
+          const rect = grid.getBoundingClientRect();
+          const colWidth = (rect.width - gap * (GRID_COLS - 1)) / GRID_COLS;
+          const startX = e.clientX;
+          const startSpan = span;
+          let latestX = startX;
+          let raf: number | null = null;
+          const apply = () => {
+            raf = null;
+            const delta = latestX - startX;
+            const startPx = startSpan * colWidth + (startSpan - 1) * gap;
+            const nextPx = Math.max(colWidth, startPx + delta);
+            const spanFloat = (nextPx + gap) / (colWidth + gap);
+            const nextSpan = clampSpan(spanFloat);
+            onResize(id, nextSpan);
+          };
+          const onMove = (ev: PointerEvent) => {
+            latestX = ev.clientX;
+            if (raf !== null) return;
+            raf = window.requestAnimationFrame(apply);
+          };
+          const onUp = () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            if (raf !== null) window.cancelAnimationFrame(raf);
+            onResizeEnd();
+          };
+          window.addEventListener('pointermove', onMove);
+          window.addEventListener('pointerup', onUp);
+        }}
+      />
     </div>
   );
 }
 
-function InfoCard({
-  title,
-  icon,
-  iconColor,
+function InfoBody({
   columns = 1,
   items,
 }: {
-  title: string;
-  icon?: React.ReactNode;
-  iconColor?: string;
   columns?: 1 | 2;
   items: Array<{ label: string; value: string; ok?: boolean; wrap?: boolean; pre?: boolean; mono?: boolean }>;
 }) {
   return (
-    <div className={styles.infoCard}>
-      <div className={styles.infoHeader}>
-        {icon && (
-          <span
-            className={styles.infoHeaderIcon}
-            style={{
-              color: iconColor,
-              background: `color-mix(in oklab, ${iconColor ?? 'var(--accent-secondary)'} 12%, transparent)`,
-              borderColor: `color-mix(in oklab, ${iconColor ?? 'var(--accent-secondary)'} 28%, transparent)`,
-            }}
-          >
-            {icon}
+    <div className={`${styles.infoBody}${columns === 2 ? ` ${styles.infoBodyGrid2}` : ''}`}>
+      {items.map((item) => (
+        <div key={`${item.label}-${item.value}`} className={`${styles.infoRow}${item.wrap ? ` ${styles.infoRowWrap}` : ''}`}>
+          <span className={styles.infoLabel}>{item.label}</span>
+          <span className={`${styles.infoValue}${item.wrap && item.mono === false ? ` ${styles.infoValueInherit}` : ''}`}>
+            {typeof item.ok === 'boolean' && <span className={styles.dot} data-ok={item.ok ? '1' : '0'} />}
+            <span className={`${styles.infoValueText}${item.pre ? ` ${styles.infoValuePre}` : ''}`}>{item.value}</span>
           </span>
-        )}
-        <h3>{title}</h3>
-      </div>
-      <div className={`${styles.infoBody}${columns === 2 ? ` ${styles.infoBodyGrid2}` : ''}`}>
-        {items.map((item) => (
-          <div key={`${title}-${item.label}`} className={`${styles.infoRow}${item.wrap ? ` ${styles.infoRowWrap}` : ''}`}>
-            <span className={styles.infoLabel}>{item.label}</span>
-            <span className={`${styles.infoValue}${item.wrap && item.mono === false ? ` ${styles.infoValueInherit}` : ''}`}>
-              {typeof item.ok === 'boolean' && <span className={styles.dot} data-ok={item.ok ? '1' : '0'} />}
-              <span className={`${styles.infoValueText}${item.pre ? ` ${styles.infoValuePre}` : ''}`}>{item.value}</span>
-            </span>
-          </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }

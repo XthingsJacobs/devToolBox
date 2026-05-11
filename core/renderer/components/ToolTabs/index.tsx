@@ -28,12 +28,14 @@ export default function ToolTabs({
   activeToolId,
   onActivate,
   onClose,
+  onCloseAll,
 }: {
   categories: Category[];
   opened: OpenTool[];
   activeToolId: string | null;
   onActivate: (toolId: string) => void;
   onClose: (toolId: string) => void;
+  onCloseAll?: () => void;
 }) {
   const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const [showMenu, setShowMenu] = useState(false);
@@ -114,6 +116,20 @@ export default function ToolTabs({
             <button type="button" className={styles.backdrop} onClick={() => setShowMenu(false)} aria-label="Close menu" />
             <div className={styles.menu}>
               <div className={styles.menuTitle}>Opened Tools ({opened.length})</div>
+              {onCloseAll && opened.length > 0 && (
+                <div className={styles.menuActions}>
+                  <button
+                    type="button"
+                    className={styles.menuActionBtn}
+                    onClick={() => {
+                      onCloseAll();
+                      setShowMenu(false);
+                    }}
+                  >
+                    Close All
+                  </button>
+                </div>
+              )}
               <div className={styles.menuList}>
                 {opened.map((t) => {
                   const isActive = t.module.id === activeToolId;

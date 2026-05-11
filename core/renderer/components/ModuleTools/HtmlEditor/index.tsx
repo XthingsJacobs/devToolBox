@@ -1,14 +1,14 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import styles from './HtmlEditor.module.css';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
 import { html } from '@codemirror/lang-html';
-import { oneDark } from '@codemirror/theme-one-dark';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { search, searchKeymap } from '@codemirror/search';
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language';
 import ResponsiveActions from '../../ResponsiveActions';
 import { useI18n, getModuleLocale } from '../../../i18n';
+import { useTheme } from '../../../theme';
 import {
   VscArrowDown,
   VscChevronUp,
@@ -50,6 +50,7 @@ export default function HtmlEditor() {
   const { locale } = useI18n();
   const localeData = getModuleLocale(locale, 'HtmlEditor');
   const mt = useCallback((key: string) => localeData?.[key] ?? key, [localeData]);
+  const { theme } = useTheme();
 
   const [input, setInput] = useState(DEFAULT_HTML);
   const [copied, setCopied] = useState(false);
@@ -67,6 +68,32 @@ export default function HtmlEditor() {
   const PREVIEW_DEFAULT_PX = 520;
   const PANE_MIN_PX = 360;
   const DIVIDER_PX = 8;
+  const themeCompartment = useMemo(() => new Compartment(), []);
+
+  const cmTheme = useMemo(
+    () =>
+      EditorView.theme(
+        {
+          '&': {
+            height: '100%',
+            fontSize: 'var(--font-size-base)',
+            backgroundColor: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+          },
+          '.cm-scroller': { overflow: 'auto', fontFamily: 'var(--font-family-mono)' },
+          '.cm-content': { minHeight: '100%' },
+          '.cm-gutters': { backgroundColor: 'transparent', color: 'var(--text-quaternary)', border: 'none' },
+          '.cm-activeLine': { backgroundColor: 'color-mix(in oklab, var(--accent-primary) 8%, transparent)' },
+          '.cm-activeLineGutter': { backgroundColor: 'color-mix(in oklab, var(--accent-primary) 12%, transparent)' },
+          '.cm-selectionBackground': {
+            backgroundColor: 'color-mix(in oklab, var(--accent-primary) 28%, transparent) !important',
+          },
+          '.cm-cursor': { borderLeftColor: 'var(--text-primary)' },
+        },
+        { dark: theme === 'dark' },
+      ),
+    [theme],
+  );
 
   // Initialize CodeMirror
   useEffect(() => {
@@ -80,18 +107,13 @@ export default function HtmlEditor() {
         bracketMatching(),
         search(),
         html(),
-        oneDark,
+        themeCompartment.of(cmTheme),
         syntaxHighlighting(defaultHighlightStyle),
         keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             setInput(update.state.doc.toString());
           }
-        }),
-        EditorView.theme({
-          '&': { height: '100%', fontSize: 'var(--font-size-base)' },
-          '.cm-scroller': { overflow: 'auto', fontFamily: 'var(--font-family-mono)' },
-          '.cm-content': { minHeight: '100%' },
         }),
       ],
     });
@@ -111,6 +133,12 @@ export default function HtmlEditor() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({ effects: themeCompartment.reconfigure(cmTheme) });
+  }, [cmTheme, themeCompartment]);
 
   const handleEditorScrollTop = () => {
     viewRef.current?.scrollDOM.scrollTo({ top: 0, behavior: 'smooth' });

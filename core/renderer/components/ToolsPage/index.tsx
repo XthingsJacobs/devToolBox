@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './ToolsPage.module.css';
 import type { Category, Module } from '../../types';
-import { moduleComponentMap } from '../../data/placeholder';
+import { moduleEntryLoaderMap, modulePluginEntryUrlMap } from '../../data/placeholder';
 import PluginHost from '../PluginHost';
 import ToolListPanel from '../ToolListPanel';
 import ToolTabs, { type OpenTool } from '../ToolTabs';
@@ -33,6 +33,7 @@ export default function ToolsPage({
   onOpenTool,
   onActivateTool,
   onCloseTool,
+  onCloseAllTools,
   marketplacePlugins,
   isFullscreen,
   onSetFullscreen,
@@ -46,14 +47,20 @@ export default function ToolsPage({
   onOpenTool: (categoryId: string, moduleId: string) => void;
   onActivateTool: (moduleId: string) => void;
   onCloseTool: (moduleId: string) => void;
+  onCloseAllTools?: () => void;
   marketplacePlugins: { id: string; entryUrl: string }[];
   isFullscreen: boolean;
   onSetFullscreen: (v: boolean) => void;
   onRequestCollapseSidebar?: () => void;
 }) {
   const mountedRef = useRef(new Set<string>());
+  const corePluginMountedRef = useRef(new Set<string>());
   const marketplaceMountedRef = useRef(new Set<string>());
   const marketplaceEntryMap = new Map(marketplacePlugins.map((p) => [p.id, p.entryUrl]));
+  const corePluginEntryMap = modulePluginEntryUrlMap;
+  const loadedRef = useRef(new Map<string, React.ComponentType>());
+  const loadingRef = useRef(new Set<string>());
+  const [, forceLoaded] = useState(0);
 
   const selectedModule: Module | null = useMemo(() => {
     if (!selectedModuleId) return null;
@@ -66,6 +73,7 @@ export default function ToolsPage({
 
   if (selectedModule) {
     mountedRef.current.add(selectedModule.id);
+    if (corePluginEntryMap.has(selectedModule.id)) corePluginMountedRef.current.add(selectedModule.id);
     if (marketplaceEntryMap.has(selectedModule.id)) marketplaceMountedRef.current.add(selectedModule.id);
   }
 
@@ -84,6 +92,27 @@ export default function ToolsPage({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [isFullscreen, onSetFullscreen]);
+
+  useEffect(() => {
+    const ids = Array.from(mountedRef.current);
+    for (const moduleId of ids) {
+      if (loadedRef.current.has(moduleId)) continue;
+      if (loadingRef.current.has(moduleId)) continue;
+      const loader = moduleEntryLoaderMap.get(moduleId);
+      if (!loader) continue;
+      loadingRef.current.add(moduleId);
+      void loader()
+        .then((m) => {
+          loadedRef.current.set(moduleId, m.default);
+          loadingRef.current.delete(moduleId);
+          forceLoaded((v) => v + 1);
+        })
+        .catch(() => {
+          loadingRef.current.delete(moduleId);
+          forceLoaded((v) => v + 1);
+        });
+    }
+  }, [openedTools]);
 
   return (
     <div
@@ -116,6 +145,7 @@ export default function ToolsPage({
               activeToolId={selectedModuleId}
               onActivate={onActivateTool}
               onClose={onCloseTool}
+              onCloseAll={onCloseAllTools}
             />
           )}
 
@@ -152,12 +182,23 @@ export default function ToolsPage({
             )}
 
             {Array.from(mountedRef.current).map((moduleId) => {
-              const Component = moduleComponentMap.get(moduleId);
-              if (!Component) return null;
+              if (corePluginEntryMap.has(moduleId)) return null;
+              const Component = loadedRef.current.get(moduleId);
               const isActive = selectedModuleId === moduleId;
               return (
                 <div key={moduleId} className={styles.keepAlive} style={{ display: isActive ? undefined : 'none' }}>
-                  <Component />
+                  {Component ? <Component /> : <div className={styles.empty}>Loading...</div>}
+                </div>
+              );
+            })}
+
+            {Array.from(corePluginMountedRef.current).map((moduleId) => {
+              const entryUrl = corePluginEntryMap.get(moduleId);
+              if (!entryUrl) return null;
+              const isActive = selectedModuleId === moduleId;
+              return (
+                <div key={moduleId} className={styles.keepAlive} style={{ display: isActive ? undefined : 'none' }}>
+                  <PluginHost pluginId={moduleId} entryUrl={entryUrl} />
                 </div>
               );
             })}

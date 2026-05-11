@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import styles from './SettingsV2.module.css';
 import { useTheme } from '../../theme';
 import { useI18n } from '../../i18n';
+import { APP_VERSION } from '../../appVersion';
 import {
   VscColorMode,
   VscDebug,
@@ -45,7 +46,7 @@ export default function SettingsV2() {
   const { setting: localeSetting, setLocale } = useI18n();
   const [active, setActive] = useState<SectionId>('general');
   const [saved, setSaved] = useState(false);
-  const [versionText, setVersionText] = useState('v2.0.0');
+  const [versionText, setVersionText] = useState(`v${APP_VERSION}`);
 
   useEffect(() => {
     const api = window.electronAPI;

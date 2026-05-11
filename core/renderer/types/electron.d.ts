@@ -92,6 +92,7 @@ export interface ElectronAPI {
     keySize: number;
     validityDays: number;
   }) => Promise<{ success: boolean; privateKey?: string; certificate?: string; error?: string }>;
+  generateRSAKeyPair: (params: { keySize: number }) => Promise<{ success: boolean; publicKey?: string; privateKey?: string; error?: string }>;
   generateClientCert: (params: {
     caCertPem: string;
     caKeyPem: string;

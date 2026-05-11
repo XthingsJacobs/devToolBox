@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { VscArrowSwap, VscCircuitBoard, VscExtensions, VscGear, VscHome, VscLayout, VscLocation, VscTools } from 'react-icons/vsc';
+import { VscExtensions, VscGear, VscHome, VscLayout, VscTools } from 'react-icons/vsc';
 import { HelpModal } from '@devtoolbox/ui';
 
 import type { InstalledMarketplacePlugin, MarketplaceRegistryEntry } from './marketplace/types';
@@ -25,9 +25,9 @@ import { I18nProvider, useI18n } from './i18n';
 import { runMigrations } from './migrations';
 import { ThemeProvider } from './theme';
 import type { Module } from './types';
+import { marketplacePluginIconFromManifest } from './marketplace/icons';
+import { APP_VERSION } from './appVersion';
 
-// Keep in sync with package.json
-const APP_VERSION = '2.0.0';
 // Run data migrations on startup
 runMigrations(APP_VERSION);
 
@@ -48,11 +48,10 @@ function AppContent() {
   const [showImport, setShowImport] = useState(false);
   const [marketplaceUpdateCount, setMarketplaceUpdateCount] = useState(0);
 
-  const marketplaceIcon = useCallback((id: string) => {
-    if (id === 'market-matter-catalog') return <VscCircuitBoard />;
-    if (id === 'market-ip-lookup') return <VscLocation />;
-    if (id === 'market-exchange-rate') return <VscArrowSwap />;
-    return <VscExtensions />;
+  const marketplaceIcon = useCallback((p: { id: string; manifest?: { icon?: unknown; iconKey?: unknown } }) => {
+    const icon = p.manifest?.icon;
+    const iconKey = p.manifest?.iconKey;
+    return marketplacePluginIconFromManifest({ id: p.id, icon, iconKey });
   }, []);
 
   const refreshMarketplaceUpdateCount = useCallback(async (installed: InstalledMarketplacePlugin[]) => {
@@ -176,7 +175,7 @@ function AppContent() {
         name: p.manifest.name,
         description: p.manifest.description,
         categoryId: p.manifest.categoryId,
-        icon: marketplaceIcon(p.id),
+        icon: marketplaceIcon(p),
       });
     }
     return Array.from(map.values());
@@ -246,6 +245,11 @@ function AppContent() {
     });
   }, [selectedModuleId]);
 
+  const handleCloseAllTools = useCallback(() => {
+    setOpenedTools([]);
+    setSelectedModuleId(null);
+  }, []);
+
   const marketplacePlugins = useMemo(
     () => marketplaceInstalled.filter((p) => p.enabled).map((p) => ({ id: p.id, entryUrl: p.entryUrl })),
     [marketplaceInstalled],
@@ -302,6 +306,7 @@ function AppContent() {
             onOpenTool={handleOpenTool}
             onActivateTool={(moduleId) => setSelectedModuleId(moduleId)}
             onCloseTool={handleCloseTool}
+            onCloseAllTools={handleCloseAllTools}
             marketplacePlugins={marketplacePlugins}
             isFullscreen={toolsFullscreen}
             onSetFullscreen={setToolsFullscreen}
@@ -343,7 +348,7 @@ function AppContent() {
                 name: p.manifest.name,
                 description: p.manifest.description,
                 categoryId: p.manifest.categoryId,
-                icon: marketplaceIcon(p.id),
+                icon: marketplaceIcon(p),
               },
               categoryId: p.manifest.categoryId,
               categoryName: categories.find((c) => c.id === p.manifest.categoryId)?.name ?? p.manifest.categoryId,

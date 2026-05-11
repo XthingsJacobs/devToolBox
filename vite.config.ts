@@ -1,8 +1,115 @@
 import { defineConfig } from 'vite';
 import path from 'path';
+import fs from 'fs';
+import fsp from 'fs/promises';
 import react from '@vitejs/plugin-react';
 import electron from 'vite-plugin-electron';
 import renderer from 'vite-plugin-electron-renderer';
+
+function coreToolAssets() {
+  const prefix = '/__core_tools__/';
+  const mimeByExt: Record<string, string> = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.mjs': 'application/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.ico': 'image/x-icon',
+    '.woff2': 'font/woff2',
+    '.woff': 'font/woff',
+    '.ttf': 'font/ttf',
+    '.wasm': 'application/wasm',
+  };
+
+  let rootDir = '';
+  let outDir = '';
+  let command: 'serve' | 'build' = 'serve';
+
+  async function copyDir(src: string, dst: string) {
+    const st = await fsp.stat(src).catch(() => null);
+    if (!st) return;
+    if (st.isFile()) {
+      await fsp.mkdir(path.dirname(dst), { recursive: true });
+      await fsp.copyFile(src, dst);
+      return;
+    }
+    await fsp.mkdir(dst, { recursive: true });
+    const entries = await fsp.readdir(src, { withFileTypes: true });
+    for (const e of entries) {
+      const s = path.join(src, e.name);
+      const d = path.join(dst, e.name);
+      if (e.isDirectory()) await copyDir(s, d);
+      else if (e.isFile()) {
+        await fsp.mkdir(path.dirname(d), { recursive: true });
+        await fsp.copyFile(s, d);
+      }
+    }
+  }
+
+  return {
+    name: 'core-tool-assets',
+    configResolved(c: any) {
+      rootDir = c.root;
+      outDir = c.build.outDir;
+      command = c.command;
+    },
+    configureServer(server: any) {
+      server.middlewares.use(prefix, async (req: any, res: any, next: any) => {
+        try {
+          const url = typeof req.url === 'string' ? req.url : '';
+          const pathname = decodeURIComponent(url.split('?')[0] ?? '');
+          const rel = pathname.replace(/^\/+/, '');
+          const base = path.join(rootDir, 'components', 'ModuleTools');
+          const filePath = path.join(base, rel);
+          if (!filePath.startsWith(base)) {
+            res.statusCode = 403;
+            res.end();
+            return;
+          }
+          const stat = await fsp.stat(filePath).catch(() => null);
+          if (!stat || !stat.isFile()) {
+            next();
+            return;
+          }
+          const ext = path.extname(filePath).toLowerCase();
+          res.setHeader('Content-Type', mimeByExt[ext] ?? 'application/octet-stream');
+          fs.createReadStream(filePath).pipe(res);
+        } catch {
+          next();
+        }
+      });
+    },
+    async closeBundle() {
+      if (command !== 'build') return;
+      const toolsDir = path.join(rootDir, 'components', 'ModuleTools');
+      const folders = await fsp.readdir(toolsDir, { withFileTypes: true });
+      for (const dirent of folders) {
+        if (!dirent.isDirectory()) continue;
+        const folderName = dirent.name;
+        const manifestPath = path.join(toolsDir, folderName, 'manifest.json');
+        const manifestRaw = await fsp.readFile(manifestPath, 'utf-8').catch(() => '');
+        if (!manifestRaw) continue;
+        let manifest: any = null;
+        try {
+          manifest = JSON.parse(manifestRaw);
+        } catch {
+          manifest = null;
+        }
+        const entry = typeof manifest?.entry === 'string' ? manifest.entry.trim().replace(/^\.\/+/, '') : '';
+        if (!entry.toLowerCase().endsWith('.html')) continue;
+        const entryDir = path.dirname(entry);
+        const srcDir = path.join(toolsDir, folderName, entryDir);
+        const dstDir = path.join(outDir, '__core_tools__', folderName, entryDir);
+        await copyDir(srcDir, dstDir);
+      }
+    },
+  };
+}
 
 export default defineConfig({
   base: './',
@@ -12,6 +119,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    coreToolAssets(),
     electron([
       {
         entry: path.resolve(__dirname, 'core/main/index.ts'),

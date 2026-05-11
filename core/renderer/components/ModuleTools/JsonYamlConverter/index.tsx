@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './JsonYamlConverter.module.css';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
 import { json } from '@codemirror/lang-json';
-import { oneDark } from '@codemirror/theme-one-dark';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { search, searchKeymap } from '@codemirror/search';
 import { bracketMatching } from '@codemirror/language';
 import { useSplitPane } from '@@components';
 import ResponsiveActions from '../../ResponsiveActions';
 import { useI18n, getModuleLocale } from '../../../i18n';
+import { useTheme } from '../../../theme';
 import hljs from 'highlight.js';
-import 'highlight.js/styles/github-dark.css';
 import { VscFolderOpened, VscWand } from 'react-icons/vsc';
 import yamlParser from 'js-yaml';
 
@@ -104,6 +103,32 @@ export default function JsonYamlConverter() {
   const { locale } = useI18n();
   const localeData = getModuleLocale(locale, 'JsonYamlConverter');
   const mt = useCallback((key: string) => localeData?.[key] ?? key, [localeData]);
+  const { theme } = useTheme();
+  const themeCompartment = useMemo(() => new Compartment(), []);
+  const cmTheme = useMemo(
+    () =>
+      EditorView.theme(
+        {
+          '&': {
+            height: '100%',
+            fontSize: 'var(--font-size-base)',
+            backgroundColor: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+          },
+          '.cm-scroller': { overflow: 'auto', fontFamily: 'var(--font-family-mono)' },
+          '.cm-content': { minHeight: '100%' },
+          '.cm-gutters': { backgroundColor: 'transparent', color: 'var(--text-quaternary)', border: 'none' },
+          '.cm-activeLine': { backgroundColor: 'color-mix(in oklab, var(--accent-primary) 8%, transparent)' },
+          '.cm-activeLineGutter': { backgroundColor: 'color-mix(in oklab, var(--accent-primary) 12%, transparent)' },
+          '.cm-selectionBackground': {
+            backgroundColor: 'color-mix(in oklab, var(--accent-primary) 28%, transparent) !important',
+          },
+          '.cm-cursor': { borderLeftColor: 'var(--text-primary)' },
+        },
+        { dark: theme === 'dark' },
+      ),
+    [theme],
+  );
 
   const [mode, setMode] = useState<'jsonToYaml' | 'yamlToJson'>('jsonToYaml');
   const [jsonInput, setJsonInput] = useState('');
@@ -182,16 +207,11 @@ export default function JsonYamlConverter() {
         bracketMatching(),
         search(),
         json(),
-        oneDark,
+        themeCompartment.of(cmTheme),
         keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
         EditorView.updateListener.of((update) => {
           if (!update.docChanged) return;
           setJsonInput(update.state.doc.toString());
-        }),
-        EditorView.theme({
-          '&': { height: '100%' },
-          '.cm-scroller': { overflow: 'auto', fontFamily: 'var(--font-family-mono)' },
-          '.cm-content': { minHeight: '100%' },
         }),
       ],
     });
@@ -203,6 +223,12 @@ export default function JsonYamlConverter() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({ effects: themeCompartment.reconfigure(cmTheme) });
+  }, [cmTheme, themeCompartment]);
 
   const lastJsonRef = useRef(jsonInput);
   useEffect(() => {

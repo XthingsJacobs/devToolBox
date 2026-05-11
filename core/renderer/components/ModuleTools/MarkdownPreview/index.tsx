@@ -1,16 +1,16 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import styles from './MarkdownPreview.module.css';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
-import { oneDark } from '@codemirror/theme-one-dark';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
 import ResponsiveActions from '../../ResponsiveActions';
 import { useI18n, getModuleLocale } from '../../../i18n';
+import { useTheme } from '../../../theme';
 import { ToolSection } from '@@components';
 import {
   VscChevronUp,
@@ -61,6 +61,32 @@ export default function MarkdownPreview() {
   const { locale } = useI18n();
   const localeData = getModuleLocale(locale, 'MarkdownPreview');
   const mt = useCallback((key: string) => localeData?.[key] ?? key, [localeData]);
+  const { theme } = useTheme();
+  const themeCompartment = useMemo(() => new Compartment(), []);
+  const cmTheme = useMemo(
+    () =>
+      EditorView.theme(
+        {
+          '&': {
+            height: '100%',
+            fontSize: 'var(--font-size-base)',
+            backgroundColor: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+          },
+          '.cm-scroller': { overflow: 'auto', fontFamily: 'var(--font-family-mono)' },
+          '.cm-content': { minHeight: '100%' },
+          '.cm-gutters': { backgroundColor: 'transparent', color: 'var(--text-quaternary)', border: 'none' },
+          '.cm-activeLine': { backgroundColor: 'color-mix(in oklab, var(--accent-primary) 8%, transparent)' },
+          '.cm-activeLineGutter': { backgroundColor: 'color-mix(in oklab, var(--accent-primary) 12%, transparent)' },
+          '.cm-selectionBackground': {
+            backgroundColor: 'color-mix(in oklab, var(--accent-primary) 28%, transparent) !important',
+          },
+          '.cm-cursor': { borderLeftColor: 'var(--text-primary)' },
+        },
+        { dark: theme === 'dark' },
+      ),
+    [theme],
+  );
 
   const [input, setInput] = useState(DEFAULT_MD);
   const [sourceFilePath, setSourceFilePath] = useState<string | null>(null);
@@ -83,16 +109,11 @@ export default function MarkdownPreview() {
         history(),
         bracketMatching(),
         markdown({ codeLanguages: languages }),
-        oneDark,
+        themeCompartment.of(cmTheme),
         syntaxHighlighting(defaultHighlightStyle),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) setInput(update.state.doc.toString());
-        }),
-        EditorView.theme({
-          '&': { height: '100%', fontSize: '13px' },
-          '.cm-scroller': { overflow: 'auto', fontFamily: "'SF Mono','Menlo','Monaco','Consolas',monospace" },
-          '.cm-content': { minHeight: '100%' },
         }),
       ],
     });
@@ -108,6 +129,12 @@ export default function MarkdownPreview() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({ effects: themeCompartment.reconfigure(cmTheme) });
+  }, [cmTheme, themeCompartment]);
 
   const handleEditorScrollTop = () => {
     viewRef.current?.scrollDOM.scrollTo({ top: 0, behavior: 'smooth' });

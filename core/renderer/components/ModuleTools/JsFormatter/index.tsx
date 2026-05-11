@@ -1,13 +1,13 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import styles from './JsFormatter.module.css';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
 import { javascript } from '@codemirror/lang-javascript';
-import { oneDark } from '@codemirror/theme-one-dark';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language';
 import ResponsiveActions from '../../ResponsiveActions';
 import { useI18n, getModuleLocale } from '../../../i18n';
+import { useTheme } from '../../../theme';
 import {
   VscArrowDown,
   VscChevronUp,
@@ -34,6 +34,34 @@ export default function JsFormatter() {
   const { locale } = useI18n();
   const localeData = getModuleLocale(locale, 'JsFormatter');
   const mt = (key: string) => localeData?.[key] ?? key;
+  const { theme } = useTheme();
+
+  const inputThemeCompartment = useMemo(() => new Compartment(), []);
+  const outputThemeCompartment = useMemo(() => new Compartment(), []);
+  const cmTheme = useMemo(
+    () =>
+      EditorView.theme(
+        {
+          '&': {
+            height: '100%',
+            fontSize: 'var(--font-size-base)',
+            backgroundColor: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+          },
+          '.cm-scroller': { overflow: 'auto', fontFamily: 'var(--font-family-mono)' },
+          '.cm-content': { minHeight: '100%' },
+          '.cm-gutters': { backgroundColor: 'transparent', color: 'var(--text-quaternary)', border: 'none' },
+          '.cm-activeLine': { backgroundColor: 'color-mix(in oklab, var(--accent-primary) 8%, transparent)' },
+          '.cm-activeLineGutter': { backgroundColor: 'color-mix(in oklab, var(--accent-primary) 12%, transparent)' },
+          '.cm-selectionBackground': {
+            backgroundColor: 'color-mix(in oklab, var(--accent-primary) 28%, transparent) !important',
+          },
+          '.cm-cursor': { borderLeftColor: 'var(--text-primary)' },
+        },
+        { dark: theme === 'dark' },
+      ),
+    [theme],
+  );
 
   const [input, setInput] = useState(DEFAULT_JS);
   const [output, setOutput] = useState('');
@@ -63,16 +91,11 @@ export default function JsFormatter() {
         history(),
         bracketMatching(),
         javascript(),
-        oneDark,
+        inputThemeCompartment.of(cmTheme),
         syntaxHighlighting(defaultHighlightStyle),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) setInput(update.state.doc.toString());
-        }),
-        EditorView.theme({
-          '&': { height: '100%', fontSize: 'var(--font-size-base)' },
-          '.cm-scroller': { overflow: 'auto', fontFamily: 'var(--font-family-mono)' },
-          '.cm-content': { minHeight: '100%' },
         }),
       ],
     });
@@ -88,6 +111,12 @@ export default function JsFormatter() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({ effects: inputThemeCompartment.reconfigure(cmTheme) });
+  }, [cmTheme, inputThemeCompartment]);
 
   // Sync external changes into CodeMirror
   const lastInputRef = useRef(input);
@@ -116,15 +145,10 @@ export default function JsFormatter() {
         lineNumbers(),
         bracketMatching(),
         javascript(),
-        oneDark,
+        outputThemeCompartment.of(cmTheme),
         syntaxHighlighting(defaultHighlightStyle),
         EditorState.readOnly.of(true),
         EditorView.editable.of(false),
-        EditorView.theme({
-          '&': { height: '100%', fontSize: 'var(--font-size-base)' },
-          '.cm-scroller': { overflow: 'auto', fontFamily: 'var(--font-family-mono)' },
-          '.cm-content': { minHeight: '100%' },
-        }),
       ],
     });
     const view = new EditorView({ state, parent: outputEditorRef.current });
@@ -139,7 +163,13 @@ export default function JsFormatter() {
       view.destroy();
       outputViewRef.current = null;
     };
-  }, [highlight, output]);
+  }, [cmTheme, highlight, output, outputThemeCompartment]);
+
+  useEffect(() => {
+    const view = outputViewRef.current;
+    if (!view) return;
+    view.dispatch({ effects: outputThemeCompartment.reconfigure(cmTheme) });
+  }, [cmTheme, outputThemeCompartment]);
 
   const inputStats = useMemo(
     () => ({

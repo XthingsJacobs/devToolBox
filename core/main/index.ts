@@ -272,7 +272,22 @@ function buildMenu(): void {
           },
         ]
       : []),
-    { role: 'editMenu' as const },
+    isMac
+      ? {
+          label: 'Edit',
+          submenu: [
+            { role: 'undo' as const },
+            { role: 'redo' as const },
+            { type: 'separator' as const },
+            { role: 'cut' as const },
+            { role: 'copy' as const },
+            { role: 'paste' as const },
+            { role: 'pasteAndMatchStyle' as const },
+            { role: 'delete' as const },
+            { role: 'selectAll' as const },
+          ],
+        }
+      : ({ role: 'editMenu' as const } as Electron.MenuItemConstructorOptions),
     {
       label: txt.view,
       submenu: [

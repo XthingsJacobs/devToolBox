@@ -10,6 +10,7 @@ import {
 import { installPlugin, listInstalledPlugins, setPluginEnabled, uninstallPlugin } from '../../marketplace/api';
 import { compareVersions, isNewerVersion } from '../../marketplace/version';
 import { VscArrowUp, VscCheck, VscChevronDown, VscExtensions, VscRefresh, VscSearch, VscTrash } from 'react-icons/vsc';
+import { marketplacePluginIconFromManifest } from '../../marketplace/icons';
 
 type TabId = 'installed' | 'marketplace';
 
@@ -275,20 +276,22 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
               return (
                 <div key={p.id} className={styles.card}>
                   <div className={styles.cardIcon} style={{ color, background: `${color}12`, borderColor: `${color}22` }}>
-                    <VscExtensions />
+                    {marketplacePluginIconFromManifest(p.manifest)}
                   </div>
                   <div className={styles.cardBody}>
                     <div className={styles.cardTop}>
                       <div className={styles.cardName}>{p.manifest.name}</div>
                       <span className={styles.pill}>v{p.version}</span>
-                      {hasUpdate && latest && <span className={`${styles.pill} ${styles.pillUpgrade}`}>v{latest.manifest.version}</span>}
+                      {hasUpdate && latest?.manifest.version ? (
+                        <span className={`${styles.pill} ${styles.pillUpgrade}`}>v{latest.manifest.version}</span>
+                      ) : null}
                       <span className={styles.pillCat} style={{ color, background: `${color}12` }}>
                         {p.manifest.categoryId}
                       </span>
                       {!p.enabled && <span className={styles.pillMuted}>Disabled</span>}
                     </div>
                     <div className={styles.cardDesc}>{p.manifest.description}</div>
-                    <div className={styles.cardMeta}>by {p.manifest.author}</div>
+                    {p.manifest.author ? <div className={styles.cardMeta}>by {p.manifest.author}</div> : null}
                   </div>
 
                   <div className={styles.actions}>
@@ -335,19 +338,19 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
               return (
                 <div key={id} className={styles.card}>
                   <div className={styles.cardIcon} style={{ color, background: `${color}12`, borderColor: `${color}22` }}>
-                    <VscExtensions />
+                    {marketplacePluginIconFromManifest(entry.manifest)}
                   </div>
                   <div className={styles.cardBody}>
                     <div className={styles.cardTop}>
                       <div className={styles.cardName}>{entry.manifest.name}</div>
-                      <span className={styles.pill}>v{entry.manifest.version}</span>
+                      {entry.manifest.version ? <span className={styles.pill}>v{entry.manifest.version}</span> : null}
                       <span className={styles.pillCat} style={{ color, background: `${color}12` }}>
                         {entry.manifest.categoryId}
                       </span>
                       {inst && <span className={styles.pillOk}><VscCheck /> Installed</span>}
                     </div>
                     <div className={styles.cardDesc}>{entry.manifest.description}</div>
-                    <div className={styles.cardMeta}>by {entry.manifest.author}</div>
+                    {entry.manifest.author ? <div className={styles.cardMeta}>by {entry.manifest.author}</div> : null}
                   </div>
 
                   <div className={styles.actions}>
@@ -392,4 +395,3 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
     </div>
   );
 }
-
