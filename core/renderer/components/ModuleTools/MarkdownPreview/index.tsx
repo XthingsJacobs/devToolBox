@@ -62,6 +62,14 @@ export default function MarkdownPreview() {
   const localeData = getModuleLocale(locale, 'MarkdownPreview');
   const mt = useCallback((key: string) => localeData?.[key] ?? key, [localeData]);
   const { theme } = useTheme();
+  const [previewPalette, setPreviewPalette] = useState(() => ({
+    bg: '#0d1117',
+    text: '#e6edf3',
+    border: '#30363d',
+    muted: '#8b949e',
+    codeBg: '#161b22',
+    link: '#58a6ff',
+  }));
   const themeCompartment = useMemo(() => new Compartment(), []);
   const cmTheme = useMemo(
     () =>
@@ -176,29 +184,50 @@ export default function MarkdownPreview() {
     document.addEventListener('mouseup', onMouseUp);
   };
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const s = window.getComputedStyle(root);
+    const get = (key: string, fallback: string) => {
+      const v = s.getPropertyValue(key).trim();
+      return v || fallback;
+    };
+    setPreviewPalette({
+      bg: get('--bg-secondary', theme === 'dark' ? '#0d1117' : '#ffffff'),
+      text: get('--text-primary', theme === 'dark' ? '#e6edf3' : '#24292f'),
+      border: get('--border-default', theme === 'dark' ? '#30363d' : '#d0d7de'),
+      muted: get('--text-secondary', theme === 'dark' ? '#8b949e' : '#57606a'),
+      codeBg: get('--bg-elevated', theme === 'dark' ? '#161b22' : '#f6f8fa'),
+      link: get('--accent-primary', theme === 'dark' ? '#58a6ff' : '#0969da'),
+    });
+  }, [theme]);
+
   const previewHtml = useMemo(() => {
     const body = marked.parse(input, { renderer }) as string;
+    const hljsTheme =
+      theme === 'dark'
+        ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css'
+        : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css';
     return `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<link rel="stylesheet" href="${hljsTheme}">
 <style>
-body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; padding: 16px 24px; color: #e6edf3; background: #0d1117; line-height: 1.6; }
-h1,h2,h3,h4,h5,h6 { border-bottom: 1px solid #30363d; padding-bottom: 0.3em; margin-top: 1.5em; }
-a { color: #58a6ff; }
-code { background: #161b22; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
-pre { background: #161b22; padding: 12px 16px; border-radius: 6px; overflow-x: auto; }
+body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; padding: 16px 24px; color: ${previewPalette.text}; background: ${previewPalette.bg}; line-height: 1.6; }
+h1,h2,h3,h4,h5,h6 { border-bottom: 1px solid ${previewPalette.border}; padding-bottom: 0.3em; margin-top: 1.5em; }
+a { color: ${previewPalette.link}; }
+code { background: ${previewPalette.codeBg}; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+pre { background: ${previewPalette.codeBg}; padding: 12px 16px; border-radius: 6px; overflow-x: auto; }
 pre code { background: none; padding: 0; }
-blockquote { border-left: 4px solid #30363d; margin: 0; padding: 0 16px; color: #8b949e; }
+blockquote { border-left: 4px solid ${previewPalette.border}; margin: 0; padding: 0 16px; color: ${previewPalette.muted}; }
 table { border-collapse: collapse; width: 100%; }
-th, td { border: 1px solid #30363d; padding: 6px 12px; }
-th { background: #161b22; }
+th, td { border: 1px solid ${previewPalette.border}; padding: 6px 12px; }
+th { background: ${previewPalette.codeBg}; }
 img { max-width: 100%; }
-hr { border: none; border-top: 1px solid #30363d; }
+hr { border: none; border-top: 1px solid ${previewPalette.border}; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.4); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.6); }
 </style></head><body>${body}</body></html>`;
-  }, [input]);
+  }, [input, previewPalette, theme]);
 
   const inputStats = useMemo(
     () => ({

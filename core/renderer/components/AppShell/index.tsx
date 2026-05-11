@@ -71,6 +71,7 @@ export default function AppShell({
                     onClick={() => onNavSelect(item.id)}
                     aria-current={active ? 'page' : undefined}
                     title={collapsed ? item.label : undefined}
+                    data-tip={collapsed ? item.label : undefined}
                     style={{
                       justifyContent: collapsed ? 'center' : undefined,
                       paddingLeft: collapsed ? 14 : undefined,
@@ -104,6 +105,7 @@ export default function AppShell({
                         type="button"
                         className={`${styles.categoryItem}${active ? ` ${styles.categoryItemActive}` : ''}`}
                         title={collapsed ? c.name : undefined}
+                        data-tip={collapsed ? c.name : undefined}
                         onClick={() => onCategorySelect?.(c.id)}
                         style={{
                           justifyContent: collapsed ? 'center' : undefined,

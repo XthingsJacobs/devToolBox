@@ -102,6 +102,9 @@ export default function DashboardPage({
 }) {
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
+  const [activeSearchIndex, setActiveSearchIndex] = useState(0);
+  const searchItemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
@@ -170,6 +173,20 @@ export default function DashboardPage({
       })
       .slice(0, 8);
   }, [flatTools, query]);
+
+  useEffect(() => {
+    if (searchResults.length === 0) {
+      setActiveSearchIndex(0);
+      return;
+    }
+    setActiveSearchIndex((i) => Math.max(0, Math.min(searchResults.length - 1, i)));
+  }, [searchResults.length]);
+
+  useEffect(() => {
+    const cur = searchResults[activeSearchIndex];
+    if (!cur) return;
+    searchItemRefs.current[cur.module.id]?.scrollIntoView({ block: 'nearest' });
+  }, [activeSearchIndex, searchResults]);
 
   const frequent = useMemo(() => {
     const usage = loadModuleUsage();
@@ -300,12 +317,45 @@ export default function DashboardPage({
               <div className={styles.searchBox} data-focused={focused ? '1' : '0'}>
                 <VscSearch className={styles.searchIcon} />
                 <input
+                  ref={searchInputRef}
                   className={styles.searchInput}
                   value={query}
                   placeholder="Search tools…"
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setActiveSearchIndex(0);
+                  }}
                   onFocus={() => setFocused(true)}
                   onBlur={() => setFocused(false)}
+                  onKeyDown={(e) => {
+                    if (searchResults.length === 0) return;
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      setActiveSearchIndex((i) => (i + 1) % searchResults.length);
+                      return;
+                    }
+                    if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      setActiveSearchIndex((i) => (i - 1 + searchResults.length) % searchResults.length);
+                      return;
+                    }
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const cur = searchResults[activeSearchIndex];
+                      if (!cur) return;
+                      setQuery('');
+                      setFocused(false);
+                      searchInputRef.current?.blur();
+                      onOpenTool(cur.categoryId, cur.module.id);
+                      return;
+                    }
+                    if (e.key === 'Escape') {
+                      if (!query) return;
+                      e.preventDefault();
+                      setQuery('');
+                      setActiveSearchIndex(0);
+                    }
+                  }}
                 />
                 {query ? (
                   <button className={styles.clearBtn} type="button" onClick={() => setQuery('')}>
@@ -317,19 +367,30 @@ export default function DashboardPage({
               </div>
 
               {searchResults.length > 0 && (
-                <div className={`${styles.searchDropdown} fade-in`} role="listbox">
+                <div
+                  className={`${styles.searchDropdown} fade-in`}
+                  role="listbox"
+                  aria-activedescendant={`dash-search-${searchResults[activeSearchIndex]?.module.id ?? ''}`}
+                >
                   <div className={styles.searchDropdownTitle}>
                     {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
                   </div>
-                  {searchResults.map((t) => (
+                  {searchResults.map((t, idx) => (
                     <button
                       key={t.module.id}
                       type="button"
-                      className={styles.searchItem}
+                      id={`dash-search-${t.module.id}`}
+                      role="option"
+                      aria-selected={idx === activeSearchIndex}
+                      className={`${styles.searchItem}${idx === activeSearchIndex ? ` ${styles.searchItemActive}` : ''}`}
+                      ref={(el) => {
+                        searchItemRefs.current[t.module.id] = el;
+                      }}
                       onClick={() => {
                         setQuery('');
                         onOpenTool(t.categoryId, t.module.id);
                       }}
+                      onMouseEnter={() => setActiveSearchIndex(idx)}
                     >
                       <div className={styles.searchItemIcon} style={{ color: t.categoryColor, background: `${t.categoryColor}18`, borderColor: `${t.categoryColor}30` }}>
                         {t.module.icon}

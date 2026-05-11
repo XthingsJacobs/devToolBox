@@ -11,8 +11,8 @@
   max-width: 420px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--bg-active);
-  background: rgba(20, 24, 33, 0.55);
+  border-right: 1px solid var(--border-default);
+  background: var(--bg-secondary);
 }
 
 .sideHeader {
@@ -20,7 +20,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--bg-active);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .sideTitle {
@@ -35,8 +35,8 @@
 }
 
 .sideBtn {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: transparent;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
   color: var(--text-secondary);
   border-radius: 6px;
   padding: 6px 8px;
@@ -64,9 +64,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--bg-elevated);
   width: 100%;
   cursor: pointer;
   user-select: none;
@@ -119,8 +119,8 @@
   margin-top: 6px;
   border-radius: 8px;
   cursor: pointer;
-  background: rgba(0, 0, 0, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
 }
 
 .connRow:hover {
@@ -128,8 +128,8 @@
 }
 
 .connRowActive {
-  border-color: rgba(74, 163, 255, 0.65);
-  background: rgba(74, 163, 255, 0.12);
+  border-color: color-mix(in oklab, var(--accent-primary) 55%, var(--border-subtle));
+  background: color-mix(in oklab, var(--accent-primary) 14%, var(--bg-elevated));
 }
 
 .statusDot {
@@ -274,4 +274,3 @@
 .dialogBtnPrimary:hover {
   opacity: 0.9;
 }
-

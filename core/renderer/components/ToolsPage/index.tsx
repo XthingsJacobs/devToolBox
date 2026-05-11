@@ -94,6 +94,21 @@ export default function ToolsPage({
   }, [isFullscreen, onSetFullscreen]);
 
   useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      if (e.repeat) return;
+      const key = typeof e.key === 'string' ? e.key.toLowerCase() : '';
+      if (key !== 'w') return;
+      if (!e.metaKey && !e.ctrlKey) return;
+      if (!selectedModuleId) return;
+      e.preventDefault();
+      onCloseTool(selectedModuleId);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCloseTool, selectedModuleId]);
+
+  useEffect(() => {
     const ids = Array.from(mountedRef.current);
     for (const moduleId of ids) {
       if (loadedRef.current.has(moduleId)) continue;

@@ -169,6 +169,10 @@
   transition: background 0.12s ease;
 }
 
+.searchItemActive {
+  background: var(--border-default);
+}
+
 .searchItem:hover {
   background: var(--border-default);
 }
