@@ -12,8 +12,8 @@ export function parseIPv4(input: string): number | null {
     return n;
   });
   if (nums.some((n) => !Number.isFinite(n))) return null;
-  const [a, b, c, d] = nums as number[];
-  return (((a << 24) | (b << 16) | (c << 8) | d) >>> 0) as number;
+  const [a, b, c, d] = nums;
+  return ((a << 24) | (b << 16) | (c << 8) | d) >>> 0;
 }
 
 export function formatIPv4(num: number): string {
@@ -29,7 +29,7 @@ export function maskFromPrefix(prefix: number): number {
   const p = Math.max(0, Math.min(32, Math.floor(prefix)));
   if (p === 0) return 0;
   if (p === 32) return 0xffffffff >>> 0;
-  return ((0xffffffff << (32 - p)) >>> 0) as number;
+  return (0xffffffff << (32 - p)) >>> 0;
 }
 
 export function binaryIPv4(num: number, dotted: boolean): string {

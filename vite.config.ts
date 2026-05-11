@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Connect, type Plugin, type ResolvedConfig, type ViteDevServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import fsp from 'fs/promises';
@@ -6,7 +6,11 @@ import react from '@vitejs/plugin-react';
 import electron from 'vite-plugin-electron';
 import renderer from 'vite-plugin-electron-renderer';
 
-function coreToolAssets() {
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null;
+}
+
+function coreToolAssets(): Plugin {
   const prefix = '/__core_tools__/';
   const mimeByExt: Record<string, string> = {
     '.html': 'text/html; charset=utf-8',
@@ -53,13 +57,13 @@ function coreToolAssets() {
 
   return {
     name: 'core-tool-assets',
-    configResolved(c: any) {
+    configResolved(c: ResolvedConfig) {
       rootDir = c.root;
       outDir = c.build.outDir;
       command = c.command;
     },
-    configureServer(server: any) {
-      server.middlewares.use(prefix, async (req: any, res: any, next: any) => {
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use(prefix, async (req: Connect.IncomingMessage, res: Connect.ServerResponse, next: Connect.NextFunction) => {
         try {
           const url = typeof req.url === 'string' ? req.url : '';
           const pathname = decodeURIComponent(url.split('?')[0] ?? '');
@@ -94,13 +98,14 @@ function coreToolAssets() {
         const manifestPath = path.join(toolsDir, folderName, 'manifest.json');
         const manifestRaw = await fsp.readFile(manifestPath, 'utf-8').catch(() => '');
         if (!manifestRaw) continue;
-        let manifest: any = null;
+        let manifest: unknown = null;
         try {
-          manifest = JSON.parse(manifestRaw);
+          manifest = JSON.parse(manifestRaw) as unknown;
         } catch {
           manifest = null;
         }
-        const entry = typeof manifest?.entry === 'string' ? manifest.entry.trim().replace(/^\.\/+/, '') : '';
+        const entry =
+          isRecord(manifest) && typeof manifest.entry === 'string' ? manifest.entry.trim().replace(/^\.\/+/, '') : '';
         if (!entry.toLowerCase().endsWith('.html')) continue;
         const entryDir = path.dirname(entry);
         const srcDir = path.join(toolsDir, folderName, entryDir);

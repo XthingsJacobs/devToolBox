@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { createElement, type ComponentType, type ReactNode } from 'react';
 import {
   VscCode,
   VscDebugDisconnect,
@@ -54,15 +54,14 @@ export function resolveIconKey(iconKey?: string): ReactNode | null {
   const [pack, name] = raw.includes(':') ? raw.split(':', 2) : ['vsc', raw];
   if (!name) return null;
   if (pack === 'vsc') {
-    const Cmp = (vsc as Record<string, unknown>)[name] as unknown;
-    if (typeof Cmp === 'function') return <Cmp />;
+    const Cmp = (vsc as Record<string, unknown>)[name];
+    if (typeof Cmp === 'function') return createElement(Cmp as ComponentType);
     return null;
   }
   if (pack === 'tb') {
-    const Cmp = (tb as Record<string, unknown>)[name] as unknown;
-    if (typeof Cmp === 'function') return <Cmp />;
+    const Cmp = (tb as Record<string, unknown>)[name];
+    if (typeof Cmp === 'function') return createElement(Cmp as ComponentType);
     return null;
   }
   return null;
 }
-

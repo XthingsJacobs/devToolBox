@@ -55,7 +55,7 @@ function loadWidgetLayout(): WidgetLayout {
     const orderRaw = parsed.order;
     const spanRaw = parsed.spanById;
     if (!Array.isArray(orderRaw) || !isRecord(spanRaw)) return fallback;
-    const order = orderRaw.filter(isWidgetId) as WidgetId[];
+    const order = orderRaw.filter(isWidgetId);
     const uniq = Array.from(new Set(order));
     const allIds: WidgetId[] = ['frequent', 'network', 'appInfo', 'screen', 'device'];
     const fullOrder = [...uniq, ...allIds.filter((id) => !uniq.includes(id))];
@@ -243,7 +243,7 @@ export default function DashboardPage({
     const rowGap = Number.parseFloat(style.rowGap || '0') || 0;
     const rowUnit = GRID_AUTO_ROW_PX + rowGap;
     const next: Record<string, number> = {};
-    (layout.order as WidgetId[]).forEach((id) => {
+    layout.order.forEach((id) => {
       const el = widgetRefs.current[id];
       if (!el) return;
       const h = el.getBoundingClientRect().height;
@@ -270,7 +270,7 @@ export default function DashboardPage({
       scheduleRecalcMasonry();
     });
     ro.observe(grid);
-    (layout.order as WidgetId[]).forEach((id) => {
+    layout.order.forEach((id) => {
       const el = widgetRefs.current[id];
       if (el) ro.observe(el);
     });

@@ -50,7 +50,7 @@ export default function RsaKeyPairGenerator() {
 
   useEffect(() => {
     void refresh();
-  }, []);
+  }, [refresh]);
 
   const canDec = useMemo(() => bits > 1024, [bits]);
   const canInc = useMemo(() => bits < 4096, [bits]);
