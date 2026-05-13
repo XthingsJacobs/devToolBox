@@ -28,6 +28,7 @@ interface MarketplacePluginManifest {
   id: string;
   name: string;
   description: string;
+  i18n?: Partial<Record<'en' | 'zh-CN', { name?: string; description?: string }>>;
   version: string;
   sdkVersion: string;
   entry: string;
@@ -103,6 +104,19 @@ function validateManifest(manifest: unknown): { ok: true; data: MarketplacePlugi
   const id = manifest.id;
   const name = manifest.name;
   const description = manifest.description;
+  const i18n = (() => {
+    const raw = (manifest as Record<string, unknown>).i18n;
+    if (!isRecord(raw)) return undefined;
+    const out: Partial<Record<'en' | 'zh-CN', { name?: string; description?: string }>> = {};
+    for (const loc of ['en', 'zh-CN'] as const) {
+      const v = raw[loc];
+      if (!isRecord(v)) continue;
+      const n = typeof v.name === 'string' && v.name.trim() ? v.name.trim() : undefined;
+      const d = typeof v.description === 'string' ? v.description : undefined;
+      if (n || d) out[loc] = { name: n, description: d };
+    }
+    return Object.keys(out).length ? out : undefined;
+  })();
   const version = manifest.version;
   const sdkVersion = manifest.sdkVersion;
   const entry = manifest.entry;
@@ -141,6 +155,7 @@ function validateManifest(manifest: unknown): { ok: true; data: MarketplacePlugi
     id,
     name,
     description,
+    i18n,
     version,
     sdkVersion,
     entry,
@@ -167,6 +182,7 @@ function compareManifests(registryManifest: MarketplacePluginManifest, packageMa
   if (registryManifest.license !== packageManifest.license) errors.push('license mismatch');
   if (registryManifest.homepage !== packageManifest.homepage) errors.push('homepage mismatch');
   if (registryManifest.repository !== packageManifest.repository) errors.push('repository mismatch');
+  if (JSON.stringify(registryManifest.i18n ?? null) !== JSON.stringify(packageManifest.i18n ?? null)) errors.push('i18n mismatch');
 
   const a = normalizeStringArray(registryManifest.permissions);
   const b = normalizeStringArray(packageManifest.permissions);
@@ -684,8 +700,6 @@ export function register(): void {
   ipcMain.handle('plugin:log', (_event, pluginId: string, params: unknown) => {
     const rec = assertInstalledPlugin(pluginId);
     if (!rec) return err('not_installed', 'Plugin not installed');
-    if (!isDebugEnabled()) return ok(true);
-
     const p = isRecord(params) ? params : {};
     const level = asString(p.level, 'log');
     const message = asString(p.message, typeof params === 'string' ? params : '');
@@ -695,6 +709,7 @@ export function register(): void {
     const msg = message.length > 2000 ? `${message.slice(0, 2000)}…` : message;
     const args = data === undefined ? [`${prefix} ${msg}`] : [`${prefix} ${msg}`, data];
 
+    if (level === 'debug' && !isDebugEnabled()) return ok(true);
     if (level === 'debug') console.debug(...args);
     else if (level === 'info') console.info(...args);
     else if (level === 'warn') console.warn(...args);

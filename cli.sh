@@ -52,17 +52,27 @@ confirm() {
 }
 
 detect_user_data_dir() {
+  local mac_dev_dir="$HOME/Library/Application Support/DevToolBox-dev"
   local mac_dir="$HOME/Library/Application Support/DevToolBox"
+  local linux_dev_dir="$HOME/.config/DevToolBox-dev"
   local linux_dir="$HOME/.config/DevToolBox"
+  if [[ -d "$mac_dev_dir" ]]; then
+    echo "$mac_dev_dir"
+    return 0
+  fi
   if [[ -d "$mac_dir" ]]; then
     echo "$mac_dir"
+    return 0
+  fi
+  if [[ -d "$linux_dev_dir" ]]; then
+    echo "$linux_dev_dir"
     return 0
   fi
   if [[ -d "$linux_dir" ]]; then
     echo "$linux_dir"
     return 0
   fi
-  echo "$mac_dir"
+  echo "$mac_dev_dir"
 }
 
 usage() {
@@ -114,12 +124,16 @@ cmd_build() {
 
 cmd_clear() {
   local candidates=()
+  local p0="$HOME/Library/Application Support/DevToolBox-dev"
   local p1="$HOME/Library/Application Support/DevToolBox"
   local p2="$HOME/Library/Application Support/cross-platform-toolbox"
   local p3="$HOME/.config/DevToolBox"
+  local p4="$HOME/.config/DevToolBox-dev"
+  [[ -d "$p0" ]] && candidates+=("$p0")
   [[ -d "$p1" ]] && candidates+=("$p1")
   [[ -d "$p2" ]] && candidates+=("$p2")
   [[ -d "$p3" ]] && candidates+=("$p3")
+  [[ -d "$p4" ]] && candidates+=("$p4")
 
   local user_data=""
   if [[ "${#candidates[@]}" -eq 0 ]]; then
@@ -163,6 +177,7 @@ cmd_clear() {
 
   if confirm "2) Clear marketplace-installed plugins (uninstall all)" "n"; then
     rm -rf "$user_data/modules" "$user_data/plugins" 2>/dev/null || true
+    rm -f "$user_data/plugin-kv.json" 2>/dev/null || true
     mkdir -p "$user_data/modules" "$user_data/plugins"
     printf '{\n  \"installed\": {}\n}\n' >"$user_data/marketplace-state.json"
     print_ok "Marketplace plugins cleared"

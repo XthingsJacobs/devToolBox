@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './PluginHost.module.css';
 import { useTheme } from '../../theme';
+import { useI18n } from '../../i18n';
 
 type RequestMessage = {
   type: 'devtoolbox:sdk:request';
@@ -28,6 +29,12 @@ function asRequestMessage(v: unknown): RequestMessage | null {
   if (typeof v.method !== 'string') return null;
   const msg = v as RequestMessage;
   return msg;
+}
+
+function logToMain(pluginId: string, level: string, message: string, data?: unknown) {
+  const api = window.electronAPI;
+  if (!api?.pluginLog) return;
+  void api.pluginLog(pluginId, { level, message, data });
 }
 
 async function callSdk(pluginId: string, method: string, params: unknown): Promise<SdkResult> {
@@ -111,25 +118,45 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [ready, setReady] = useState(false);
   const { theme } = useTheme();
+  const { locale } = useI18n();
+  const readySignalReceivedRef = useRef(false);
 
   const src = useMemo(() => {
     try {
       const u = new URL(entryUrl, window.location.href);
       u.searchParams.set('theme', theme);
+      u.searchParams.set('locale', locale);
       return u.toString();
     } catch {
       return entryUrl;
     }
-  }, [entryUrl, theme]);
+  }, [entryUrl, locale, theme]);
 
   useEffect(() => {
     setReady(false);
   }, [src]);
 
   useEffect(() => {
+    if (ready) return;
+    const timer = window.setTimeout(() => {
+      if (!ready) logToMain(pluginId, 'warn', 'still loading', { src });
+    }, 8000);
+    return () => window.clearTimeout(timer);
+  }, [pluginId, ready, src]);
+
+  useEffect(() => {
     const handler = async (event: MessageEvent) => {
       const iframeWin = iframeRef.current?.contentWindow;
       if (!iframeWin || event.source !== iframeWin) return;
+
+      if (isRecord(event.data) && event.data.type === 'devtoolbox:plugin:ready') {
+        if (readySignalReceivedRef.current) return;
+        readySignalReceivedRef.current = true;
+        logToMain(pluginId, 'info', 'ready signal received');
+        iframeWin.postMessage({ type: 'devtoolbox:plugin:ready:ack' }, '*');
+        setReady(true);
+        return;
+      }
 
       const req = asRequestMessage(event.data);
       if (!req) return;
@@ -157,6 +184,13 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
     iframeWin.postMessage({ type: 'devtoolbox:theme', theme }, '*');
   }, [ready, theme]);
 
+  useEffect(() => {
+    if (!ready) return;
+    const iframeWin = iframeRef.current?.contentWindow;
+    if (!iframeWin) return;
+    iframeWin.postMessage({ type: 'devtoolbox:locale', locale }, '*');
+  }, [locale, ready]);
+
   if (!src) return <div className={styles.empty}>Plugin not available.</div>;
 
   return (
@@ -166,7 +200,10 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
         className={styles.frame}
         src={src}
         title={pluginId}
-        onLoad={() => setReady(true)}
+        onLoad={() => {
+          logToMain(pluginId, 'info', 'iframe loaded');
+          setReady(true);
+        }}
         sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-same-origin"
       />
       {!ready && <div className={styles.empty}>Loading...</div>}

@@ -72,9 +72,10 @@ export default function ToolsPage({
   }, [categories, selectedModuleId]);
 
   if (selectedModule) {
-    mountedRef.current.add(selectedModule.id);
-    if (corePluginEntryMap.has(selectedModule.id)) corePluginMountedRef.current.add(selectedModule.id);
-    if (marketplaceEntryMap.has(selectedModule.id)) marketplaceMountedRef.current.add(selectedModule.id);
+    const id = selectedModule.id;
+    if (marketplaceEntryMap.has(id)) marketplaceMountedRef.current.add(id);
+    else if (corePluginEntryMap.has(id)) corePluginMountedRef.current.add(id);
+    else mountedRef.current.add(id);
   }
 
   const activeCategory = useMemo(() => {

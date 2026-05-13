@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type LegacyRef } from 'react';
 import { VscBroadcast, VscChevronRight, VscDeviceMobile, VscGraph, VscInfo, VscScreenFull, VscSearch, VscSparkle } from 'react-icons/vsc';
+import ReactGridLayout, { type Layout, type LayoutItem, useContainerWidth, verticalCompactor } from 'react-grid-layout';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
 import styles from './DashboardPage.module.css';
 import { loadModuleUsage, scoreUsage } from '../../data/moduleUsage';
 import type { Category, Module } from '../../types';
@@ -16,11 +19,21 @@ type NetworkInfo = { localIPs: string[]; publicIP: string; dnsStatus: string; in
 type NavigatorLike = Navigator & { vendor?: string; platform?: string };
 
 type WidgetId = 'frequent' | 'network' | 'appInfo' | 'screen' | 'device';
-type WidgetLayout = { order: WidgetId[]; spanById: Record<WidgetId, number> };
+type WidgetLayout = { order: WidgetId[]; spanById: Record<WidgetId, number>; rowSpanById: Record<WidgetId, number> };
 
-const WIDGET_STORAGE_KEY = 'devtoolbox.dashboard.widgets.v2';
+const WIDGET_STORAGE_KEY_V2 = 'devtoolbox.dashboard.widgets.v2';
+const WIDGET_STORAGE_KEY = 'devtoolbox.dashboard.widgets.v3';
 const GRID_COLS = 24;
 const GRID_AUTO_ROW_PX = 8;
+const GRID_GAP_PX = 16;
+
+const DEFAULT_WIDGET_ROW_SPAN: Record<WidgetId, number> = {
+  frequent: 18,
+  network: 12,
+  appInfo: 12,
+  screen: 10,
+  device: 11,
+};
 
 function isWidgetId(v: unknown): v is WidgetId {
   return v === 'frequent' || v === 'network' || v === 'appInfo' || v === 'screen' || v === 'device';
@@ -36,6 +49,12 @@ function clampSpan(v: number): number {
   return Math.max(1, Math.min(GRID_COLS, n));
 }
 
+function clampRowSpan(v: number): number {
+  if (!Number.isFinite(v)) return 10;
+  const n = Math.round(v);
+  return Math.max(4, Math.min(200, n));
+}
+
 function loadWidgetLayout(): WidgetLayout {
   const fallback: WidgetLayout = {
     order: ['frequent', 'network', 'appInfo', 'screen', 'device'],
@@ -46,25 +65,30 @@ function loadWidgetLayout(): WidgetLayout {
       screen: 12,
       device: 12,
     },
+    rowSpanById: { ...DEFAULT_WIDGET_ROW_SPAN },
   };
-  const raw = localStorage.getItem(WIDGET_STORAGE_KEY);
+  const raw = localStorage.getItem(WIDGET_STORAGE_KEY) ?? localStorage.getItem(WIDGET_STORAGE_KEY_V2);
   if (!raw) return fallback;
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!isRecord(parsed)) return fallback;
     const orderRaw = parsed.order;
     const spanRaw = parsed.spanById;
+    const rowSpanRaw = parsed.rowSpanById;
     if (!Array.isArray(orderRaw) || !isRecord(spanRaw)) return fallback;
     const order = orderRaw.filter(isWidgetId);
     const uniq = Array.from(new Set(order));
     const allIds: WidgetId[] = ['frequent', 'network', 'appInfo', 'screen', 'device'];
     const fullOrder = [...uniq, ...allIds.filter((id) => !uniq.includes(id))];
     const spanById = { ...fallback.spanById };
+    const rowSpanById = { ...fallback.rowSpanById };
     for (const id of allIds) {
       const v = spanRaw[id];
       if (typeof v === 'number') spanById[id] = clampSpan(v);
+      const h = isRecord(rowSpanRaw) ? rowSpanRaw[id] : undefined;
+      if (typeof h === 'number') rowSpanById[id] = clampRowSpan(h);
     }
-    return { order: fullOrder, spanById };
+    return { order: fullOrder, spanById, rowSpanById };
   } catch {
     return fallback;
   }
@@ -109,21 +133,10 @@ export default function DashboardPage({
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
   const [layout, setLayout] = useState<WidgetLayout>(() => loadWidgetLayout());
-  const [draggingId, setDraggingId] = useState<WidgetId | null>(null);
-  const [overId, setOverId] = useState<WidgetId | null>(null);
-  const [resizingId, setResizingId] = useState<WidgetId | null>(null);
-  const [rowSpanById, setRowSpanById] = useState<Record<string, number>>({});
-  const widgetGridRef = useRef<HTMLDivElement | null>(null);
-  const widgetRefs = useRef<Record<WidgetId, HTMLDivElement | null>>({
-    frequent: null,
-    network: null,
-    appInfo: null,
-    screen: null,
-    device: null,
-  });
+  const [gridLayout, setGridLayout] = useState<LayoutItem[]>([]);
+  const [isGridInteracting, setIsGridInteracting] = useState(false);
   const layoutRef = useRef(layout);
-  const isResizingRef = useRef(false);
-  const recalcRafRef = useRef<number | null>(null);
+  const { width: gridWidth, containerRef: gridContainerRef, mounted: gridMounted } = useContainerWidth();
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -209,97 +222,64 @@ export default function DashboardPage({
   }, [layout]);
 
   useEffect(() => {
-    if (isResizingRef.current) return;
     saveWidgetLayout(layout);
   }, [layout]);
 
-  const moveWidget = useCallback((dragId: WidgetId, overId: WidgetId) => {
-    if (dragId === overId) return;
-    setLayout((prev) => {
-      const next = prev.order.filter((x) => x !== dragId);
-      const idx = next.indexOf(overId);
-      if (idx < 0) return prev;
-      next.splice(idx, 0, dragId);
-      return { ...prev, order: next };
-    });
-  }, []);
+  const toMutableLayout = useCallback((l: Layout) => l.map((x) => ({ ...x })), []);
 
-  const setSpan = useCallback((id: WidgetId, span: number) => {
-    setLayout((prev) => {
-      const nextSpan = clampSpan(span);
-      if (prev.spanById[id] === nextSpan) return prev;
-      return { ...prev, spanById: { ...prev.spanById, [id]: nextSpan } };
-    });
-  }, []);
-
-  const handleWidgetDragStart = useCallback((id: WidgetId) => {
-    setDraggingId(id);
-    setOverId(null);
-  }, []);
-
-  const handleWidgetDragEnd = useCallback(() => {
-    setDraggingId(null);
-    setOverId(null);
-  }, []);
-
-  const handleResizeStart = useCallback((id: WidgetId) => {
-    isResizingRef.current = true;
-    setResizingId(id);
-  }, []);
-
-  const handleResizeEnd = useCallback(() => {
-    isResizingRef.current = false;
-    setResizingId(null);
-    saveWidgetLayout(layoutRef.current);
-  }, []);
-
-  const recalcMasonry = useCallback(() => {
-    const grid = widgetGridRef.current;
-    if (!grid) return;
-    const style = window.getComputedStyle(grid);
-    const rowGap = Number.parseFloat(style.rowGap || '0') || 0;
-    const rowUnit = GRID_AUTO_ROW_PX + rowGap;
-    const next: Record<string, number> = {};
-    layout.order.forEach((id) => {
-      const el = widgetRefs.current[id];
-      if (!el) return;
-      const h = el.getBoundingClientRect().height;
-      const span = Math.max(1, Math.ceil((h + rowGap) / rowUnit));
-      next[id] = span;
-    });
-    setRowSpanById(next);
-  }, [layout.order]);
-
-  const scheduleRecalcMasonry = useCallback(() => {
-    if (recalcRafRef.current !== null) return;
-    recalcRafRef.current = window.requestAnimationFrame(() => {
-      recalcRafRef.current = null;
-      recalcMasonry();
-    });
-  }, [recalcMasonry]);
+  const buildGridLayout = useCallback((source: WidgetLayout) => {
+    const next: LayoutItem[] = [];
+    let x = 0;
+    let y = 0;
+    let rowMaxH = 0;
+    for (const id of source.order) {
+      const w = clampSpan(source.spanById[id] ?? 12);
+      const h = clampRowSpan(source.rowSpanById[id] ?? DEFAULT_WIDGET_ROW_SPAN[id] ?? 10);
+      if (x + w > GRID_COLS) {
+        y += rowMaxH || 1;
+        x = 0;
+        rowMaxH = 0;
+      }
+      next.push({
+        i: id,
+        x,
+        y,
+        w,
+        h,
+        minW: 6,
+        maxW: GRID_COLS,
+        minH: 6,
+        maxH: 200,
+      });
+      x += w;
+      rowMaxH = Math.max(rowMaxH, h);
+    }
+    return toMutableLayout(verticalCompactor.compact(next, GRID_COLS));
+  }, [toMutableLayout]);
 
   useEffect(() => {
-    const grid = widgetGridRef.current;
-    if (!grid) return;
-    scheduleRecalcMasonry();
+    if (isGridInteracting) return;
+    setGridLayout(buildGridLayout(layout));
+  }, [buildGridLayout, isGridInteracting, layout]);
 
-    const ro = new ResizeObserver(() => {
-      scheduleRecalcMasonry();
-    });
-    ro.observe(grid);
-    layout.order.forEach((id) => {
-      const el = widgetRefs.current[id];
-      if (el) ro.observe(el);
-    });
-
-    return () => {
-      if (recalcRafRef.current !== null) {
-        window.cancelAnimationFrame(recalcRafRef.current);
-        recalcRafRef.current = null;
-      }
-      ro.disconnect();
-    };
-  }, [layout.order, layout.spanById, scheduleRecalcMasonry]);
+  const commitLayout = useCallback((nextLayout: Layout) => {
+    const compacted = verticalCompactor.compact(nextLayout, GRID_COLS);
+    const order = [...compacted]
+      .sort((a, b) => {
+        if (a.y !== b.y) return a.y - b.y;
+        return a.x - b.x;
+      })
+      .map((l) => l.i)
+      .filter(isWidgetId);
+    const spanById = { ...layoutRef.current.spanById };
+    const rowSpanById = { ...layoutRef.current.rowSpanById };
+    for (const l of compacted) {
+      if (!isWidgetId(l.i)) continue;
+      spanById[l.i] = clampSpan(l.w);
+      rowSpanById[l.i] = clampRowSpan(l.h);
+    }
+    setLayout({ order, spanById, rowSpanById });
+  }, []);
 
   return (
     <div className={styles.page}>
@@ -436,228 +416,142 @@ export default function DashboardPage({
           })}
         </div>
 
-        <div ref={widgetGridRef} className={styles.widgetGrid}>
-          {layout.order.map((id) => {
-            const span = layout.spanById[id];
-            const rowSpan = rowSpanById[id] ?? 1;
-            if (id === 'frequent') {
-              return (
-                <Widget
-                  key={id}
-                  id={id}
-                  span={span}
-                  rowSpan={rowSpan}
-                  gridRef={widgetGridRef}
-                  onRef={(wid, el) => {
-                    widgetRefs.current[wid] = el;
-                  }}
-                  title="Frequent Tools"
-                  icon={<VscGraph />}
-                  accentColor="var(--accent-secondary)"
-                  draggingId={draggingId}
-                  overId={overId}
-                  resizingId={resizingId}
-                  onOver={setOverId}
-                  onDragStart={handleWidgetDragStart}
-                  onDragEnd={handleWidgetDragEnd}
-                  onDrop={moveWidget}
-                  onResize={setSpan}
-                  onResizeStart={handleResizeStart}
-                  onResizeEnd={handleResizeEnd}
-                  action={
-                    <button type="button" className={styles.widgetAction} draggable={false} onClick={() => onCategorySelect('all')}>
-                      View All Tools
-                      <VscChevronRight />
-                    </button>
-                  }
-                >
-                  <div className={styles.grid}>
-                    {frequent.slice(0, 8).map((t) => (
-                      <button
-                        key={t.module.id}
-                        type="button"
-                        className={styles.toolCard}
-                        onClick={() => onOpenTool(t.categoryId, t.module.id)}
+        <div ref={gridContainerRef as unknown as LegacyRef<HTMLDivElement>} className={styles.widgetGrid}>
+          {gridMounted ? (
+            <ReactGridLayout
+              width={gridWidth}
+              layout={gridLayout}
+              compactor={verticalCompactor}
+              gridConfig={{
+                cols: GRID_COLS,
+                rowHeight: GRID_AUTO_ROW_PX,
+                margin: [GRID_GAP_PX, GRID_GAP_PX],
+                containerPadding: [0, 0],
+                maxRows: Number.POSITIVE_INFINITY,
+              }}
+              dragConfig={{ enabled: true, bounded: true, handle: `.${styles.widgetHeader}`, cancel: '.react-resizable-handle', threshold: 3 }}
+              resizeConfig={{
+                enabled: true,
+                handles: ['e', 's', 'se'],
+                handleComponent: (axis, ref) => (
+                  <span
+                    ref={ref}
+                    className={`react-resizable-handle react-resizable-handle-${axis} ${styles.rglResizeHandle} ${styles[`rglResizeHandle_${axis}`]}`}
+                  />
+                ),
+              }}
+              onDragStart={() => setIsGridInteracting(true)}
+              onResizeStart={() => setIsGridInteracting(true)}
+              onLayoutChange={(next) => setGridLayout(toMutableLayout(next))}
+              onDragStop={(next) => {
+                setIsGridInteracting(false);
+                commitLayout(next);
+              }}
+              onResizeStop={(next) => {
+                setIsGridInteracting(false);
+                commitLayout(next);
+              }}
+            >
+          <div key="frequent">
+            <Widget
+              title="Frequent Tools"
+              icon={<VscGraph />}
+              accentColor="var(--accent-secondary)"
+              action={
+                <button type="button" className={styles.widgetAction} draggable={false} onClick={() => onCategorySelect('all')}>
+                  View All Tools
+                  <VscChevronRight />
+                </button>
+              }
+            >
+              <div className={styles.grid}>
+                {frequent.slice(0, 8).map((t) => (
+                  <button key={t.module.id} type="button" className={styles.toolCard} onClick={() => onOpenTool(t.categoryId, t.module.id)}>
+                    <div className={styles.toolCardTop}>
+                      <div
+                        className={styles.toolCardIcon}
+                        style={{ color: t.categoryColor, background: `${t.categoryColor}15`, borderColor: `${t.categoryColor}28` }}
                       >
-                        <div className={styles.toolCardTop}>
-                          <div
-                            className={styles.toolCardIcon}
-                            style={{ color: t.categoryColor, background: `${t.categoryColor}15`, borderColor: `${t.categoryColor}28` }}
-                          >
-                            {t.module.icon}
-                          </div>
-                          <div className={styles.toolCardMeta}>
-                            <div className={styles.toolCardName}>{t.module.name}</div>
-                            <span className={styles.toolCardPill} style={{ color: t.categoryColor, background: `${t.categoryColor}15` }}>
-                              {t.categoryName}
-                            </span>
-                          </div>
-                        </div>
-                        <div className={styles.toolCardDesc}>{t.module.description}</div>
-                      </button>
-                    ))}
-                  </div>
-                </Widget>
-              );
-            }
+                        {t.module.icon}
+                      </div>
+                      <div className={styles.toolCardMeta}>
+                        <div className={styles.toolCardName}>{t.module.name}</div>
+                        <span className={styles.toolCardPill} style={{ color: t.categoryColor, background: `${t.categoryColor}15` }}>
+                          {t.categoryName}
+                        </span>
+                      </div>
+                    </div>
+                    <div className={styles.toolCardDesc}>{t.module.description}</div>
+                  </button>
+                ))}
+              </div>
+            </Widget>
+          </div>
 
-            if (id === 'network') {
-              return (
-                <Widget
-                  key={id}
-                  id={id}
-                  span={span}
-                  rowSpan={rowSpan}
-                  gridRef={widgetGridRef}
-                  onRef={(wid, el) => {
-                    widgetRefs.current[wid] = el;
-                  }}
-                  title="Network"
-                  icon={<VscBroadcast />}
-                  accentColor="var(--accent-secondary)"
-                  draggingId={draggingId}
-                  overId={overId}
-                  resizingId={resizingId}
-                  onOver={setOverId}
-                  onDragStart={handleWidgetDragStart}
-                  onDragEnd={handleWidgetDragEnd}
-                  onDrop={moveWidget}
-                  onResize={setSpan}
-                  onResizeStart={handleResizeStart}
-                  onResizeEnd={handleResizeEnd}
-                >
-                  <InfoBody
-                    items={[
-                      {
-                        label: 'Internet',
-                        value: networkInfo?.internetStatus ?? (navigator.onLine ? 'Connected' : 'Disconnected'),
-                        ok: (networkInfo?.internetStatus ?? (navigator.onLine ? 'Connected' : 'Disconnected')) === 'Connected',
-                      },
-                      { label: 'DNS', value: networkInfo?.dnsStatus ?? '-', ok: (networkInfo?.dnsStatus ?? '') === 'OK' },
-                      { label: 'Public IP', value: networkInfo?.publicIP ?? '-' },
-                      { label: 'Local IP', value: (networkInfo?.localIPs ?? ['-']).join('\n'), wrap: true, mono: true, pre: true },
-                    ]}
-                  />
-                </Widget>
-              );
-            }
+          <div key="network">
+            <Widget title="Network" icon={<VscBroadcast />} accentColor="var(--accent-secondary)">
+              <InfoBody
+                items={[
+                  {
+                    label: 'Internet',
+                    value: networkInfo?.internetStatus ?? (navigator.onLine ? 'Connected' : 'Disconnected'),
+                    ok: (networkInfo?.internetStatus ?? (navigator.onLine ? 'Connected' : 'Disconnected')) === 'Connected',
+                  },
+                  { label: 'DNS', value: networkInfo?.dnsStatus ?? '-', ok: (networkInfo?.dnsStatus ?? '') === 'OK' },
+                  { label: 'Public IP', value: networkInfo?.publicIP ?? '-' },
+                  { label: 'Local IP', value: (networkInfo?.localIPs ?? ['-']).join('\n'), wrap: true, mono: true, pre: true },
+                ]}
+              />
+            </Widget>
+          </div>
 
-            if (id === 'appInfo') {
-              return (
-                <Widget
-                  key={id}
-                  id={id}
-                  span={span}
-                  rowSpan={rowSpan}
-                  gridRef={widgetGridRef}
-                  onRef={(wid, el) => {
-                    widgetRefs.current[wid] = el;
-                  }}
-                  title="App Info"
-                  icon={<VscInfo />}
-                  accentColor="var(--accent-warning)"
-                  draggingId={draggingId}
-                  overId={overId}
-                  resizingId={resizingId}
-                  onOver={setOverId}
-                  onDragStart={handleWidgetDragStart}
-                  onDragEnd={handleWidgetDragEnd}
-                  onDrop={moveWidget}
-                  onResize={setSpan}
-                  onResizeStart={handleResizeStart}
-                  onResizeEnd={handleResizeEnd}
-                >
-                  <InfoBody
-                    items={[
-                      { label: 'Version', value: appInfo?.version ?? '-' },
-                      { label: 'Build', value: appInfo?.build ?? '-' },
-                      { label: 'Local Time', value: now.toLocaleString() },
-                      { label: 'Unix Timestamp', value: String(Math.floor(now.getTime() / 1000)) },
-                      { label: 'Timezone', value: Intl.DateTimeFormat().resolvedOptions().timeZone },
-                    ]}
-                  />
-                </Widget>
-              );
-            }
+          <div key="appInfo">
+            <Widget title="App Info" icon={<VscInfo />} accentColor="var(--accent-warning)">
+              <InfoBody
+                items={[
+                  { label: 'Version', value: appInfo?.version ?? '-' },
+                  { label: 'Build', value: appInfo?.build ?? '-' },
+                  { label: 'Local Time', value: now.toLocaleString() },
+                  { label: 'Unix Timestamp', value: String(Math.floor(now.getTime() / 1000)) },
+                  { label: 'Timezone', value: Intl.DateTimeFormat().resolvedOptions().timeZone },
+                ]}
+              />
+            </Widget>
+          </div>
 
-            if (id === 'screen') {
-              return (
-                <Widget
-                  key={id}
-                  id={id}
-                  span={span}
-                  rowSpan={rowSpan}
-                  gridRef={widgetGridRef}
-                  onRef={(wid, el) => {
-                    widgetRefs.current[wid] = el;
-                  }}
-                  title="Screen"
-                  icon={<VscScreenFull />}
-                  accentColor="var(--accent-success)"
-                  draggingId={draggingId}
-                  overId={overId}
-                  resizingId={resizingId}
-                  onOver={setOverId}
-                  onDragStart={handleWidgetDragStart}
-                  onDragEnd={handleWidgetDragEnd}
-                  onDrop={moveWidget}
-                  onResize={setSpan}
-                  onResizeStart={handleResizeStart}
-                  onResizeEnd={handleResizeEnd}
-                >
-                  <InfoBody
-                    columns={2}
-                    items={[
-                      { label: 'Screen size', value: `${window.screen.width} × ${window.screen.height}` },
-                      { label: 'Orientation', value: String(window.screen.orientation?.type ?? '-') },
-                      { label: 'Orientation angle', value: `${Number(window.screen.orientation?.angle ?? 0)}°` },
-                      { label: 'Color depth', value: `${window.screen.colorDepth} bits` },
-                      { label: 'Pixel ratio', value: `${window.devicePixelRatio} dppx` },
-                      { label: 'Window size', value: `${window.innerWidth} × ${window.innerHeight}` },
-                    ]}
-                  />
-                </Widget>
-              );
-            }
+          <div key="screen">
+            <Widget title="Screen" icon={<VscScreenFull />} accentColor="var(--accent-success)">
+              <InfoBody
+                columns={2}
+                items={[
+                  { label: 'Screen size', value: `${window.screen.width} × ${window.screen.height}` },
+                  { label: 'Orientation', value: String(window.screen.orientation?.type ?? '-') },
+                  { label: 'Orientation angle', value: `${Number(window.screen.orientation?.angle ?? 0)}°` },
+                  { label: 'Color depth', value: `${window.screen.colorDepth} bits` },
+                  { label: 'Pixel ratio', value: `${window.devicePixelRatio} dppx` },
+                  { label: 'Window size', value: `${window.innerWidth} × ${window.innerHeight}` },
+                ]}
+              />
+            </Widget>
+          </div>
 
-            return (
-              <Widget
-                key={id}
-                id={id}
-                span={span}
-                rowSpan={rowSpan}
-                gridRef={widgetGridRef}
-                onRef={(wid, el) => {
-                  widgetRefs.current[wid] = el;
-                }}
-                title="Device"
-                icon={<VscDeviceMobile />}
-                accentColor="var(--cat-security)"
-                draggingId={draggingId}
-                overId={overId}
-                resizingId={resizingId}
-                onOver={setOverId}
-                onDragStart={handleWidgetDragStart}
-                onDragEnd={handleWidgetDragEnd}
-                onDrop={moveWidget}
-                onResize={setSpan}
-                onResizeStart={handleResizeStart}
-                onResizeEnd={handleResizeEnd}
-              >
-                <InfoBody
-                  items={[
-                    { label: 'Browser vendor', value: String((navigator as NavigatorLike).vendor ?? '-') },
-                    {
-                      label: 'Languages',
-                      value: Array.isArray(navigator.languages) ? navigator.languages.join(', ') : String(navigator.language ?? '-'),
-                    },
-                    { label: 'Platform', value: String((navigator as NavigatorLike).platform ?? 'Unknown') },
-                    { label: 'User agent', value: navigator.userAgent, wrap: true, mono: false },
-                  ]}
-                />
-              </Widget>
-            );
-          })}
+          <div key="device">
+            <Widget title="Device" icon={<VscDeviceMobile />} accentColor="var(--cat-security)">
+              <InfoBody
+                items={[
+                  { label: 'Browser vendor', value: String((navigator as NavigatorLike).vendor ?? '-') },
+                  {
+                    label: 'Languages',
+                    value: Array.isArray(navigator.languages) ? navigator.languages.join(', ') : String(navigator.language ?? '-'),
+                  },
+                  { label: 'Platform', value: String((navigator as NavigatorLike).platform ?? 'Unknown') },
+                  { label: 'User agent', value: navigator.userAgent, wrap: true, mono: false },
+                ]}
+              />
+            </Widget>
+          </div>
+            </ReactGridLayout>
+          ) : null}
         </div>
       </div>
     </div>
@@ -665,85 +559,21 @@ export default function DashboardPage({
 }
 
 function Widget({
-  id,
-  span,
-  rowSpan,
-  gridRef,
-  onRef,
   title,
   icon,
   accentColor,
   action,
-  draggingId,
-  overId,
-  resizingId,
-  onOver,
-  onDragStart,
-  onDragEnd,
-  onDrop,
-  onResize,
-  onResizeStart,
-  onResizeEnd,
   children,
 }: {
-  id: WidgetId;
-  span: number;
-  rowSpan: number;
-  gridRef: { current: HTMLDivElement | null };
-  onRef: (id: WidgetId, el: HTMLDivElement | null) => void;
   title: string;
   icon?: React.ReactNode;
   accentColor?: string;
   action?: React.ReactNode;
-  draggingId: WidgetId | null;
-  overId: WidgetId | null;
-  resizingId: WidgetId | null;
-  onOver: (id: WidgetId | null) => void;
-  onDragStart: (id: WidgetId) => void;
-  onDragEnd: () => void;
-  onDrop: (dragId: WidgetId, overId: WidgetId) => void;
-  onResize: (id: WidgetId, span: number) => void;
-  onResizeStart: (id: WidgetId) => void;
-  onResizeEnd: () => void;
   children: React.ReactNode;
 }) {
-  const isDragging = draggingId === id;
-  const isOver = overId === id;
-  const isResizing = resizingId === id;
   return (
-    <div
-      ref={(el) => onRef(id, el)}
-      className={styles.widget}
-      style={{ gridColumn: `span ${span}`, gridRowEnd: `span ${rowSpan}` }}
-      data-dragging={isDragging ? '1' : '0'}
-      data-over={isOver ? '1' : '0'}
-      data-resizing={isResizing ? '1' : '0'}
-      onDragOver={(e) => {
-        if (!draggingId || draggingId === id) return;
-        e.preventDefault();
-        if (!isOver) onOver(id);
-      }}
-      onDrop={(e) => {
-        e.preventDefault();
-        const dragId = e.dataTransfer.getData('text/plain');
-        if (isWidgetId(dragId)) onDrop(dragId, id);
-        onOver(null);
-      }}
-    >
-      <div
-        className={styles.widgetHeader}
-        draggable
-        onDragStart={(e) => {
-          onDragStart(id);
-          e.dataTransfer.setData('text/plain', id);
-          e.dataTransfer.effectAllowed = 'move';
-        }}
-        onDragEnd={() => {
-          onOver(null);
-          onDragEnd();
-        }}
-        style={{ borderLeftColor: accentColor }}
-      >
+    <div className={styles.widget}>
+      <div className={styles.widgetHeader} style={{ borderLeftColor: accentColor }}>
         <div className={styles.widgetHeaderLeft}>
           {icon ? (
             <span className={styles.widgetIcon} style={{ color: accentColor }}>
@@ -757,47 +587,6 @@ function Widget({
         </div>
       </div>
       <div className={styles.widgetBody}>{children}</div>
-      <div
-        className={styles.widgetResizeHandle}
-        onPointerDown={(e) => {
-          if (e.button !== 0) return;
-          e.preventDefault();
-          e.stopPropagation();
-          onResizeStart(id);
-          const grid = gridRef.current;
-          if (!grid) return;
-          const style = window.getComputedStyle(grid);
-          const gap = Number.parseFloat(style.columnGap || style.gap || '0') || 0;
-          const rect = grid.getBoundingClientRect();
-          const colWidth = (rect.width - gap * (GRID_COLS - 1)) / GRID_COLS;
-          const startX = e.clientX;
-          const startSpan = span;
-          let latestX = startX;
-          let raf: number | null = null;
-          const apply = () => {
-            raf = null;
-            const delta = latestX - startX;
-            const startPx = startSpan * colWidth + (startSpan - 1) * gap;
-            const nextPx = Math.max(colWidth, startPx + delta);
-            const spanFloat = (nextPx + gap) / (colWidth + gap);
-            const nextSpan = clampSpan(spanFloat);
-            onResize(id, nextSpan);
-          };
-          const onMove = (ev: PointerEvent) => {
-            latestX = ev.clientX;
-            if (raf !== null) return;
-            raf = window.requestAnimationFrame(apply);
-          };
-          const onUp = () => {
-            window.removeEventListener('pointermove', onMove);
-            window.removeEventListener('pointerup', onUp);
-            if (raf !== null) window.cancelAnimationFrame(raf);
-            onResizeEnd();
-          };
-          window.addEventListener('pointermove', onMove);
-          window.addEventListener('pointerup', onUp);
-        }}
-      />
     </div>
   );
 }

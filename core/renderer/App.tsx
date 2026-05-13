@@ -16,7 +16,7 @@ import { BackupExportPanel, BackupImportPanel } from './components/BackupCenter'
 import DashboardPage from './components/DashboardPage';
 import GlobalSearch from './components/GlobalSearch';
 import ModulesPage from './components/ModulesPage';
-import SettingsPage from './components/SettingsV2';
+import SettingsPage from './components/SettingsPage';
 import AppShell, { type AppShellNavItemId } from './components/AppShell';
 import ToolsPage from './components/ToolsPage';
 import { getCategories } from './data/placeholder';
@@ -27,6 +27,7 @@ import { ThemeProvider } from './theme';
 import type { Module } from './types';
 import { marketplacePluginIconFromManifest } from './marketplace/icons';
 import { APP_VERSION } from './appVersion';
+import { getMarketplaceManifestText } from './marketplace/i18n';
 
 // Run data migrations on startup
 runMigrations(APP_VERSION);
@@ -170,16 +171,17 @@ function AppContent() {
       if (coreIds.has(p.id)) continue;
       const cat = map.get(p.manifest.categoryId);
       if (!cat) continue;
+      const text = getMarketplaceManifestText(p.manifest, locale);
       cat.modules.push({
         id: p.id,
-        name: p.manifest.name,
-        description: p.manifest.description,
+        name: text.name,
+        description: text.description,
         categoryId: p.manifest.categoryId,
         icon: marketplaceIcon(p),
       });
     }
     return Array.from(map.values());
-  }, [coreCategories, marketplaceIcon, marketplaceInstalled]);
+  }, [coreCategories, locale, marketplaceIcon, marketplaceInstalled]);
 
   const toolCategories = useMemo(() => {
     const allModules: Module[] = categories.flatMap((c) => c.modules);

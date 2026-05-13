@@ -11,6 +11,8 @@ import { installPlugin, listInstalledPlugins, setPluginEnabled, uninstallPlugin 
 import { compareVersions, isNewerVersion } from '../../marketplace/version';
 import { VscArrowUp, VscCheck, VscChevronDown, VscExtensions, VscRefresh, VscSearch, VscTrash } from 'react-icons/vsc';
 import { marketplacePluginIconFromManifest } from '../../marketplace/icons';
+import { useI18n } from '../../i18n';
+import { getMarketplaceManifestText } from '../../marketplace/i18n';
 
 type TabId = 'installed' | 'marketplace';
 
@@ -33,6 +35,7 @@ function categoryColor(categoryId: string) {
 
 export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: InstalledMarketplacePlugin[]) => void }) {
   const bundledRegistry = useMemo(() => getBundledRegistry(), []);
+  const { locale } = useI18n();
   const [activeTab, setActiveTab] = useState<TabId>('installed');
   const [query, setQuery] = useState('');
   const [filterCat, setFilterCat] = useState('All');
@@ -121,19 +124,21 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
 
   const filteredInstalled = useMemo(() => {
     return installed.filter((p) => {
-      const matchQ = !q || p.manifest.name.toLowerCase().includes(q) || p.manifest.description.toLowerCase().includes(q);
+      const text = getMarketplaceManifestText(p.manifest, locale);
+      const matchQ = !q || text.name.toLowerCase().includes(q) || text.description.toLowerCase().includes(q);
       const matchC = filterCat === 'All' || p.manifest.categoryId === filterCat;
       return matchQ && matchC;
     });
-  }, [filterCat, installed, q]);
+  }, [filterCat, installed, locale, q]);
 
   const filteredMarketplace = useMemo(() => {
     return marketplaceLatest.filter((e) => {
-      const matchQ = !q || e.manifest.name.toLowerCase().includes(q) || e.manifest.description.toLowerCase().includes(q);
+      const text = getMarketplaceManifestText(e.manifest, locale);
+      const matchQ = !q || text.name.toLowerCase().includes(q) || text.description.toLowerCase().includes(q);
       const matchC = filterCat === 'All' || e.manifest.categoryId === filterCat;
       return matchQ && matchC;
     });
-  }, [filterCat, marketplaceLatest, q]);
+  }, [filterCat, locale, marketplaceLatest, q]);
 
   const handleInstall = useCallback(
     async (entry: MarketplaceRegistryEntry) => {
@@ -280,7 +285,7 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
                   </div>
                   <div className={styles.cardBody}>
                     <div className={styles.cardTop}>
-                      <div className={styles.cardName}>{p.manifest.name}</div>
+                      <div className={styles.cardName}>{getMarketplaceManifestText(p.manifest, locale).name}</div>
                       <span className={styles.pill}>v{p.version}</span>
                       {hasUpdate && latest?.manifest.version ? (
                         <span className={`${styles.pill} ${styles.pillUpgrade}`}>v{latest.manifest.version}</span>
@@ -290,7 +295,7 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
                       </span>
                       {!p.enabled && <span className={styles.pillMuted}>Disabled</span>}
                     </div>
-                    <div className={styles.cardDesc}>{p.manifest.description}</div>
+                    <div className={styles.cardDesc}>{getMarketplaceManifestText(p.manifest, locale).description}</div>
                     {p.manifest.author ? <div className={styles.cardMeta}>by {p.manifest.author}</div> : null}
                   </div>
 
@@ -342,14 +347,14 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
                   </div>
                   <div className={styles.cardBody}>
                     <div className={styles.cardTop}>
-                      <div className={styles.cardName}>{entry.manifest.name}</div>
+                      <div className={styles.cardName}>{getMarketplaceManifestText(entry.manifest, locale).name}</div>
                       {entry.manifest.version ? <span className={styles.pill}>v{entry.manifest.version}</span> : null}
                       <span className={styles.pillCat} style={{ color, background: `${color}12` }}>
                         {entry.manifest.categoryId}
                       </span>
                       {inst && <span className={styles.pillOk}><VscCheck /> Installed</span>}
                     </div>
-                    <div className={styles.cardDesc}>{entry.manifest.description}</div>
+                    <div className={styles.cardDesc}>{getMarketplaceManifestText(entry.manifest, locale).description}</div>
                     {entry.manifest.author ? <div className={styles.cardMeta}>by {entry.manifest.author}</div> : null}
                   </div>
 

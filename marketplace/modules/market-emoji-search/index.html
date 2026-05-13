@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Emoji 图标查询</title>
+    <script>
+      (() => {
+        const apply = (t) => {
+          document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark';
+        };
+        const q = new URLSearchParams(location.search).get('theme');
+        if (q) apply(q);
+        let intervalId = 0;
+        window.addEventListener('message', (e) => {
+          const d = e.data;
+          if (!d || d.type !== 'devtoolbox:theme') return;
+          if (d.theme === 'dark' || d.theme === 'light') apply(d.theme);
+        });
+        window.addEventListener('message', (e) => {
+          const d = e.data;
+          if (!d || d.type !== 'devtoolbox:plugin:ready:ack') return;
+          if (intervalId) clearInterval(intervalId);
+        });
+        const sendReady = () => {
+          try {
+            window.parent.postMessage({ type: 'devtoolbox:plugin:ready' }, '*');
+            return true;
+          } catch {
+            return false;
+          }
+        };
+        sendReady();
+        let n = 0;
+        intervalId = window.setInterval(() => {
+          n += 1;
+          if (n > 12) {
+            clearInterval(intervalId);
+            return;
+          }
+          sendReady();
+        }, 250);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

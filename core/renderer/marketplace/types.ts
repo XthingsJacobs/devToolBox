@@ -19,6 +19,7 @@ export interface MarketplacePluginManifest {
   id: string;
   name: string;
   description: string;
+  i18n?: Partial<Record<'en' | 'zh-CN', { name?: string; description?: string }>>;
   version?: string;
   sdkVersion: string;
   entry: string;

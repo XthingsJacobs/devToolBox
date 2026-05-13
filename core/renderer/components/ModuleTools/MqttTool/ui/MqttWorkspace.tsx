@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { MqttConfig } from '../mqttTypes';
 import styles from './MqttWorkspace.module.css';
 import { mqttConnect, mqttDisconnect, mqttPublish, mqttSubscribe, mqttUnsubscribe, onSdkEvent } from '../sdk';
@@ -32,6 +32,8 @@ interface Props {
   onCopy?: (id: string) => void;
   onDelete?: (id: string) => void;
 }
+
+const MAX_MESSAGES = 2000;
 
 function highlightJson(text: string): string {
   return text
@@ -112,6 +114,10 @@ export default function MqttWorkspace({ config, status: externalStatus, onEdit, 
   const msgSearchRef = useRef<HTMLInputElement>(null);
   const disconnectingRef = useRef(false);
   const msgListRef = useRef<HTMLDivElement>(null);
+  const msgStickToBottomRef = useRef(true);
+  const pendingMessagesRef = useRef<MqttMessage[]>([]);
+  const flushRafRef = useRef<number | null>(null);
+  const scrollAfterFlushRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   const subsRef = useRef(subs);
@@ -138,6 +144,73 @@ export default function MqttWorkspace({ config, status: externalStatus, onEdit, 
     void saveSubs(config.id, subs);
   }, [config.id, subs]);
 
+  const isMsgListAtBottom = useCallback((el: HTMLDivElement) => {
+    const threshold = 24;
+    return el.scrollTop <= threshold;
+  }, []);
+
+  const flushPendingMessages = useCallback(() => {
+    flushRafRef.current = null;
+    const pending = pendingMessagesRef.current;
+    if (pending.length === 0) return;
+    pendingMessagesRef.current = [];
+    setMessages((prev) => {
+      const next = [...prev, ...pending];
+      if (next.length <= MAX_MESSAGES) return next;
+      return next.slice(next.length - MAX_MESSAGES);
+    });
+  }, []);
+
+  const scheduleFlush = useCallback(() => {
+    if (flushRafRef.current !== null) return;
+    flushRafRef.current = window.requestAnimationFrame(flushPendingMessages);
+  }, [flushPendingMessages]);
+
+  useEffect(() => {
+    const el = msgListRef.current;
+    if (!el) return;
+    const update = () => {
+      const bottom = isMsgListAtBottom(el);
+      msgStickToBottomRef.current = bottom;
+      if (!bottom) scrollAfterFlushRef.current = false;
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', update);
+    };
+  }, [isMsgListAtBottom]);
+
+  useEffect(() => {
+    return () => {
+      if (flushRafRef.current !== null) window.cancelAnimationFrame(flushRafRef.current);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!scrollAfterFlushRef.current) return;
+    if (!msgStickToBottomRef.current) {
+      scrollAfterFlushRef.current = false;
+      return;
+    }
+    scrollAfterFlushRef.current = false;
+    const el = msgListRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+  }, [messages.length]);
+
+  const appendMessage = useCallback(
+    (msg: MqttMessage) => {
+      const el = msgListRef.current;
+      const shouldStick = !el || isMsgListAtBottom(el);
+      msgStickToBottomRef.current = shouldStick;
+      if (shouldStick) scrollAfterFlushRef.current = true;
+      pendingMessagesRef.current.push(msg);
+      scheduleFlush();
+    },
+    [isMsgListAtBottom, scheduleFlush],
+  );
+
   useEffect(() => {
     const off1 = onSdkEvent<{ id: string }>('mqtt.connected', (data) => {
       if (data?.id !== config.id) return;
@@ -150,20 +223,17 @@ export default function MqttWorkspace({ config, status: externalStatus, onEdit, 
     const off2 = onSdkEvent<{ id: string; topic: string; payload: string; qos: number; retain: boolean }>('mqtt.message', (data) => {
       if (data?.id !== config.id) return;
       const detected = detectPayloadFormat(data.payload);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: ++msgIdCounter,
-          dir: 'recv',
-          topic: data.topic,
-          payload: data.payload,
-          qos: data.qos ?? 0,
-          retain: Boolean(data.retain),
-          time: new Date().toLocaleTimeString(),
-          format: detected.format,
-          decoded: detected.decoded,
-        },
-      ]);
+      appendMessage({
+        id: ++msgIdCounter,
+        dir: 'recv',
+        topic: data.topic,
+        payload: data.payload,
+        qos: data.qos ?? 0,
+        retain: Boolean(data.retain),
+        time: new Date().toLocaleTimeString(),
+        format: detected.format,
+        decoded: detected.decoded,
+      });
     });
     const off3 = onSdkEvent<{ id: string; message: string }>('mqtt.error', (data) => {
       if (data?.id !== config.id) return;
@@ -184,7 +254,7 @@ export default function MqttWorkspace({ config, status: externalStatus, onEdit, 
       off4();
       off5();
     };
-  }, [config.id]);
+  }, [appendMessage, config.id]);
 
   const subTopicTemplates = useMemo(
     () => [
@@ -380,19 +450,16 @@ export default function MqttWorkspace({ config, status: externalStatus, onEdit, 
     const topic = pubTopic.trim();
     if (!topic || status !== 'connected') return;
     await mqttPublish(config.id, topic, pubPayload, pubQos, pubRetain);
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: ++msgIdCounter,
-        dir: 'sent',
-        topic,
-        payload: pubPayload,
-        qos: pubQos,
-        retain: pubRetain,
-        time: new Date().toLocaleTimeString(),
-      },
-    ]);
-  }, [pubTopic, status, config.id, pubPayload, pubQos, pubRetain]);
+    appendMessage({
+      id: ++msgIdCounter,
+      dir: 'sent',
+      topic,
+      payload: pubPayload,
+      qos: pubQos,
+      retain: pubRetain,
+      time: new Date().toLocaleTimeString(),
+    });
+  }, [appendMessage, pubTopic, status, config.id, pubPayload, pubQos, pubRetain]);
 
   const handleFormatChange = useCallback(
     (newFmt: typeof pubFormat) => {
@@ -478,6 +545,7 @@ export default function MqttWorkspace({ config, status: externalStatus, onEdit, 
         : status === 'error'
           ? t('connError')
           : t('disconnected');
+  const orderedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   return (
     <div className={styles.container}>
@@ -585,7 +653,20 @@ export default function MqttWorkspace({ config, status: externalStatus, onEdit, 
             <button className={styles.smallBtn} onClick={handleSaveMessages} disabled={messages.length === 0}>
               {t('saveMessages')}
             </button>
-            <button className={styles.smallBtn} onClick={() => setMessages([])} disabled={messages.length === 0}>
+            <button
+              className={styles.smallBtn}
+              onClick={() => {
+                msgStickToBottomRef.current = true;
+                scrollAfterFlushRef.current = false;
+                pendingMessagesRef.current = [];
+                if (flushRafRef.current !== null) {
+                  window.cancelAnimationFrame(flushRafRef.current);
+                  flushRafRef.current = null;
+                }
+                setMessages([]);
+              }}
+              disabled={messages.length === 0}
+            >
               {t('clearMessages')}
             </button>
           </div>
@@ -644,7 +725,7 @@ export default function MqttWorkspace({ config, status: externalStatus, onEdit, 
             {messages.length === 0 ? (
               <div className={styles.emptyMsg}>{t('noMessages')}</div>
             ) : (
-              messages.map((m) => {
+              orderedMessages.map((m) => {
                 const isMatch = msgSearch && searchMatches.includes(m.id);
                 const isCurrent = isMatch && searchMatches[searchMatchIdx] === m.id;
                 const isSent = m.dir === 'sent';
