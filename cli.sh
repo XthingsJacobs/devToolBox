@@ -116,13 +116,13 @@ check_node_version() {
   local current_major
   required_major="$(required_node_major)"
   current_major="$(node -p "process.versions.node.split('.')[0]")"
-  if [[ -n "$required_major" && "$current_major" != "$required_major" ]]; then
+  if [[ -n "$required_major" && "$current_major" -lt "$required_major" ]]; then
     if [[ "${DEVTOOLBOX_ALLOW_UNSUPPORTED_NODE:-0}" == "1" ]]; then
-      print_warn "Unsupported Node.js $(node -v). Expected Node.js $required_major.x; continuing because DEVTOOLBOX_ALLOW_UNSUPPORTED_NODE=1."
+      print_warn "Unsupported Node.js $(node -v). Expected Node.js >= $required_major; continuing because DEVTOOLBOX_ALLOW_UNSUPPORTED_NODE=1."
       return 0
     fi
-    print_error "Unsupported Node.js $(node -v). DevToolBox requires Node.js $required_major.x from .nvmrc."
-    print_error "Use Node 20 before running this command, for example: nvm use"
+    print_error "Unsupported Node.js $(node -v). DevToolBox requires Node.js >= $required_major."
+    print_error "Use Node $required_major or newer before running this command."
     return 1
   fi
 }
@@ -130,13 +130,13 @@ check_node_version() {
 check_pnpm_version() {
   local current_major
   current_major="$(pnpm -v | awk -F. '{print $1}')"
-  if [[ "$current_major" != "10" ]]; then
+  if [[ "$current_major" -lt "10" ]]; then
     if [[ "${DEVTOOLBOX_ALLOW_UNSUPPORTED_PNPM:-0}" == "1" ]]; then
-      print_warn "Unsupported pnpm $(pnpm -v). Expected pnpm 10.x; continuing because DEVTOOLBOX_ALLOW_UNSUPPORTED_PNPM=1."
+      print_warn "Unsupported pnpm $(pnpm -v). Expected pnpm >= 10; continuing because DEVTOOLBOX_ALLOW_UNSUPPORTED_PNPM=1."
       return 0
     fi
-    print_error "Unsupported pnpm $(pnpm -v). DevToolBox requires pnpm 10.x."
-    print_error "Install the pinned package manager: corepack enable && corepack prepare pnpm@10.10.0 --activate"
+    print_error "Unsupported pnpm $(pnpm -v). DevToolBox requires pnpm >= 10."
+    print_error "Install pnpm 10 or newer, for example: corepack enable && corepack prepare pnpm@10.10.0 --activate"
     return 1
   fi
 }

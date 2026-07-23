@@ -8,18 +8,8 @@
   "main": "dist-electron/main/index.js",
   "packageManager": "pnpm@10.10.0",
   "engines": {
-    "node": ">=20 <21",
-    "pnpm": ">=10 <11"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "electron",
-      "esbuild"
-    ],
-    "overrides": {
-      "ip-address": "10.1.1",
-      "undici": "6.27.0"
-    }
+    "node": ">=20",
+    "pnpm": ">=10"
   },
   "scripts": {
     "dev": "node scripts/exec-without-node-options.mjs vite",

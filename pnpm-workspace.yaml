@@ -2,3 +2,11 @@ packages:
   - 'core/packages/*'
   - 'marketplace'
   - 'marketplace/modules/*'
+
+onlyBuiltDependencies:
+  - electron
+  - esbuild
+
+overrides:
+  ip-address: 10.1.1
+  undici: 6.27.0
