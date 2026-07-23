@@ -1,7 +1,9 @@
 # DevToolBox — Plugin-first, all-in-one Desktop Toolbox
 
-[![CI](https://github.com/XthingsJacobs/devToolBox/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/XthingsJacobs/devToolBox/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/XthingsJacobs/devToolBox/actions/workflows/codeql.yml/badge.svg?branch=dev)](https://github.com/XthingsJacobs/devToolBox/actions/workflows/codeql.yml)
+[English](./README.md) | [简体中文](./docs/zh-CN/README.md)
+
+[![CI](https://github.com/XthingsJacobs/devToolBox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/XthingsJacobs/devToolBox/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/XthingsJacobs/devToolBox/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/XthingsJacobs/devToolBox/actions/workflows/codeql.yml)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 
 DevToolBox is a cross-platform desktop toolbox built with Electron + React + TypeScript + Vite.
@@ -11,11 +13,6 @@ It aims to be a plugin-first, all-in-one workspace for everyday developer utilit
 - Built-in tool modules: formatter, codec, crypto, network, MQTT, JWT, diff, etc.
 - Marketplace plugins: install, update, and build your own tools as plugins
 - One app, one search, one workspace: keep common utilities together instead of scattered scripts
-
-## Get Started (Users)
-
-- Download: https://github.com/XthingsJacobs/devToolBox/releases
-- Install plugins: Modules → Marketplace → Refresh → Install
 
 ## Featured Tools
 
@@ -31,65 +28,27 @@ Marketplace plugins in this repo (examples):
 - `market-exchange-rate`: FX rates + currency conversion
 - `market-matter-catalog`: Matter device type → cluster requirements lookup
 
-## Get Started (Contributors)
+## Start Here
 
-Requirements:
+| Goal                             | Guide                                                           |
+| -------------------------------- | --------------------------------------------------------------- |
+| Download and use DevToolBox      | [Getting Started](./docs/getting-started.md)                    |
+| Contribute to the repository     | [Contributing Guide](./CONTRIBUTING.md)                         |
+| Understand the application       | [Architecture](./docs/development/architecture.md)              |
+| Add a built-in tool              | [Built-in Tool Development](./docs/development/tools.md)        |
+| Build a Marketplace plugin       | [Marketplace Plugin Development](./docs/development/plugins.md) |
+| Follow the interface conventions | [Design System](./docs/development/design-system.md)            |
 
-- Node.js 20+
-- pnpm 10+
+Download packaged releases from [GitHub Releases](https://github.com/XthingsJacobs/devToolBox/releases). In the application, install plugins from **Modules → Marketplace → Refresh → Install**.
 
-Run locally:
+## Project
 
-```bash
-pnpm install
-pnpm dev
-```
-
-Quality gates:
-
-```bash
-pnpm lint
-pnpm lint:modules
-pnpm typecheck
-pnpm test
-pnpm build
-```
-
-Packaging:
-
-```bash
-pnpm package:mac
-pnpm package:win
-```
-
-## Plugin Development (Marketplace)
-
-This repo includes a marketplace workspace under `marketplace/`. A plugin is a self-contained web UI that runs in an isolated iframe and talks to the host via SDK.
-
-- SDK contract: [plugin-sdk.md](./docs/plugin-sdk.md)
-- Plugin packaging & local registry: [marketplace.md](./docs/marketplace.md)
-
-Quick flow:
-
-```bash
-./cli.sh plugin create
-pnpm --filter @devtoolbox/plugin-market-<id> build
-node marketplace/scripts/pack-local.mjs market-<id>
-```
-
-Then in DevToolBox:
-
-- Settings → Marketplace Registry URL → `file:///.../marketplace/registry.local.json`
-- Modules → Refresh → Install
-
-## Contributing
-
-- Contributing guide: [CONTRIBUTING.md](./CONTRIBUTING.md)
-- Roadmap: [ROADMAP.md](./ROADMAP.md)
-- Development guide: [dev-guide.md](./docs/dev-guide.md)
-- Code of conduct: [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
-- Security policy: [SECURITY.md](./SECURITY.md)
-- Support: [SUPPORT.md](./SUPPORT.md)
+- [Documentation](./docs/index.md)
+- [Roadmap](./docs/project/governance.md#roadmap)
+- [Changelog](./docs/project/changelog.md)
+- [Code of Conduct](./CODE_OF_CONDUCT.md)
+- [Security Policy](./SECURITY.md)
+- [Support](./SUPPORT.md)
 
 ## Repository Layout
 
