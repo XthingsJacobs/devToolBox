@@ -3,9 +3,17 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "dependencies": {
+    "@devtoolbox/core": "workspace:*"
+  },
   "scripts": {
-    "build": "pnpm -r --filter \"./modules/*\" build",
+    "prebuild": "pnpm --filter @devtoolbox/plugin-sdk build",
+    "build": "pnpm run build:modules && pnpm run bundle:check",
+    "build:modules": "pnpm -r --filter \"./modules/*\" build",
+    "bundle:check": "node ../scripts/check-marketplace-bundle-budget.mjs",
     "pack": "node scripts/pack-local.mjs",
+    "signing:keygen": "node scripts/generate-signing-key.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   }

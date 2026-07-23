@@ -3,5 +3,5 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "include": ["modules/**/*", "scripts/**/*", "types/**/*.d.ts"]
+  "include": ["modules/**/*", "shared/**/*", "scripts/**/*", "types/**/*.d.ts"]
 }

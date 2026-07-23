@@ -11,35 +11,11 @@
         };
         const q = new URLSearchParams(location.search).get('theme');
         if (q) apply(q);
-        let intervalId = 0;
         window.addEventListener('message', (e) => {
           const d = e.data;
           if (!d || d.type !== 'devtoolbox:theme') return;
           if (d.theme === 'dark' || d.theme === 'light') apply(d.theme);
         });
-        window.addEventListener('message', (e) => {
-          const d = e.data;
-          if (!d || d.type !== 'devtoolbox:plugin:ready:ack') return;
-          if (intervalId) clearInterval(intervalId);
-        });
-        const sendReady = () => {
-          try {
-            window.parent.postMessage({ type: 'devtoolbox:plugin:ready' }, '*');
-            return true;
-          } catch {
-            return false;
-          }
-        };
-        sendReady();
-        let n = 0;
-        intervalId = window.setInterval(() => {
-          n += 1;
-          if (n > 12) {
-            clearInterval(intervalId);
-            return;
-          }
-          sendReady();
-        }, 250);
       })();
     </script>
   </head>

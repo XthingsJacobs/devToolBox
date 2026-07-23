@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { sdk } from './sdk';
+import { sdk } from '@devtoolbox/plugin-sdk';
 
 type Row = { k: string; v: string };
 
@@ -167,7 +167,9 @@ async function queryIp2Location(ip: string, apiKey: string): Promise<UnifiedResu
   if (data.error) {
     const code = toText(data.error.error_code);
     const msg = data.error.error_message || 'Lookup failed';
-    throw new Error(status ? `${msg} (HTTP ${status}${code ? `, ${code}` : ''})` : code ? `${msg} (${code})` : msg);
+    throw new Error(
+      status ? `${msg} (HTTP ${status}${code ? `, ${code}` : ''})` : code ? `${msg} (${code})` : msg,
+    );
   }
 
   return {
@@ -260,7 +262,6 @@ function isRetryableMessage(msg: string): boolean {
     t.includes('network')
   );
 }
-
 async function getCache(ip: string): Promise<UnifiedResult | null> {
   const k = `ip.lookup.cache.${ip || 'me'}`;
   const res = await sdk.storage.get(k);
@@ -348,7 +349,8 @@ export default function App() {
         return queryIpApi(q);
       };
 
-      const order: Exclude<ProviderId, 'auto'>[] = mode === 'auto' ? ['ip2location', 'ipinfo', 'ipapi'] : [mode];
+      const order: Exclude<ProviderId, 'auto'>[] =
+        mode === 'auto' ? ['ip2location', 'ipinfo', 'ipapi'] : [mode];
       let out: UnifiedResult | null = null;
 
       for (const p of order) {
@@ -388,7 +390,8 @@ export default function App() {
         <div>
           <div className="title">IP Lookup</div>
           <div className="sub">
-            Source: {providerLabel[result?.provider ?? mode]}{lastUpdated ? ` · updated: ${lastUpdated}` : ''}
+            Source: {providerLabel[result?.provider ?? mode]}
+            {lastUpdated ? ` · updated: ${lastUpdated}` : ''}
           </div>
         </div>
         <div className="actions">
@@ -437,7 +440,11 @@ export default function App() {
 
           <div className="formRow">
             <div className="label">IP</div>
-            <input value={ip} onChange={(e) => setIp(e.target.value)} placeholder="e.g. 8.8.8.8 / 2001:4860:4860::8888" />
+            <input
+              value={ip}
+              onChange={(e) => setIp(e.target.value)}
+              placeholder="e.g. 8.8.8.8 / 2001:4860:4860::8888"
+            />
           </div>
 
           <div className="foot">
@@ -475,7 +482,8 @@ export default function App() {
           )}
           {result ? <pre className="raw">{JSON.stringify(result.raw, null, 2)}</pre> : null}
           <div className="foot">
-            Notes: This tool uses a third-party public API. For compliance or high accuracy requirements, verify with your own data source.
+            Notes: This tool uses a third-party public API. For compliance or high accuracy requirements,
+            verify with your own data source.
           </div>
         </div>
       </div>

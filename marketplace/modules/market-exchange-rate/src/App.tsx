@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { sdk } from './sdk';
+import { sdk } from '@devtoolbox/plugin-sdk';
 
 type CurrenciesMap = Record<string, string>;
 type LatestResponse = { amount: number; base: string; date: string; rates: Record<string, number> };
@@ -186,7 +186,9 @@ export default function App() {
     setSettings((s) => ({
       ...s,
       base: typeof r.base === 'string' && r.base ? r.base : s.base,
-      targets: Array.isArray(r.targets) ? r.targets.filter((x): x is string => typeof x === 'string') : s.targets,
+      targets: Array.isArray(r.targets)
+        ? r.targets.filter((x): x is string => typeof x === 'string')
+        : s.targets,
       amount: typeof r.amount === 'string' ? r.amount : s.amount,
       spreadPct: typeof r.spreadPct === 'string' ? r.spreadPct : s.spreadPct,
       feePct: typeof r.feePct === 'string' ? r.feePct : s.feePct,
@@ -222,7 +224,9 @@ export default function App() {
         const ratesValue = (body as { rates?: unknown }).rates;
         const dateValue = (body as { date?: unknown }).date;
         const nextRates =
-          ratesValue && typeof ratesValue === 'object' ? (ratesValue as Record<string, number>) : ({} as Record<string, number>);
+          ratesValue && typeof ratesValue === 'object'
+            ? (ratesValue as Record<string, number>)
+            : ({} as Record<string, number>);
         setRates(nextRates);
         setRateDate(typeof dateValue === 'string' ? dateValue : String(dateValue ?? ''));
         setLastUpdated(nowText());
@@ -342,7 +346,10 @@ export default function App() {
 
           <div className="formRow">
             <div className="label">Amount</div>
-            <input value={settings.amount} onChange={(e) => setSettings((s) => ({ ...s, amount: e.target.value }))} />
+            <input
+              value={settings.amount}
+              onChange={(e) => setSettings((s) => ({ ...s, amount: e.target.value }))}
+            />
           </div>
 
           <div className="formRow">
@@ -384,7 +391,9 @@ export default function App() {
             <div className="label">Decimals</div>
             <input
               value={settings.decimals}
-              onChange={(e) => setSettings((s) => ({ ...s, decimals: clampIntString(e.target.value, 0, 8, 4) }))}
+              onChange={(e) =>
+                setSettings((s) => ({ ...s, decimals: clampIntString(e.target.value, 0, 8, 4) }))
+              }
             />
           </div>
         </div>
@@ -481,7 +490,11 @@ export default function App() {
                 ) : (
                   <tr>
                     <td colSpan={4} className="empty">
-                      {targets.length === 0 ? 'Select target currencies' : loading ? 'Loading…' : 'No data (click Refresh)'}
+                      {targets.length === 0
+                        ? 'Select target currencies'
+                        : loading
+                          ? 'Loading…'
+                          : 'No data (click Refresh)'}
                     </td>
                   </tr>
                 )}
@@ -489,7 +502,8 @@ export default function App() {
             </table>
           </div>
           <div className="foot">
-            Note: This tool is for quick lookup and calculation. For financial-grade accuracy and compliance, use your broker/bank quotes.
+            Note: This tool is for quick lookup and calculation. For financial-grade accuracy and compliance,
+            use your broker/bank quotes.
           </div>
         </div>
       </div>

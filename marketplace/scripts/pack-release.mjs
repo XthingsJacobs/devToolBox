@@ -1,38 +1,21 @@
 import fs from 'fs';
 import path from 'path';
-import crypto from 'crypto';
-import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
-
-function sha256File(filePath) {
-  const h = crypto.createHash('sha256');
-  h.update(fs.readFileSync(filePath));
-  return h.digest('hex');
-}
-
-function rmrf(p) {
-  try {
-    fs.rmSync(p, { recursive: true, force: true });
-  } catch {
-    return;
-  }
-}
-
-function copyDir(src, dest) {
-  fs.mkdirSync(dest, { recursive: true });
-  for (const name of fs.readdirSync(src)) {
-    const sp = path.join(src, name);
-    const dp = path.join(dest, name);
-    const stat = fs.statSync(sp);
-    if (stat.isDirectory()) copyDir(sp, dp);
-    else fs.copyFileSync(sp, dp);
-  }
-}
+import { packPlugin, removePath } from './pack-utils.mjs';
+import {
+  assertSigningEntryTrusted,
+  signMarketplaceEntry,
+  signingConfigFromEnvironment,
+} from './provenance.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname, '..');
 const modulesDir = path.join(root, 'modules');
+const signingConfig = signingConfigFromEnvironment();
+const trustConfig = JSON.parse(
+  fs.readFileSync(path.resolve(root, '../core/main/marketplace/trusted-publishers.json'), 'utf8'),
+);
 
 const repo = String(process.env.GITHUB_REPOSITORY ?? '').trim();
 if (!repo) {
@@ -47,7 +30,7 @@ if (!tag) {
 }
 
 const outDir = path.join(root, 'release-dist');
-rmrf(outDir);
+removePath(outDir);
 fs.mkdirSync(outDir, { recursive: true });
 
 function writeEmptyRegistry() {
@@ -71,53 +54,20 @@ if (!resolvedIds.length) {
   process.exit(0);
 }
 
-const entries = [];
-
-for (const id of resolvedIds) {
-  const pluginDir = path.join(modulesDir, id);
-  const manifestPath = path.join(pluginDir, 'manifest.json');
-  if (!fs.existsSync(manifestPath)) throw new Error(`manifest.json not found: ${manifestPath}`);
-
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-  const version = String(manifest.version || '').trim();
-  if (!version) throw new Error(`Invalid manifest.version for ${id}`);
-
-  const entry = String(manifest.entry || '').trim();
-  if (!entry) throw new Error(`Invalid manifest.entry for ${id}`);
-
-  const builtEntryPath = path.join(pluginDir, entry);
-  if (!fs.existsSync(builtEntryPath)) {
-    throw new Error(`Entry not built yet: ${builtEntryPath}. Run pnpm --filter @devtoolbox/plugin-${id} build`);
-  }
-
-  const staging = path.join(outDir, `${id}-${version}`);
-  rmrf(staging);
-  fs.mkdirSync(staging, { recursive: true });
-  fs.copyFileSync(manifestPath, path.join(staging, 'manifest.json'));
-
-  const entryRoot = entry.split('/')[0];
-  const entryRootPath = path.join(pluginDir, entryRoot);
-  if (!fs.existsSync(entryRootPath)) throw new Error(`Entry root not found: ${entryRootPath}`);
-  copyDir(entryRootPath, path.join(staging, entryRoot));
-
-  const zipName = `${id}-${version}.zip`;
-  const zipPath = path.join(outDir, zipName);
-  rmrf(zipPath);
-  execFileSync('zip', ['-qr', zipPath, 'manifest.json', entryRoot], { cwd: staging, stdio: 'inherit' });
-
-  const sha256 = sha256File(zipPath);
-  const size = fs.statSync(zipPath).size;
-  const downloadUrl = `https://github.com/${repo}/releases/download/${tag}/${zipName}`;
-
-  entries.push({
-    manifest: { ...manifest },
-    downloadUrl,
-    sha256,
-    size,
-    publishedAt: new Date().toISOString(),
-    status: 'active',
-  });
-}
+const entries = resolvedIds.map((id) =>
+  packPlugin({
+    modulesDir,
+    outDir,
+    id,
+    getDownloadUrl: (_zipPath, zipName) => `https://github.com/${repo}/releases/download/${tag}/${zipName}`,
+    signEntry: signingConfig
+      ? (entry) => {
+          assertSigningEntryTrusted(entry, signingConfig, trustConfig);
+          return signMarketplaceEntry(entry, signingConfig);
+        }
+      : undefined,
+  }),
+);
 
 const registry = { schemaVersion: 1, plugins: entries };
 const registryPath = path.join(outDir, 'registry.json');

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { sdk } from './sdk';
+import { sdk } from '@devtoolbox/plugin-sdk';
 
 type ParsedTable = { headers: string[]; rows: string[][] };
 type DeviceTypeEntry = { anchorId: string; title: string; clusterTable?: ParsedTable };
@@ -64,7 +64,9 @@ function findNextTable(from: Element): HTMLTableElement | null {
 }
 
 function parseTable(table: HTMLTableElement): ParsedTable {
-  const headers = Array.from(table.querySelectorAll('thead th')).map((th) => normalizeText(th.textContent || ''));
+  const headers = Array.from(table.querySelectorAll('thead th')).map((th) =>
+    normalizeText(th.textContent || ''),
+  );
   const rows = Array.from(table.querySelectorAll('tbody tr')).map((tr) =>
     Array.from(tr.querySelectorAll('td')).map((td) => normalizeText(td.textContent || '')),
   );
@@ -80,7 +82,9 @@ function parseTable(table: HTMLTableElement): ParsedTable {
 function parseDeviceLibraryHtml(html: string): { title: string; deviceTypes: DeviceTypeEntry[] } {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const title = normalizeText(doc.querySelector('h1')?.textContent || 'Matter Device Library');
-  const anchors = Array.from(doc.querySelectorAll('[id^="ref_"]')).filter((el) => el.id && el.id.startsWith('ref_'));
+  const anchors = Array.from(doc.querySelectorAll('[id^="ref_"]')).filter(
+    (el) => el.id && el.id.startsWith('ref_'),
+  );
   const deviceTypes: DeviceTypeEntry[] = [];
 
   for (const a of anchors) {
@@ -149,7 +153,9 @@ export default function App() {
   const visibleDeviceTypes = useMemo(() => {
     const q = settings.filter.trim().toLowerCase();
     if (!q) return deviceTypes;
-    return deviceTypes.filter((d) => d.title.toLowerCase().includes(q) || d.anchorId.toLowerCase().includes(q));
+    return deviceTypes.filter(
+      (d) => d.title.toLowerCase().includes(q) || d.anchorId.toLowerCase().includes(q),
+    );
   }, [deviceTypes, settings.filter]);
 
   const selectedDevice = useMemo(() => {
@@ -201,13 +207,19 @@ export default function App() {
         }
 
         setLastUpdated(new Date().toISOString());
-        if (parsed.deviceTypes.length && !parsed.deviceTypes.some((d) => d.anchorId === settings.deviceAnchorId)) {
+        if (
+          parsed.deviceTypes.length &&
+          !parsed.deviceTypes.some((d) => d.anchorId === settings.deviceAnchorId)
+        ) {
           setSettings((s) => ({ ...s, deviceAnchorId: parsed.deviceTypes[0].anchorId }));
         }
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         setError(msg);
-        void sdk.log.error('Failed to load Matter Device Library', { message: msg, version: settings.version });
+        void sdk.log.error('Failed to load Matter Device Library', {
+          message: msg,
+          version: settings.version,
+        });
       } finally {
         setLoading(false);
       }
@@ -301,7 +313,12 @@ export default function App() {
           <div className="meta">
             <div className="muted">Matched: {visibleDeviceTypes.length}</div>
             {settings.deviceAnchorId ? (
-              <a className="link" href={buildDocAnchorUrl(settings.version, settings.deviceAnchorId)} target="_blank" rel="noreferrer">
+              <a
+                className="link"
+                href={buildDocAnchorUrl(settings.version, settings.deviceAnchorId)}
+                target="_blank"
+                rel="noreferrer"
+              >
                 Open selected section
               </a>
             ) : null}
@@ -337,8 +354,8 @@ export default function App() {
             </div>
           )}
           <div className="foot">
-            Notes: Data is extracted from the HTML spec page and may lag behind the newest Matter releases. Use the “Open Spec” link for
-            the authoritative source.
+            Notes: Data is extracted from the HTML spec page and may lag behind the newest Matter releases.
+            Use the “Open Spec” link for the authoritative source.
           </div>
         </div>
       </div>

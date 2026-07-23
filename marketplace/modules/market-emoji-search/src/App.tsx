@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { sdk } from './sdk';
+import { sdk } from '@devtoolbox/plugin-sdk';
 
 type Locale = 'en' | 'zh-CN';
 type EmojiSize = 'sm' | 'md' | 'lg' | 'xl';
@@ -52,7 +52,10 @@ type EmojiEntry = {
 };
 
 function normalizeText(s: string): string {
-  return s.toLowerCase().replace(/[_\s-]+/g, '').trim();
+  return s
+    .toLowerCase()
+    .replace(/[_\s-]+/g, '')
+    .trim();
 }
 
 function matchAllTerms(haystack: string, q: string): boolean {
@@ -78,7 +81,10 @@ function toMessageMap(list: unknown): Record<string, string> {
   return out;
 }
 
-function resolveNameByIndex(indexToKey: Record<string, string>, msgByKey: Record<string, string>): Record<string, string> {
+function resolveNameByIndex(
+  indexToKey: Record<string, string>,
+  msgByKey: Record<string, string>,
+): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [idx, key] of Object.entries(indexToKey)) {
     out[idx] = msgByKey[key] ?? key;
@@ -160,7 +166,9 @@ async function copyText(text: string) {
 }
 
 export default function App() {
-  const [locale, setLocale] = useState<Locale>(() => resolveLocale(new URLSearchParams(window.location.search).get('locale') ?? navigator.language));
+  const [locale, setLocale] = useState<Locale>(() =>
+    resolveLocale(new URLSearchParams(window.location.search).get('locale') ?? navigator.language),
+  );
   const [emojiSize, setEmojiSize] = useState<EmojiSize>('md');
   const [dataset, setDataset] = useState<EmojiDataset | null>(null);
   const [group, setGroup] = useState<string>('all');
@@ -212,7 +220,10 @@ export default function App() {
           if (schemaOk && dataOk && alive) {
             const ds = (c as { dataset: EmojiDataset }).dataset;
             setDataset(ds);
-            void sdk.log.info('cache:hit', { updatedAt: (c as { updatedAt?: unknown }).updatedAt, count: ds.emojis.length });
+            void sdk.log.info('cache:hit', {
+              updatedAt: (c as { updatedAt?: unknown }).updatedAt,
+              count: ds.emojis.length,
+            });
           }
         } else if (cached.ok) {
           void sdk.log.info('cache:miss');
@@ -251,10 +262,12 @@ export default function App() {
         };
         setDataset(nextDataset);
         void sdk.log.info('dataset loading:ok', { count: (emojis.default as unknown as EmojiData[]).length });
-        void sdk.storage.set(cacheKey, { schemaVersion: 1, updatedAt: Date.now(), dataset: nextDataset }).then((r) => {
-          if (r.ok) void sdk.log.info('cache:updated');
-          else void sdk.log.warn('cache:update_failed', r.error);
-        });
+        void sdk.storage
+          .set(cacheKey, { schemaVersion: 1, updatedAt: Date.now(), dataset: nextDataset })
+          .then((r) => {
+            if (r.ok) void sdk.log.info('cache:updated');
+            else void sdk.log.warn('cache:update_failed', r.error);
+          });
       } catch (e: unknown) {
         void sdk.log.error('dataset loading:error', { error: e instanceof Error ? e.message : String(e) });
       }
@@ -294,10 +307,23 @@ export default function App() {
             id: `${baseUnicode ?? ''}_${u}`,
             unicode: u,
             annotation: String(s.annotation ?? e.annotation ?? ''),
-            tags: Array.isArray(s.tags) ? s.tags.map(String) : Array.isArray(e.tags) ? e.tags.map(String) : [],
-            shortcodes: Array.isArray(s.shortcodes) ? s.shortcodes.map(String) : Array.isArray(e.shortcodes) ? e.shortcodes.map(String) : [],
+            tags: Array.isArray(s.tags)
+              ? s.tags.map(String)
+              : Array.isArray(e.tags)
+                ? e.tags.map(String)
+                : [],
+            shortcodes: Array.isArray(s.shortcodes)
+              ? s.shortcodes.map(String)
+              : Array.isArray(e.shortcodes)
+                ? e.shortcodes.map(String)
+                : [],
             group: typeof s.group === 'number' ? s.group : typeof e.group === 'number' ? e.group : undefined,
-            subgroup: typeof s.subgroup === 'number' ? s.subgroup : typeof e.subgroup === 'number' ? e.subgroup : undefined,
+            subgroup:
+              typeof s.subgroup === 'number'
+                ? s.subgroup
+                : typeof e.subgroup === 'number'
+                  ? e.subgroup
+                  : undefined,
           });
         }
       }
@@ -399,7 +425,10 @@ export default function App() {
       xl: { cell: 72, font: 36 },
     };
     const v = map[emojiSize];
-    return { ['--emoji-cell' as string]: `${v.cell}px`, ['--emoji-font' as string]: `${v.font}px` } as React.CSSProperties;
+    return {
+      ['--emoji-cell' as string]: `${v.cell}px`,
+      ['--emoji-font' as string]: `${v.font}px`,
+    } as React.CSSProperties;
   }, [emojiSize]);
 
   return (
@@ -436,13 +465,19 @@ export default function App() {
           ))}
         </select>
 
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t(locale, 'searchPlaceholder')} />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t(locale, 'searchPlaceholder')}
+        />
       </div>
 
       <div className="gridWrap" ref={gridWrapRef}>
         <div className="grid">
           {!dataset ? (
-            <div style={{ padding: 12, color: 'var(--text-tertiary)', fontSize: 12 }}>{t(locale, 'loading')}</div>
+            <div style={{ padding: 12, color: 'var(--text-tertiary)', fontSize: 12 }}>
+              {t(locale, 'loading')}
+            </div>
           ) : (
             shown.map((e) => (
               <button
