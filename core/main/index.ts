@@ -407,7 +407,12 @@ function createWindow(): void {
       details,
     });
   });
-  win.setFullScreen(true);
+  // Keep native window controls visible on Windows/Linux while still opening large.
+  if (process.platform === 'darwin') {
+    win.setFullScreen(true);
+  } else {
+    win.maximize();
+  }
 
   void win.loadURL(navigationTarget.entryUrl);
 }
