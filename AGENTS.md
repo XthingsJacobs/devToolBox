@@ -1,6 +1,6 @@
 # Project Rules for Agents
 
-These instructions apply to automated coding agents and contributors working in this repository. `AGENT.md` and `AGENTS.md` intentionally contain the same content so different tools can discover the project rules on any machine.
+These instructions apply to automated coding agents and contributors working in this repository. `AGENTS.md` is the canonical project-rules file for agent tooling.
 
 ## Repository Overview
 
@@ -16,14 +16,14 @@ Main areas:
 - `marketplace/`: local Marketplace plugin sources, shared build config, pack/sign/verify scripts.
 - `docs/`: English documentation plus locale mirrors such as `docs/zh-CN/`.
 - `scripts/`: validation, smoke tests, scaffolding, bundle, docs, and supply-chain checks.
-- `cli.sh`: unified contributor CLI.
+- `cli.sh` / `cli.ps1`: unified contributor CLI entry points for macOS/Linux and Windows PowerShell.
 
 ## Required Local Environment
 
-Use the versions pinned by the repository. Do not rely on a newer local Node version for development or release work.
+Use the minimum versions declared by the repository. `.nvmrc` and `packageManager` record the default contributor versions.
 
-- Node.js: `20.x` from `.nvmrc` (`package.json` requires `>=20 <21`).
-- pnpm: `10.x`, pinned as `pnpm@10.10.0`.
+- Node.js: `>=20` (`.nvmrc` pins the default major version).
+- pnpm: `>=10`, with `pnpm@10.10.0` as the default pinned package manager.
 - Git.
 - Electron packaging must generally run on the target OS.
 
@@ -38,13 +38,20 @@ pnpm install
 ./cli.sh doctor
 ```
 
-If `cli.sh` is not executable after checkout:
+On Windows PowerShell, use `cli.ps1` for the same workflows:
+
+```powershell
+.\cli.ps1 doctor
+.\cli.ps1 dev
+```
+
+If `cli.sh` is not executable after checkout on macOS/Linux:
 
 ```bash
 chmod +x ./cli.sh
 ```
 
-Node 26 or other unsupported versions may typecheck in some cases but can break packaging or native dependency install. Switch to Node 20 before packaging or release validation.
+Node and pnpm versions below the minimum may appear to work in narrow cases but are not supported for development, packaging, or release validation.
 
 ## Common Commands
 
@@ -63,6 +70,17 @@ Prefer the repository CLI for routine workflows:
 ./cli.sh package windows
 ```
 
+Windows PowerShell equivalents use `cli.ps1`, for example:
+
+```powershell
+.\cli.ps1 doctor
+.\cli.ps1 dev
+.\cli.ps1 build
+.\cli.ps1 check
+.\cli.ps1 plugin <market-id>
+.\cli.ps1 package windows
+```
+
 Equivalent focused pnpm commands:
 
 ```bash
@@ -77,11 +95,12 @@ pnpm bundle:check
 pnpm -C marketplace bundle:check
 ```
 
-`./cli.sh dev` auto-selects a free Vite port if `5173` is occupied. Useful environment variables:
+`./cli.sh dev` and `.\cli.ps1 dev` auto-select a free Vite port if `5173` is occupied. Useful environment variables:
 
 - `DEVTOOLBOX_DEV_PORT=5174 ./cli.sh dev` to prefer another dev port.
-- `DEVTOOLBOX_STRICT_PORT=1 ./cli.sh dev` to fail instead of auto-selecting another port.
-- `DEVTOOLBOX_ALLOW_UNSUPPORTED_NODE=1` only for temporary diagnostics, not release work.
+- `$env:DEVTOOLBOX_DEV_PORT="5174"; .\cli.ps1 dev` for the same override in PowerShell.
+- `DEVTOOLBOX_STRICT_PORT=1 ./cli.sh dev` or `$env:DEVTOOLBOX_STRICT_PORT="1"; .\cli.ps1 dev` to fail instead of auto-selecting another port.
+- `DEVTOOLBOX_ALLOW_UNSUPPORTED_NODE=1` only for temporary diagnostics, not normal workflows.
 
 ## Validation Expectations
 
@@ -166,6 +185,13 @@ Respect the process boundaries. This repository has automated checks for many of
 ./cli.sh plugin all
 ```
 
+Windows PowerShell:
+
+```powershell
+.\cli.ps1 plugin <market-id>
+.\cli.ps1 plugin all
+```
+
 - Release packages must pass provenance, checksum, manifest, and bundle checks.
 - Plugin iframes are sandboxed. Do not expose Electron or Node APIs directly to plugin code.
 - Every privileged SDK call must be permission-checked by the capability broker.
@@ -206,7 +232,14 @@ Packaging examples:
 ./cli.sh package all
 ```
 
-Packaging runs build, bundle validation, and supply-chain generation. If packaging is killed by the OS, first check memory/disk with `./cli.sh doctor`, close memory-heavy apps, and ensure Node 20 is active.
+Windows PowerShell:
+
+```powershell
+.\cli.ps1 package windows
+.\cli.ps1 package windows x64
+```
+
+Packaging runs build, bundle validation, and supply-chain generation. If packaging is killed by the OS, first check memory/disk with `./cli.sh doctor` or `.\cli.ps1 doctor`, close memory-heavy apps, and ensure Node.js and pnpm meet the minimum versions.
 
 ## Safety Notes for Agents
 
