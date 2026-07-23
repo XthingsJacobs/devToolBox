@@ -2,7 +2,7 @@
 
 [English](../../development/design-system.md) | [简体中文](design-system.md)
 
-本指南整合了运行时 UI 约定、Figma 规范和本地 Figma 生成器。应用样式是权威来源；Figma 用于设计和审阅，而不是独立的实现契约。
+本指南整合了运行时 UI 约定和可选设计稿指南。应用样式是权威来源；设计稿用于设计和审阅，而不是独立的实现契约。
 
 ## 原则
 
@@ -20,9 +20,8 @@
 | 共享工具样式                     | `core/renderer/theme/toolkit.css`                   |
 | 共享 React 组件和 Hook           | `core/packages/ui/`                                 |
 | 工具级可复用布局模式             | `core/renderer/components/` 下的现有组件            |
-| Figma 初始变量和页面             | `figma/plugins/devtoolbox-ui-kit-generator/code.ts` |
 
-当 Figma 中的值与运行时变量不一致时，应更新设计文件或生成器；不要为了匹配过时稿件而增加局部 CSS 覆盖。
+当设计稿中的值与运行时变量不一致时，应更新设计稿或记录有意差异；不要为了匹配过时稿件而增加局部 CSS 覆盖。
 
 ## 运行时变量
 
@@ -142,27 +141,7 @@
 
 推荐模板包括仪表盘、工具、模块/Marketplace、设置、全局搜索和代表性的工具页面。主参考使用 1440 × 900 桌面画框，并为响应式行为添加窄窗口变体。
 
-生成器会创建页面结构以及颜色和文本样式。组件变体和生产级模板仍需单独设计；生成画框只是起点，不能证明组件已实现。
-
-## 使用 Figma 生成器
-
-在仓库根目录构建：
-
-```bash
-node figma/plugins/devtoolbox-ui-kit-generator/build.mjs
-```
-
-构建结果写入 `figma/plugins/devtoolbox-ui-kit-generator/dist/code.js`。
-
-在 Figma 中导入开发插件：
-
-1. 打开 **Plugins → Development → Import plugin from manifest...**。
-2. 选择 `figma/plugins/devtoolbox-ui-kit-generator/manifest.json`。
-3. 打开目标 Figma 文件。
-4. 运行 **Plugins → Development → DevToolBox UI Kit Generator**。
-5. 选择 **Generate/Update UI Kit**。
-
-该操作会创建或更新五个页面，并初始化 `Color/...` 和 `Text/...` 样式。再次运行会更新同名样式，不会替换手工创建的组件内容。
+本仓库不再提供内置设计文件生成器。如果外部维护设计稿，请让它与上方列出的运行时变量保持一致。
 
 ## UI 审阅清单
 
@@ -171,4 +150,4 @@ node figma/plugins/devtoolbox-ui-kit-generator/build.mjs
 - 主要、破坏性、禁用、加载、空和错误状态表达清楚。
 - 键盘操作和文本搜索行为一致。
 - 工具布局在窄窗口下不会隐藏关键操作。
-- Figma 规范发生变化时，与运行时变量保持同步。
+- 设计稿发生变化时，与运行时变量保持同步。

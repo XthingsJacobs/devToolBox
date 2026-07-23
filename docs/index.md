@@ -13,7 +13,7 @@ DevToolBox is a cross-platform desktop toolbox built with Electron, React, TypeS
 | Add a built-in tool             | [Built-in Tool Development](development/tools.md) |
 | Build a Marketplace plugin      | [Plugin Development](development/plugins.md)      |
 | Use Plugin SDK APIs             | [Plugin SDK Reference](development/plugin-sdk.md) |
-| Follow UI and Figma conventions | [Design System](development/design-system.md)     |
+| Follow UI conventions           | [Design System](development/design-system.md)     |
 | Contribute or report an issue   | [Project and Community](project/governance.md)    |
 
 ## How the application is organized
@@ -37,7 +37,7 @@ Built-in tools and Marketplace plugins are intentionally separate extension mode
 - [Built-in Tool Development](development/tools.md): scaffolding, manifests, localization, UI patterns, IPC, and validation.
 - [Plugin Development](development/plugins.md): plugin lifecycle, permissions, local registry, and packaging.
 - [Plugin SDK Reference](development/plugin-sdk.md): SDK namespaces, method signatures, parameters, return values, limits, and errors.
-- [Design System](development/design-system.md): current design tokens, component conventions, page patterns, and the Figma generator.
+- [Design System](development/design-system.md): current design tokens, component conventions, page patterns, and design-artifact guidance.
 
 ### Project information
 
@@ -53,4 +53,4 @@ Documentation explains the current implementation, but executable contracts rema
 - Marketplace manifest types: `core/packages/core/src/index.ts`
 - Plugin client SDK: `core/packages/plugin-sdk/src/index.ts`
 - Renderer-to-main API: `core/main/preload/index.ts` and `core/renderer/types/electron.d.ts`
-- Repository commands: `package.json` and `cli.sh`
+- Repository commands: `package.json`, `cli.sh`, and `cli.ps1`

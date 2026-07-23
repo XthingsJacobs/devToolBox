@@ -18,20 +18,27 @@ These scripts support development and contributor workflows for DevToolBox.
 
 ## CLI Preflight
 
-`./cli.sh` wraps the common local workflows with environment checks:
+`./cli.sh` and `.\cli.ps1` wrap the common local workflows with environment checks. Use `cli.sh` on macOS/Linux and `cli.ps1` from Windows PowerShell.
 
-- `./cli.sh doctor` prints Node, pnpm, Git, OS, memory, disk, and the default dev port status.
-- `./cli.sh dev` checks the default Vite port (`5173`) before launch and automatically selects the next free port when it is occupied.
-- `./cli.sh package` validates Node/pnpm versions, memory, disk space, macOS-to-Windows packaging prerequisites, and writes `.devtoolbox-diagnostics/package-preflight.txt`.
-- `./cli.sh package` also runs build, bundle budget, supply-chain generation, and an esbuild binary sanity check before `electron-builder`.
+- `./cli.sh doctor` / `.\cli.ps1 doctor` prints Node, pnpm, Git, OS, memory, disk, and the default dev port status.
+- `./cli.sh dev` / `.\cli.ps1 dev` checks the default Vite port (`5173`) before launch and automatically selects the next free port when it is occupied.
+- `./cli.sh package` / `.\cli.ps1 package` validates Node/pnpm versions, memory, disk space, platform packaging prerequisites, and writes `.devtoolbox-diagnostics/package-preflight.txt`.
+- Packaging also runs build, bundle budget, supply-chain generation, and an esbuild binary sanity check before `electron-builder`.
 
 Useful overrides:
 
 - `DEVTOOLBOX_DEV_PORT=5174 ./cli.sh dev`: choose a preferred dev port.
 - `DEVTOOLBOX_STRICT_PORT=1 ./cli.sh dev`: fail instead of auto-selecting a fallback port.
 - `DEVTOOLBOX_SKIP_RESOURCE_CHECK=1 ./cli.sh package macos arm64`: skip memory/disk checks when intentionally forcing a package run.
-- `DEVTOOLBOX_ALLOW_UNSUPPORTED_NODE=1`: bypass the Node major-version guard for diagnostics only; release packaging should use Node 20.
-- `DEVTOOLBOX_ALLOW_UNSUPPORTED_PNPM=1`: bypass the pnpm major-version guard for diagnostics only; normal workflows should use pnpm 10.
+- `DEVTOOLBOX_ALLOW_UNSUPPORTED_NODE=1`: bypass the Node minimum-version guard for diagnostics only; normal workflows should use Node 20 or newer.
+- `DEVTOOLBOX_ALLOW_UNSUPPORTED_PNPM=1`: bypass the pnpm minimum-version guard for diagnostics only; normal workflows should use pnpm 10 or newer.
+
+PowerShell examples use the same environment variable names:
+
+```powershell
+$env:DEVTOOLBOX_DEV_PORT="5174"; .\cli.ps1 dev
+$env:DEVTOOLBOX_STRICT_PORT="1"; .\cli.ps1 dev
+```
 
 ## Usage
 
@@ -50,6 +57,11 @@ pnpm test:renderer
 ./cli.sh doctor
 ./cli.sh dev
 ./cli.sh package macos arm64
+
+# Windows PowerShell equivalents
+.\cli.ps1 doctor
+.\cli.ps1 dev
+.\cli.ps1 package windows
 
 # Create a new tool module (interactive)
 pnpm new:tool

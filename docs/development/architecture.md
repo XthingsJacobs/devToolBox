@@ -39,13 +39,12 @@ core/
   renderer/                     React application and built-in tools
 docs/                            MkDocs content
 docs-site/                       MkDocs configuration
-figma/                           Local Figma UI-kit generator
 marketplace/
   modules/                       Marketplace plugin sources
   scripts/                       Registry and package builders
   shared/                        Shared Marketplace Vite configuration
 scripts/                         Repository validators and scaffolding
-cli.sh                           Unified contributor CLI
+cli.sh / cli.ps1                 Unified contributor CLI entry points
 ```
 
 ## Process boundaries
@@ -55,6 +54,8 @@ cli.sh                           Unified contributor CLI
 The main process is the trust boundary for privileged operations. It registers application-level IPC in `core/main/ipc/` and discovers built-in tool handlers from `core/main/modules/*.ts`.
 
 Handlers must validate input, return serializable values, and avoid exposing arbitrary filesystem paths or command execution. Shared sensitive behavior belongs in main-process helpers rather than being reimplemented by individual tools.
+
+The main window uses platform-native window behavior: macOS starts in fullscreen, while Windows and Linux start maximized so native minimize, maximize, and close controls remain visible.
 
 ### Preload bridge
 

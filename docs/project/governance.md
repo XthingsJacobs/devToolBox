@@ -82,4 +82,4 @@ docs/
 └── zh-CN/                       Simplified Chinese mirror with the same paths
 ```
 
-When implementation changes, update the smallest authoritative page and link to it rather than copying the same instructions into several pages. Keep executable files such as manifests, shared types, `package.json`, and `cli.sh` as the final source of truth.
+When implementation changes, update the smallest authoritative page and link to it rather than copying the same instructions into several pages. Keep executable files such as manifests, shared types, `package.json`, `cli.sh`, and `cli.ps1` as the final source of truth.

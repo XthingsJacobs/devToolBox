@@ -39,13 +39,12 @@ core/
   renderer/                     React 应用和内置工具
 docs/                            MkDocs 内容
 docs-site/                       MkDocs 配置
-figma/                           本地 Figma UI Kit 生成器
 marketplace/
   modules/                       Marketplace 插件源码
   scripts/                       注册表和插件包构建器
   shared/                        Marketplace 共享 Vite 配置
 scripts/                         仓库校验器和脚手架
-cli.sh                           统一贡献者 CLI
+cli.sh / cli.ps1                 统一贡献者 CLI 入口
 ```
 
 ## 进程边界
@@ -55,6 +54,8 @@ cli.sh                           统一贡献者 CLI
 主进程是特权操作的信任边界。它在 `core/main/ipc/` 中注册应用级 IPC，并从 `core/main/modules/*.ts` 发现内置工具处理器。
 
 处理器必须校验输入、返回可序列化值，并避免暴露任意文件系统路径或命令执行能力。共享的敏感行为应放在主进程辅助模块中，不要由各工具重复实现。
+
+主窗口使用平台原生窗口行为：macOS 启动后进入全屏；Windows 和 Linux 启动后最大化，以保留系统原生的最小化、最大化和关闭按钮。
 
 ### 预加载桥接
 

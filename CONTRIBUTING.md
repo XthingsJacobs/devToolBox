@@ -17,6 +17,13 @@ pnpm install
 ./cli.sh dev
 ```
 
+On Windows PowerShell:
+
+```powershell
+pnpm install
+.\cli.ps1 dev
+```
+
 ## Quality Gates
 
 Run the standard checks before opening a pull request:

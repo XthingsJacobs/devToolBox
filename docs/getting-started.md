@@ -14,8 +14,8 @@ The remaining sections are for contributors and plugin authors working from the 
 
 ### Requirements
 
-- Node.js 20 (the version pinned in `.nvmrc`)
-- pnpm 10 (the repository pins `pnpm@10.10.0`)
+- Node.js 20 or newer (`.nvmrc` pins the default contributor version)
+- pnpm 10 or newer (the repository pins `pnpm@10.10.0` as the default)
 - Git
 
 Install dependencies and start the desktop development server:
@@ -32,11 +32,18 @@ The equivalent CLI workflow is:
 ./cli.sh dev
 ```
 
-If the script is not executable, run `chmod +x ./cli.sh` once.
+On Windows PowerShell, use the Windows entry point:
+
+```powershell
+.\cli.ps1 doctor
+.\cli.ps1 dev
+```
+
+If `cli.sh` is not executable on macOS/Linux, run `chmod +x ./cli.sh` once.
 
 ## Repository CLI
 
-`cli.sh` is the unified entry point for common development and packaging workflows. Run `./cli.sh help` for the current command list.
+`cli.sh` and `cli.ps1` are the unified entry points for common development and packaging workflows. Use `cli.sh` on macOS/Linux and `cli.ps1` on Windows PowerShell. Run `./cli.sh help` or `.\cli.ps1 help` for the current command list.
 
 | Command                            | Purpose                                                                      |
 | ---------------------------------- | ---------------------------------------------------------------------------- |
@@ -51,7 +58,9 @@ If the script is not executable, run `chmod +x ./cli.sh` once.
 | `./cli.sh package <target> [arch]` | Build a macOS or Windows installer.                                          |
 | `./cli.sh clear`                   | Interactively clear selected user data, caches, plugins, or build artifacts. |
 
-`./cli.sh clear` deletes local data only after interactive confirmation. Close DevToolBox before using it and read each prompt carefully.
+On Windows, replace `./cli.sh` with `.\cli.ps1`; Windows packaging supports `.\cli.ps1 package windows [x64]`.
+
+`./cli.sh clear` and `.\cli.ps1 clear` delete local data only after interactive confirmation. Close DevToolBox before using them and read each prompt carefully.
 
 ## Build and validate
 
@@ -86,6 +95,13 @@ Common examples:
 ./cli.sh package macos universal
 ./cli.sh package windows
 ./cli.sh package all
+```
+
+Windows PowerShell:
+
+```powershell
+.\cli.ps1 package windows
+.\cli.ps1 package windows x64
 ```
 
 Run `./cli.sh package` without arguments for the interactive flow.
@@ -136,7 +152,17 @@ Check the versions first:
 ./cli.sh doctor
 ```
 
-Use Node.js 20 from `.nvmrc`, pnpm 10, and a current lockfile installation. Re-run `pnpm install` if dependencies are incomplete.
+On Windows PowerShell:
+
+```powershell
+.\cli.ps1 doctor
+```
+
+Use Node.js 20 or newer, pnpm 10 or newer, and a current lockfile installation. Re-run `pnpm install` if dependencies are incomplete.
+
+### Windows opens without native window controls
+
+Development windows on Windows and Linux open maximized, not in exclusive fullscreen, so the native minimize, maximize, and close buttons remain visible. If those controls are missing, make sure you are running a build that includes the current main-process window behavior and restart DevToolBox.
 
 ### Recording export reports a missing `ffmpeg`
 
@@ -158,6 +184,12 @@ Rebuild the local registry, then verify that Settings points to the generated `f
 
 ```bash
 ./cli.sh plugin <market-id>
+```
+
+On Windows PowerShell:
+
+```powershell
+.\cli.ps1 plugin <market-id>
 ```
 
 Refresh the Marketplace after changing the registry URL. See [Plugin Development](development/plugins.md) for the complete local installation flow.

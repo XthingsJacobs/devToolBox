@@ -2,7 +2,7 @@
 
 [English](design-system.md) | [简体中文](../zh-CN/development/design-system.md)
 
-This guide combines runtime UI conventions, the Figma specification, and the local Figma generator. The application styles are the source of truth; Figma is a design and review aid rather than a separate implementation contract.
+This guide combines runtime UI conventions and optional design-artifact guidance. The application styles are the source of truth; design artifacts are review aids rather than separate implementation contracts.
 
 ## Principles
 
@@ -20,9 +20,8 @@ This guide combines runtime UI conventions, the Figma specification, and the loc
 | Shared utility styles                          | `core/renderer/theme/toolkit.css`                     |
 | Shared React components and hooks              | `core/packages/ui/`                                   |
 | Tool-level reusable layout patterns            | Existing components under `core/renderer/components/` |
-| Figma seed tokens and pages                    | `figma/plugins/devtoolbox-ui-kit-generator/code.ts`   |
 
-When a Figma value differs from the runtime variables, update the design artifact or generator; do not add a local CSS override just to match an outdated mockup.
+When a design artifact differs from the runtime variables, update the artifact or document the intentional difference; do not add a local CSS override just to match an outdated mockup.
 
 ## Runtime tokens
 
@@ -142,27 +141,7 @@ Organize the component page by increasing composition:
 
 Recommended templates include Dashboard, Tools, Modules/Marketplace, Settings, Global Search, and representative tool pages. Use a 1440 x 900 desktop frame for the main reference and add narrow-window variants for responsive behavior.
 
-The generator creates the page structure plus color and text styles. Component variants and production-ready templates still require design work; generated frames are a starting point, not proof that a component is implemented.
-
-## Use the Figma generator
-
-Build it from the repository root:
-
-```bash
-node figma/plugins/devtoolbox-ui-kit-generator/build.mjs
-```
-
-The build writes `figma/plugins/devtoolbox-ui-kit-generator/dist/code.js`.
-
-Import the development plugin in Figma:
-
-1. Open **Plugins -> Development -> Import plugin from manifest...**.
-2. Select `figma/plugins/devtoolbox-ui-kit-generator/manifest.json`.
-3. Open the target Figma file.
-4. Run **Plugins -> Development -> DevToolBox UI Kit Generator**.
-5. Choose **Generate/Update UI Kit**.
-
-The operation creates or updates the five pages and seeds `Color/...` and `Text/...` styles. Re-running it updates matching named styles without replacing hand-built component content.
+This repository no longer ships an in-tree design-file generator. If a design artifact is maintained externally, keep it aligned with the runtime tokens listed above.
 
 ## UI review checklist
 
@@ -171,4 +150,4 @@ The operation creates or updates the five pages and seeds `Color/...` and `Text/
 - Primary, destructive, disabled, loading, empty, and error states are clear.
 - Keyboard actions and text search behave consistently.
 - Tool layout works at narrow window widths without hiding essential actions.
-- Figma specifications that changed are synchronized with runtime tokens.
+- Design artifacts that changed are synchronized with runtime tokens.

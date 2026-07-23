@@ -13,7 +13,7 @@ DevToolBox 是一款使用 Electron、React、TypeScript 和 Vite 构建的跨�
 | 添加内置工具          | [内置工具开发](development/tools.md)       |
 | 开发 Marketplace 插件 | [插件开发](development/plugins.md)         |
 | 使用 Plugin SDK API   | [插件 SDK 参考](development/plugin-sdk.md) |
-| 遵循 UI 和 Figma 规范 | [设计系统](development/design-system.md)   |
+| 遵循 UI 规范          | [设计系统](development/design-system.md)   |
 | 参与贡献或报告问题    | [项目与社区](project/governance.md)        |
 
 ## 应用的组成方式
@@ -37,7 +37,7 @@ DevToolBox 是一款使用 Electron、React、TypeScript 和 Vite 构建的跨�
 - [内置工具开发](development/tools.md)：脚手架、清单、本地化、UI 模式、IPC 和验证。
 - [插件开发](development/plugins.md)：插件生命周期、权限、本地注册表和打包。
 - [插件 SDK 参考](development/plugin-sdk.md)：SDK 命名空间、方法签名、参数、返回值、限制和错误码。
-- [设计系统](development/design-system.md)：当前设计变量、组件约定、页面模式和 Figma 生成器。
+- [设计系统](development/design-system.md)：当前设计变量、组件约定、页面模式和设计稿指南。
 
 ### 项目信息
 
@@ -53,4 +53,4 @@ DevToolBox 是一款使用 Electron、React、TypeScript 和 Vite 构建的跨�
 - Marketplace 清单类型：`core/packages/core/src/index.ts`
 - 插件客户端 SDK：`core/packages/plugin-sdk/src/index.ts`
 - 渲染进程到主进程的 API：`core/main/preload/index.ts` 和 `core/renderer/types/electron.d.ts`
-- 仓库命令：`package.json` 和 `cli.sh`
+- 仓库命令：`package.json`、`cli.sh` 和 `cli.ps1`

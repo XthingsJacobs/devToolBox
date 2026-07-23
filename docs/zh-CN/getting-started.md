@@ -14,8 +14,8 @@
 
 ### 环境要求
 
-- Node.js 20（版本记录在 `.nvmrc` 中）
-- pnpm 10（仓库固定使用 `pnpm@10.10.0`）
+- Node.js 20 或更高版本（`.nvmrc` 记录默认贡献者版本）
+- pnpm 10 或更高版本（仓库默认固定使用 `pnpm@10.10.0`）
 - Git
 
 安装依赖并启动桌面开发服务器：
@@ -32,11 +32,18 @@ pnpm dev
 ./cli.sh dev
 ```
 
-如果脚本没有执行权限，请先运行一次 `chmod +x ./cli.sh`。
+在 Windows PowerShell 中，请使用 Windows 入口：
+
+```powershell
+.\cli.ps1 doctor
+.\cli.ps1 dev
+```
+
+如果 macOS/Linux 上的 `cli.sh` 没有执行权限，请先运行一次 `chmod +x ./cli.sh`。
 
 ## 仓库 CLI
 
-`cli.sh` 是常用开发和打包流程的统一入口。运行 `./cli.sh help` 查看当前命令列表。
+`cli.sh` 和 `cli.ps1` 是常用开发和打包流程的统一入口。macOS/Linux 使用 `cli.sh`，Windows PowerShell 使用 `cli.ps1`。运行 `./cli.sh help` 或 `.\cli.ps1 help` 查看当前命令列表。
 
 | 命令                             | 用途                                                 |
 | -------------------------------- | ---------------------------------------------------- |
@@ -51,7 +58,9 @@ pnpm dev
 | `./cli.sh package <目标> [架构]` | 构建 macOS 或 Windows 安装程序。                     |
 | `./cli.sh clear`                 | 以交互方式清理选定的用户数据、缓存、插件或构建产物。 |
 
-`./cli.sh clear` 只会在交互确认后删除本地数据。使用前请关闭 DevToolBox，并仔细阅读每个提示。
+在 Windows 中，将 `./cli.sh` 替换为 `.\cli.ps1`；Windows 打包支持 `.\cli.ps1 package windows [x64]`。
+
+`./cli.sh clear` 和 `.\cli.ps1 clear` 只会在交互确认后删除本地数据。使用前请关闭 DevToolBox，并仔细阅读每个提示。
 
 ## 构建和验证
 
@@ -86,6 +95,13 @@ pnpm test:electron
 ./cli.sh package macos universal
 ./cli.sh package windows
 ./cli.sh package all
+```
+
+Windows PowerShell：
+
+```powershell
+.\cli.ps1 package windows
+.\cli.ps1 package windows x64
 ```
 
 不带参数运行 `./cli.sh package` 可进入交互流程。
@@ -136,8 +152,18 @@ pnpm install
 ./cli.sh doctor
 ```
 
-请使用 `.nvmrc` 指定的 Node.js 20、pnpm 10 和当前锁文件。如果依赖不完整，请重新运行 `pnpm install`。
+Windows PowerShell：
 
+```powershell
+.\cli.ps1 doctor
+```
+
+请使用 Node.js 20 或更高版本、pnpm 10 或更高版本和当前锁文件。如果依赖不完整，请重新运行 `pnpm install`。
+
+
+### Windows 窗口缺少原生控制按钮
+
+Windows 和 Linux 的开发窗口会以最大化方式打开，而不是进入独占全屏，因此应保留系统原生的最小化、最大化和关闭按钮。如果看不到这些按钮，请确认正在运行包含当前主进程窗口行为的构建，并重启 DevToolBox。
 ### 录制导出提示缺少 `ffmpeg`
 
 `KvsWebrtcViewer` 的录制导出需要系统安装 `ffmpeg`。在 macOS 上运行：
@@ -158,6 +184,12 @@ Windows 与 macOS/Linux 使用不同的命令名称和参数。主进程已经�
 
 ```bash
 ./cli.sh plugin <market-id>
+```
+
+Windows PowerShell：
+
+```powershell
+.\cli.ps1 plugin <market-id>
 ```
 
 修改注册表 URL 后刷新 Marketplace。完整的本地安装流程请参阅[插件开发](development/plugins.md)。
