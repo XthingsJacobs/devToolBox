@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useI18n, getModuleLocale } from '../../../i18n';
+import { networkService } from '../../../services';
 import styles from './TracertTest.module.css';
 
 const HOPS_OPTIONS = [15, 30, 50, 64];
@@ -25,7 +26,7 @@ export default function TracertTest() {
 
   const cleanup = useCallback(() => {
     if (handlersRef.current) {
-      window.electronAPI?.offTracertListeners(
+      networkService.offTracertListeners(
         handlersRef.current.data,
         handlersRef.current.error,
         handlersRef.current.done,
@@ -37,7 +38,7 @@ export default function TracertTest() {
   useEffect(() => {
     return () => {
       cleanup();
-      window.electronAPI?.tracertStop();
+      networkService.tracertStop();
     };
   }, [cleanup]);
 
@@ -52,23 +53,23 @@ export default function TracertTest() {
     setError('');
     setOutput('');
 
-    const dataHandler = window.electronAPI?.onTracertData((data: string) => {
+    const dataHandler = networkService.onTracertData((data: string) => {
       setOutput((prev) => prev + data);
     });
-    const errorHandler = window.electronAPI?.onTracertError((err: string) => {
+    const errorHandler = networkService.onTracertError((err: string) => {
       setError(err);
     });
-    const doneHandler = window.electronAPI?.onTracertDone(() => {
+    const doneHandler = networkService.onTracertDone(() => {
       setLoading(false);
       cleanup();
     });
     handlersRef.current = { data: dataHandler, error: errorHandler, done: doneHandler };
 
-    window.electronAPI?.tracertStart(target, maxHops);
+    networkService.tracertStart(target, maxHops);
   };
 
   const handleStop = () => {
-    window.electronAPI?.tracertStop();
+    networkService.tracertStop();
     setLoading(false);
     cleanup();
   };

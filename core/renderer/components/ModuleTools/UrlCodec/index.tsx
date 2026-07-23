@@ -4,6 +4,7 @@ import sp from '@@components/SplitPane/SplitPane.module.css';
 import ResponsiveActions from '@components/ResponsiveActions';
 import { useSplitPane, HelpModal, ToolSection } from '@@components';
 import { useI18n, getModuleLocale } from '../../../i18n';
+import SafeHtml from '../../SafeHtml';
 import './UrlHelp.css';
 import {
   VscArrowLeft,
@@ -123,7 +124,7 @@ export default function UrlCodec() {
 
       {showHelp && (
         <HelpModal title={HELP_TITLE} onClose={() => setShowHelp(false)}>
-          <div className="url-help" dangerouslySetInnerHTML={{ __html: helpHtml }} />
+          <SafeHtml className="url-help" html={helpHtml} profile="rich-text" />
         </HelpModal>
       )}
     </div>

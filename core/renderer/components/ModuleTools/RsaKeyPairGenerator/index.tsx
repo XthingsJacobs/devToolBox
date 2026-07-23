@@ -3,10 +3,9 @@ import styles from './RsaKeyPairGenerator.module.css';
 import { ToolButton, ToolSection, ToolTextarea } from '@@components';
 import { VscCopy, VscRefresh } from 'react-icons/vsc';
 import { useI18n, getModuleLocale } from '../../../i18n';
+import { cryptoService } from '../../../services';
 
-type GenResult =
-  | { success: true; publicKey: string; privateKey: string }
-  | { success: false; error: string };
+type GenResult = { success: true; publicKey: string; privateKey: string } | { success: false; error: string };
 
 function clampBits(v: number): number {
   if (v < 1024) return 1024;
@@ -35,9 +34,9 @@ export default function RsaKeyPairGenerator() {
     setError('');
     setLoading(true);
     try {
-      const api = window.electronAPI;
-      if (!api?.generateRSAKeyPair) throw new Error(t('notSupported'));
-      const res = (await api.generateRSAKeyPair({ keySize: bits })) as GenResult;
+      const request = cryptoService.generateRSAKeyPair({ keySize: bits });
+      if (!request) throw new Error(t('notSupported'));
+      const res = (await request) as GenResult;
       if (!res?.success) throw new Error(res?.error || t('generateError'));
       setPublicKey(res.publicKey);
       setPrivateKey(res.privateKey);

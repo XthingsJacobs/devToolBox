@@ -1,5 +1,6 @@
 import type { MarketplaceRegistry } from './types';
 import registryData from './registry.json';
+import { marketplaceService } from '../services';
 
 export function getBundledRegistry(): MarketplaceRegistry {
   return registryData as MarketplaceRegistry;
@@ -43,10 +44,12 @@ function isMarketplaceRegistry(v: unknown): v is MarketplaceRegistry {
   return true;
 }
 
-export async function fetchMarketplaceRegistry(url: string, options?: { force?: boolean }): Promise<MarketplaceRegistry> {
-  const api = window.electronAPI;
-  if (!api?.marketplaceFetchRegistry) throw new Error('marketplaceFetchRegistry not available');
-  const res = await api.marketplaceFetchRegistry(url, options);
+export async function fetchMarketplaceRegistry(
+  url: string,
+  options?: { force?: boolean },
+): Promise<MarketplaceRegistry> {
+  const res = await marketplaceService.fetchRegistry(url, options);
+  if (!res) throw new Error('marketplaceFetchRegistry not available');
   if (!res?.success) throw new Error(res?.error ?? 'Failed to fetch registry');
   if (!isMarketplaceRegistry(res.registry)) throw new Error('Invalid registry payload');
   return res.registry;

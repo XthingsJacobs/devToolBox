@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { appService } from '../services';
 
 export type Theme = 'dark' | 'light';
 export type ThemeSetting = 'auto' | Theme;
@@ -46,7 +47,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const next = resolveTheme(s);
     setTheme(next);
     applyTheme(next);
-    void window.electronAPI?.setTheme?.(s);
+    void appService.setTheme(s);
   }, []);
 
   useEffect(() => {
@@ -54,10 +55,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme]);
 
   useEffect(() => {
-    const api = window.electronAPI;
-    if (!api?.getTheme) return;
-    void api
-      .getTheme()
+    const request = appService.getTheme();
+    if (!request) return;
+    void request
       .then((res: unknown) => {
         const r = res as { setting?: unknown; theme?: unknown };
         const s = r?.setting;
@@ -73,23 +73,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const api = window.electronAPI;
-    if (!api?.onThemeChanged || !api?.offThemeChanged) return;
-    const handler = (_event: unknown, nextTheme: string) => {
-      if (nextTheme === 'dark' || nextTheme === 'light') {
-        setTheme(nextTheme);
-        applyTheme(nextTheme);
-      }
-      void api.getTheme?.().then((res: unknown) => {
-        const r = res as { setting?: unknown };
-        const s = r?.setting;
-        const nextSetting: ThemeSetting = s === 'auto' || s === 'dark' || s === 'light' ? s : 'auto';
+    const handler = (nextTheme: Theme) => {
+      setTheme(nextTheme);
+      applyTheme(nextTheme);
+      void appService.getTheme()?.then((res) => {
+        const nextSetting: ThemeSetting = res.setting;
         setSetting(nextSetting);
         localStorage.setItem(THEME_SETTING_KEY, nextSetting);
       });
     };
-    api.onThemeChanged(handler);
-    return () => api.offThemeChanged(handler);
+    return appService.onThemeChanged(handler);
   }, []);
 
   useEffect(() => {
@@ -112,4 +105,3 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 export function useTheme() {
   return useContext(ThemeContext);
 }
-

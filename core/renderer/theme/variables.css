@@ -26,6 +26,15 @@
   --accent-error-bg: #1a0707;
   --accent-warning: #e3b341;
 
+  --state-selected-bg: #1f3a5f;
+  --state-selected-border: #388bfd;
+  --state-selected-text: #58a6ff;
+  --state-info-bg: #0a1628;
+  --state-info-border: #1f6feb66;
+  --state-info-text: #cdd9e5;
+  --text-on-accent: #ffffff;
+  --control-knob: #ffffff;
+
   --cat-dev: #58a6ff;
   --cat-text: #7ee787;
   --cat-network: #f0883e;
@@ -54,9 +63,20 @@
   --radius: 10px;
   --radius-small: 8px;
   --shadow-float: 0 8px 24px #00000099;
+  --shadow-soft: 0 2px 12px #00000033;
+  --shadow-popover: 0 16px 44px #000000aa;
+  --shadow-control: 0 1px 3px #00000066;
+  --overlay-backdrop: rgb(0 0 0 / 55%);
+
+  --syntax-key: #9cdcfe;
+  --syntax-string: #ce9178;
+  --syntax-number: #b5cea8;
+  --syntax-boolean: #569cd6;
+  --syntax-null: #569cd6;
 
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
-  --font-family-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', Consolas, 'Courier New', monospace;
+  --font-family-mono:
+    'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', Consolas, 'Courier New', monospace;
   --font-size-base: 0.8125rem;
   --font-size-small: 0.75rem;
   --font-size-xs: 0.6875rem;
@@ -93,6 +113,15 @@
   --accent-error-bg: #ffd8d3;
   --accent-warning: #9a6700;
 
+  --state-selected-bg: #dbeafe;
+  --state-selected-border: #0969da;
+  --state-selected-text: #0550ae;
+  --state-info-bg: #eef6ff;
+  --state-info-border: #b6d7ff;
+  --state-info-text: #57606a;
+  --text-on-accent: #ffffff;
+  --control-knob: #ffffff;
+
   --cat-dev: #0969da;
   --cat-text: #1a7f37;
   --cat-network: #bc4c00;
@@ -113,6 +142,17 @@
 
   --badge-bg: var(--border-subtle);
   --badge-text: var(--text-primary);
+  --shadow-float: 0 8px 24px #1f232826;
+  --shadow-soft: 0 2px 12px #1f232814;
+  --shadow-popover: 0 16px 44px #1f232826;
+  --shadow-control: 0 1px 3px #1f23282e;
+  --overlay-backdrop: rgb(31 35 40 / 32%);
+
+  --syntax-key: #0550ae;
+  --syntax-string: #953800;
+  --syntax-number: #116329;
+  --syntax-boolean: #8250df;
+  --syntax-null: #cf222e;
   --workspace-max-width: 980px;
 }
 

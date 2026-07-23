@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import styles from './BackupCenter.module.css';
+import { backupService, fileService } from '../../services';
 
 type BackupHeader = { schemaVersion?: number; encryption?: { mode?: string; layers?: { mode?: string }[] } };
 type DtbxInfo = { version: number; modes: string[]; needsPassword: boolean };
@@ -77,12 +78,14 @@ export default function ImportBackup() {
   }, [dtbx, fileBytes]);
   const header = useMemo(() => (fileText ? parseHeader(fileText) : null), [fileText]);
   const encMode = useMemo(() => {
-    if (dtbx) return dtbx.modes.length ? dtbx.modes.join(' -> ') : 'unknown';
+    if (dtbx) return dtbx.modes.length ? dtbx.modes.join(' -> ') : 'none';
     const sv = header?.schemaVersion;
     if (sv === 1) return header?.encryption?.mode ?? 'unknown';
     if (sv === 2) {
       const layers = Array.isArray(header?.encryption?.layers) ? header?.encryption?.layers : [];
-      const modes = layers.map((l) => l?.mode).filter((m): m is string => typeof m === 'string' && m.length > 0);
+      const modes = layers
+        .map((l) => l?.mode)
+        .filter((m): m is string => typeof m === 'string' && m.length > 0);
       return modes.length ? modes.join(' -> ') : 'unknown';
     }
     return 'unknown';
@@ -110,7 +113,7 @@ export default function ImportBackup() {
   const chooseFile = async () => {
     setErr('');
     setOk(false);
-    const res = await window.electronAPI?.openFile([{ name: 'DevToolBox Backup', extensions: ['dtbx'] }], 'base64');
+    const res = await fileService.openFile([{ name: 'DevToolBox Backup', extensions: ['dtbx'] }], 'base64');
     if (!res) return;
     setFilePath(res.filePath);
     setFileBase64(res.content);
@@ -121,7 +124,7 @@ export default function ImportBackup() {
     setOk(false);
     setBusy(true);
     try {
-      const res = await window.electronAPI?.backupImport({
+      const res = await backupService.importBackup({
         content: dtbx ? fileBase64 : fileText,
         encoding: dtbx ? 'base64' : 'utf8',
         password: password.trim() || undefined,

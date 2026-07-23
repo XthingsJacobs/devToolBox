@@ -1,10 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type LegacyRef } from 'react';
-import { VscBroadcast, VscChevronRight, VscDeviceMobile, VscGraph, VscInfo, VscScreenFull, VscSearch, VscSparkle } from 'react-icons/vsc';
-import ReactGridLayout, { type Layout, type LayoutItem, useContainerWidth, verticalCompactor } from 'react-grid-layout';
+import {
+  VscBroadcast,
+  VscChevronRight,
+  VscDeviceMobile,
+  VscGraph,
+  VscInfo,
+  VscScreenFull,
+  VscSearch,
+  VscSparkle,
+} from 'react-icons/vsc';
+import ReactGridLayout, {
+  type Layout,
+  type LayoutItem,
+  useContainerWidth,
+  verticalCompactor,
+} from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import styles from './DashboardPage.module.css';
 import { loadModuleUsage, scoreUsage } from '../../data/moduleUsage';
+import { appService, networkService } from '../../services';
 import type { Category, Module } from '../../types';
 
 type FlatTool = {
@@ -19,7 +34,11 @@ type NetworkInfo = { localIPs: string[]; publicIP: string; dnsStatus: string; in
 type NavigatorLike = Navigator & { vendor?: string; platform?: string };
 
 type WidgetId = 'frequent' | 'network' | 'appInfo' | 'screen' | 'device';
-type WidgetLayout = { order: WidgetId[]; spanById: Record<WidgetId, number>; rowSpanById: Record<WidgetId, number> };
+type WidgetLayout = {
+  order: WidgetId[];
+  spanById: Record<WidgetId, number>;
+  rowSpanById: Record<WidgetId, number>;
+};
 
 const WIDGET_STORAGE_KEY_V2 = 'devtoolbox.dashboard.widgets.v2';
 const WIDGET_STORAGE_KEY = 'devtoolbox.dashboard.widgets.v3';
@@ -144,20 +163,18 @@ export default function DashboardPage({
   }, []);
 
   useEffect(() => {
-    const api = window.electronAPI;
-    if (!api?.getAppInfo) return;
-    void api.getAppInfo().then((v) => {
+    void appService.getInfo()?.then((v) => {
       const r = v as { version?: unknown; build?: unknown };
-      setAppInfo({ version: typeof r?.version === 'string' ? r.version : undefined, build: typeof r?.build === 'string' ? r.build : undefined });
+      setAppInfo({
+        version: typeof r?.version === 'string' ? r.version : undefined,
+        build: typeof r?.build === 'string' ? r.build : undefined,
+      });
     });
   }, []);
 
   useEffect(() => {
-    const api = window.electronAPI;
-    if (!api?.getNetworkInfo) return;
-
     const refresh = () => {
-      void api.getNetworkInfo().then((v) => setNetworkInfo(v as NetworkInfo));
+      void networkService.getNetworkInfo()?.then((v) => setNetworkInfo(v as NetworkInfo));
     };
     refresh();
     const timer = window.setInterval(refresh, 30_000);
@@ -213,7 +230,9 @@ export default function DashboardPage({
       .filter(Boolean) as FlatTool[];
 
     if (picked.length >= 4) return picked;
-    const fill = flatTools.filter((t) => !picked.some((x) => x.module.id === t.module.id)).slice(0, 8 - picked.length);
+    const fill = flatTools
+      .filter((t) => !picked.some((x) => x.module.id === t.module.id))
+      .slice(0, 8 - picked.length);
     return [...picked, ...fill];
   }, [flatTools]);
 
@@ -227,35 +246,38 @@ export default function DashboardPage({
 
   const toMutableLayout = useCallback((l: Layout) => l.map((x) => ({ ...x })), []);
 
-  const buildGridLayout = useCallback((source: WidgetLayout) => {
-    const next: LayoutItem[] = [];
-    let x = 0;
-    let y = 0;
-    let rowMaxH = 0;
-    for (const id of source.order) {
-      const w = clampSpan(source.spanById[id] ?? 12);
-      const h = clampRowSpan(source.rowSpanById[id] ?? DEFAULT_WIDGET_ROW_SPAN[id] ?? 10);
-      if (x + w > GRID_COLS) {
-        y += rowMaxH || 1;
-        x = 0;
-        rowMaxH = 0;
+  const buildGridLayout = useCallback(
+    (source: WidgetLayout) => {
+      const next: LayoutItem[] = [];
+      let x = 0;
+      let y = 0;
+      let rowMaxH = 0;
+      for (const id of source.order) {
+        const w = clampSpan(source.spanById[id] ?? 12);
+        const h = clampRowSpan(source.rowSpanById[id] ?? DEFAULT_WIDGET_ROW_SPAN[id] ?? 10);
+        if (x + w > GRID_COLS) {
+          y += rowMaxH || 1;
+          x = 0;
+          rowMaxH = 0;
+        }
+        next.push({
+          i: id,
+          x,
+          y,
+          w,
+          h,
+          minW: 6,
+          maxW: GRID_COLS,
+          minH: 6,
+          maxH: 200,
+        });
+        x += w;
+        rowMaxH = Math.max(rowMaxH, h);
       }
-      next.push({
-        i: id,
-        x,
-        y,
-        w,
-        h,
-        minW: 6,
-        maxW: GRID_COLS,
-        minH: 6,
-        maxH: 200,
-      });
-      x += w;
-      rowMaxH = Math.max(rowMaxH, h);
-    }
-    return toMutableLayout(verticalCompactor.compact(next, GRID_COLS));
-  }, [toMutableLayout]);
+      return toMutableLayout(verticalCompactor.compact(next, GRID_COLS));
+    },
+    [toMutableLayout],
+  );
 
   useEffect(() => {
     if (isGridInteracting) return;
@@ -372,14 +394,28 @@ export default function DashboardPage({
                       }}
                       onMouseEnter={() => setActiveSearchIndex(idx)}
                     >
-                      <div className={styles.searchItemIcon} style={{ color: t.categoryColor, background: `${t.categoryColor}18`, borderColor: `${t.categoryColor}30` }}>
+                      <div
+                        className={styles.searchItemIcon}
+                        style={{
+                          color: t.categoryColor,
+                          background: `${t.categoryColor}18`,
+                          borderColor: `${t.categoryColor}30`,
+                        }}
+                      >
                         {t.module.icon}
                       </div>
                       <div className={styles.searchItemText}>
                         <div className={styles.searchItemName}>{t.module.name}</div>
                         <div className={styles.searchItemDesc}>{t.module.description}</div>
                       </div>
-                      <span className={styles.searchItemPill} style={{ color: t.categoryColor, background: `${t.categoryColor}15`, borderColor: `${t.categoryColor}25` }}>
+                      <span
+                        className={styles.searchItemPill}
+                        style={{
+                          color: t.categoryColor,
+                          background: `${t.categoryColor}15`,
+                          borderColor: `${t.categoryColor}25`,
+                        }}
+                      >
                         {t.categoryName}
                       </span>
                     </button>
@@ -391,7 +427,12 @@ export default function DashboardPage({
 
           <h1 className={styles.headerTitle}>Welcome back 👋</h1>
           <p className={styles.headerSub}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {new Date().toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
           </p>
         </div>
 
@@ -429,7 +470,13 @@ export default function DashboardPage({
                 containerPadding: [0, 0],
                 maxRows: Number.POSITIVE_INFINITY,
               }}
-              dragConfig={{ enabled: true, bounded: true, handle: `.${styles.widgetHeader}`, cancel: '.react-resizable-handle', threshold: 3 }}
+              dragConfig={{
+                enabled: true,
+                bounded: true,
+                handle: `.${styles.widgetHeader}`,
+                cancel: '.react-resizable-handle',
+                threshold: 3,
+              }}
               resizeConfig={{
                 enabled: true,
                 handles: ['e', 's', 'se'],
@@ -452,104 +499,142 @@ export default function DashboardPage({
                 commitLayout(next);
               }}
             >
-          <div key="frequent">
-            <Widget
-              title="Frequent Tools"
-              icon={<VscGraph />}
-              accentColor="var(--accent-secondary)"
-              action={
-                <button type="button" className={styles.widgetAction} draggable={false} onClick={() => onCategorySelect('all')}>
-                  View All Tools
-                  <VscChevronRight />
-                </button>
-              }
-            >
-              <div className={styles.grid}>
-                {frequent.slice(0, 8).map((t) => (
-                  <button key={t.module.id} type="button" className={styles.toolCard} onClick={() => onOpenTool(t.categoryId, t.module.id)}>
-                    <div className={styles.toolCardTop}>
-                      <div
-                        className={styles.toolCardIcon}
-                        style={{ color: t.categoryColor, background: `${t.categoryColor}15`, borderColor: `${t.categoryColor}28` }}
+              <div key="frequent">
+                <Widget
+                  title="Frequent Tools"
+                  icon={<VscGraph />}
+                  accentColor="var(--accent-secondary)"
+                  action={
+                    <button
+                      type="button"
+                      className={styles.widgetAction}
+                      draggable={false}
+                      onClick={() => onCategorySelect('all')}
+                    >
+                      View All Tools
+                      <VscChevronRight />
+                    </button>
+                  }
+                >
+                  <div className={styles.grid}>
+                    {frequent.slice(0, 8).map((t) => (
+                      <button
+                        key={t.module.id}
+                        type="button"
+                        className={styles.toolCard}
+                        onClick={() => onOpenTool(t.categoryId, t.module.id)}
                       >
-                        {t.module.icon}
-                      </div>
-                      <div className={styles.toolCardMeta}>
-                        <div className={styles.toolCardName}>{t.module.name}</div>
-                        <span className={styles.toolCardPill} style={{ color: t.categoryColor, background: `${t.categoryColor}15` }}>
-                          {t.categoryName}
-                        </span>
-                      </div>
-                    </div>
-                    <div className={styles.toolCardDesc}>{t.module.description}</div>
-                  </button>
-                ))}
+                        <div className={styles.toolCardTop}>
+                          <div
+                            className={styles.toolCardIcon}
+                            style={{
+                              color: t.categoryColor,
+                              background: `${t.categoryColor}15`,
+                              borderColor: `${t.categoryColor}28`,
+                            }}
+                          >
+                            {t.module.icon}
+                          </div>
+                          <div className={styles.toolCardMeta}>
+                            <div className={styles.toolCardName}>{t.module.name}</div>
+                            <span
+                              className={styles.toolCardPill}
+                              style={{ color: t.categoryColor, background: `${t.categoryColor}15` }}
+                            >
+                              {t.categoryName}
+                            </span>
+                          </div>
+                        </div>
+                        <div className={styles.toolCardDesc}>{t.module.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </Widget>
               </div>
-            </Widget>
-          </div>
 
-          <div key="network">
-            <Widget title="Network" icon={<VscBroadcast />} accentColor="var(--accent-secondary)">
-              <InfoBody
-                items={[
-                  {
-                    label: 'Internet',
-                    value: networkInfo?.internetStatus ?? (navigator.onLine ? 'Connected' : 'Disconnected'),
-                    ok: (networkInfo?.internetStatus ?? (navigator.onLine ? 'Connected' : 'Disconnected')) === 'Connected',
-                  },
-                  { label: 'DNS', value: networkInfo?.dnsStatus ?? '-', ok: (networkInfo?.dnsStatus ?? '') === 'OK' },
-                  { label: 'Public IP', value: networkInfo?.publicIP ?? '-' },
-                  { label: 'Local IP', value: (networkInfo?.localIPs ?? ['-']).join('\n'), wrap: true, mono: true, pre: true },
-                ]}
-              />
-            </Widget>
-          </div>
+              <div key="network">
+                <Widget title="Network" icon={<VscBroadcast />} accentColor="var(--accent-secondary)">
+                  <InfoBody
+                    items={[
+                      {
+                        label: 'Internet',
+                        value:
+                          networkInfo?.internetStatus ?? (navigator.onLine ? 'Connected' : 'Disconnected'),
+                        ok:
+                          (networkInfo?.internetStatus ??
+                            (navigator.onLine ? 'Connected' : 'Disconnected')) === 'Connected',
+                      },
+                      {
+                        label: 'DNS',
+                        value: networkInfo?.dnsStatus ?? '-',
+                        ok: (networkInfo?.dnsStatus ?? '') === 'OK',
+                      },
+                      { label: 'Public IP', value: networkInfo?.publicIP ?? '-' },
+                      {
+                        label: 'Local IP',
+                        value: (networkInfo?.localIPs ?? ['-']).join('\n'),
+                        wrap: true,
+                        mono: true,
+                        pre: true,
+                      },
+                    ]}
+                  />
+                </Widget>
+              </div>
 
-          <div key="appInfo">
-            <Widget title="App Info" icon={<VscInfo />} accentColor="var(--accent-warning)">
-              <InfoBody
-                items={[
-                  { label: 'Version', value: appInfo?.version ?? '-' },
-                  { label: 'Build', value: appInfo?.build ?? '-' },
-                  { label: 'Local Time', value: now.toLocaleString() },
-                  { label: 'Unix Timestamp', value: String(Math.floor(now.getTime() / 1000)) },
-                  { label: 'Timezone', value: Intl.DateTimeFormat().resolvedOptions().timeZone },
-                ]}
-              />
-            </Widget>
-          </div>
+              <div key="appInfo">
+                <Widget title="App Info" icon={<VscInfo />} accentColor="var(--accent-warning)">
+                  <InfoBody
+                    items={[
+                      { label: 'Version', value: appInfo?.version ?? '-' },
+                      { label: 'Build', value: appInfo?.build ?? '-' },
+                      { label: 'Local Time', value: now.toLocaleString() },
+                      { label: 'Unix Timestamp', value: String(Math.floor(now.getTime() / 1000)) },
+                      { label: 'Timezone', value: Intl.DateTimeFormat().resolvedOptions().timeZone },
+                    ]}
+                  />
+                </Widget>
+              </div>
 
-          <div key="screen">
-            <Widget title="Screen" icon={<VscScreenFull />} accentColor="var(--accent-success)">
-              <InfoBody
-                columns={2}
-                items={[
-                  { label: 'Screen size', value: `${window.screen.width} × ${window.screen.height}` },
-                  { label: 'Orientation', value: String(window.screen.orientation?.type ?? '-') },
-                  { label: 'Orientation angle', value: `${Number(window.screen.orientation?.angle ?? 0)}°` },
-                  { label: 'Color depth', value: `${window.screen.colorDepth} bits` },
-                  { label: 'Pixel ratio', value: `${window.devicePixelRatio} dppx` },
-                  { label: 'Window size', value: `${window.innerWidth} × ${window.innerHeight}` },
-                ]}
-              />
-            </Widget>
-          </div>
+              <div key="screen">
+                <Widget title="Screen" icon={<VscScreenFull />} accentColor="var(--accent-success)">
+                  <InfoBody
+                    columns={2}
+                    items={[
+                      { label: 'Screen size', value: `${window.screen.width} × ${window.screen.height}` },
+                      { label: 'Orientation', value: String(window.screen.orientation?.type ?? '-') },
+                      {
+                        label: 'Orientation angle',
+                        value: `${Number(window.screen.orientation?.angle ?? 0)}°`,
+                      },
+                      { label: 'Color depth', value: `${window.screen.colorDepth} bits` },
+                      { label: 'Pixel ratio', value: `${window.devicePixelRatio} dppx` },
+                      { label: 'Window size', value: `${window.innerWidth} × ${window.innerHeight}` },
+                    ]}
+                  />
+                </Widget>
+              </div>
 
-          <div key="device">
-            <Widget title="Device" icon={<VscDeviceMobile />} accentColor="var(--cat-security)">
-              <InfoBody
-                items={[
-                  { label: 'Browser vendor', value: String((navigator as NavigatorLike).vendor ?? '-') },
-                  {
-                    label: 'Languages',
-                    value: Array.isArray(navigator.languages) ? navigator.languages.join(', ') : String(navigator.language ?? '-'),
-                  },
-                  { label: 'Platform', value: String((navigator as NavigatorLike).platform ?? 'Unknown') },
-                  { label: 'User agent', value: navigator.userAgent, wrap: true, mono: false },
-                ]}
-              />
-            </Widget>
-          </div>
+              <div key="device">
+                <Widget title="Device" icon={<VscDeviceMobile />} accentColor="var(--cat-security)">
+                  <InfoBody
+                    items={[
+                      { label: 'Browser vendor', value: String((navigator as NavigatorLike).vendor ?? '-') },
+                      {
+                        label: 'Languages',
+                        value: Array.isArray(navigator.languages)
+                          ? navigator.languages.join(', ')
+                          : String(navigator.language ?? '-'),
+                      },
+                      {
+                        label: 'Platform',
+                        value: String((navigator as NavigatorLike).platform ?? 'Unknown'),
+                      },
+                      { label: 'User agent', value: navigator.userAgent, wrap: true, mono: false },
+                    ]}
+                  />
+                </Widget>
+              </div>
             </ReactGridLayout>
           ) : null}
         </div>
@@ -601,11 +686,18 @@ function InfoBody({
   return (
     <div className={`${styles.infoBody}${columns === 2 ? ` ${styles.infoBodyGrid2}` : ''}`}>
       {items.map((item) => (
-        <div key={`${item.label}-${item.value}`} className={`${styles.infoRow}${item.wrap ? ` ${styles.infoRowWrap}` : ''}`}>
+        <div
+          key={`${item.label}-${item.value}`}
+          className={`${styles.infoRow}${item.wrap ? ` ${styles.infoRowWrap}` : ''}`}
+        >
           <span className={styles.infoLabel}>{item.label}</span>
-          <span className={`${styles.infoValue}${item.wrap && item.mono === false ? ` ${styles.infoValueInherit}` : ''}`}>
+          <span
+            className={`${styles.infoValue}${item.wrap && item.mono === false ? ` ${styles.infoValueInherit}` : ''}`}
+          >
             {typeof item.ok === 'boolean' && <span className={styles.dot} data-ok={item.ok ? '1' : '0'} />}
-            <span className={`${styles.infoValueText}${item.pre ? ` ${styles.infoValuePre}` : ''}`}>{item.value}</span>
+            <span className={`${styles.infoValueText}${item.pre ? ` ${styles.infoValuePre}` : ''}`}>
+              {item.value}
+            </span>
           </span>
         </div>
       ))}

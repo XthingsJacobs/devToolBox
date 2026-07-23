@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import styles from './BackupCenter.module.css';
+import { backupService } from '../../services';
 
 function collectLocalStorage(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -28,15 +29,23 @@ export default function ExportBackup() {
 
   const canExport = useMemo(() => {
     if (!usePassword) return true;
-    return password.trim().length > 0;
+    return password.trim().length >= 8;
   }, [password, usePassword]);
+
+  const protectionHint = useMemo(() => {
+    if (bindToDevice && usePassword)
+      return 'Encrypted with this device and your password. Both are required to restore it.';
+    if (bindToDevice) return 'Encrypted for this device. It cannot be restored on another device.';
+    if (usePassword) return 'Encrypted with your password and portable between devices.';
+    return 'Not encrypted. Enable password encryption before storing sensitive data.';
+  }, [bindToDevice, usePassword]);
 
   const handleExport = async () => {
     setErr('');
     setOkPath('');
     setBusy(true);
     try {
-      const res = await window.electronAPI?.backupExport({
+      const res = await backupService.exportBackup({
         bindToDevice,
         password: usePassword ? password : undefined,
         localStorage: collectLocalStorage(),
@@ -56,7 +65,11 @@ export default function ExportBackup() {
       <div className={styles.card}>
         <div className={styles.row}>
           <label className={styles.check}>
-            <input type="checkbox" checked={bindToDevice} onChange={(e) => setBindToDevice(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={bindToDevice}
+              onChange={(e) => setBindToDevice(e.target.checked)}
+            />
             Encrypt (this device only)
           </label>
         </div>
@@ -72,11 +85,12 @@ export default function ExportBackup() {
               className={styles.input}
               type="password"
               value={password}
-              placeholder="Password"
+              placeholder="Password (at least 8 characters)"
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
         )}
+        <div className={styles.hint}>{protectionHint}</div>
         <div className={styles.hint}>The backup includes app data and selected local settings.</div>
       </div>
 

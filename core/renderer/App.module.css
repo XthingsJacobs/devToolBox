@@ -16,6 +16,121 @@
   height: 100%;
 }
 
+.shellFrame {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.safeModeBanner {
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 9px 16px;
+  box-sizing: border-box;
+  border-bottom: 1px solid color-mix(in oklab, var(--accent-warning) 35%, var(--border-default));
+  background:
+    linear-gradient(100deg, color-mix(in oklab, var(--accent-warning) 13%, transparent), transparent 48%),
+    var(--bg-secondary);
+}
+
+.safeModeIcon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in oklab, var(--accent-warning) 35%, var(--border-default));
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--accent-warning) 12%, var(--bg-primary));
+  color: var(--accent-warning);
+  font-size: 17px;
+}
+
+.safeModeCopy {
+  min-width: 0;
+  flex: 1;
+}
+
+.safeModeTitle {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.safeModeDetail,
+.safeModeError {
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.safeModeError {
+  color: var(--accent-error);
+}
+
+.safeModeActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.safeModeButton,
+.safeModePrimaryButton {
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 11px;
+}
+
+.safeModeButton {
+  border: 1px solid var(--border-emphasis);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.safeModePrimaryButton {
+  border: 1px solid color-mix(in oklab, var(--accent-warning) 45%, var(--border-default));
+  background: color-mix(in oklab, var(--accent-warning) 16%, var(--bg-tertiary));
+  color: var(--accent-warning);
+}
+
+.safeModeButton:hover,
+.safeModePrimaryButton:hover {
+  filter: brightness(1.08);
+}
+
+.safeModePrimaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.pageLoading,
+.dialogLoading {
+  display: grid;
+  place-items: center;
+  color: var(--text-secondary);
+}
+
+.pageLoading {
+  width: 100%;
+  height: 100%;
+}
+
+.dialogLoading {
+  min-height: 120px;
+}
+
 :global(input),
 :global(textarea),
 :global(select),
@@ -67,7 +182,7 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--overlay-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -131,10 +246,27 @@
 
 .groupDialogBtnPrimary {
   background: var(--accent-color);
-  color: #fff;
+  color: var(--text-on-accent);
   border-color: var(--accent-color);
 }
 
 .groupDialogBtnPrimary:hover {
   opacity: 0.85;
+}
+
+@media (max-width: 720px) {
+  .safeModeBanner {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .safeModeCopy {
+    width: calc(100% - 44px);
+    flex: none;
+  }
+
+  .safeModeActions {
+    width: 100%;
+    padding-left: 44px;
+  }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import styles from './AboutDialog.module.css';
 import { VscClose, VscGithub, VscGlobe, VscMail, VscSparkle } from 'react-icons/vsc';
+import { appService } from '../../services';
 
 type AppInfo = {
   name: string;
@@ -9,30 +10,20 @@ type AppInfo = {
   build: string;
 };
 
-export default function AboutDialog({
-  isOpen,
-  onClose,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-}) {
+export default function AboutDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [iconSmallUrl, setIconSmallUrl] = useState<string | null>(null);
   const [iconLargeUrl, setIconLargeUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
-    const api = window.electronAPI;
-    if (!api?.getAppInfo) return;
-    void api.getAppInfo().then((v) => setInfo(v as AppInfo));
+    void appService.getInfo()?.then((v) => setInfo(v as AppInfo));
   }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
-    const api = window.electronAPI;
-    if (!api?.getAppIcon) return;
-    void api.getAppIcon('normal').then((v) => setIconSmallUrl(typeof v === 'string' ? v : null));
-    void api.getAppIcon('large').then((v) => setIconLargeUrl(typeof v === 'string' ? v : null));
+    void appService.getIcon('normal')?.then((v) => setIconSmallUrl(typeof v === 'string' ? v : null));
+    void appService.getIcon('large')?.then((v) => setIconLargeUrl(typeof v === 'string' ? v : null));
   }, [isOpen]);
 
   useEffect(() => {
@@ -59,7 +50,11 @@ export default function AboutDialog({
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             <div className={styles.headerBadge}>
-              {iconSmallUrl ? <img className={styles.appIconSmall} src={iconSmallUrl} alt="" /> : <VscSparkle size={16} />}
+              {iconSmallUrl ? (
+                <img className={styles.appIconSmall} src={iconSmallUrl} alt="" />
+              ) : (
+                <VscSparkle size={16} />
+              )}
             </div>
             <h2 className={styles.headerTitle}>About {title}</h2>
           </div>
@@ -71,7 +66,11 @@ export default function AboutDialog({
         <div className={styles.content}>
           <div className={styles.hero}>
             <div className={styles.heroIcon}>
-              {iconLargeUrl ? <img className={styles.appIconLarge} src={iconLargeUrl} alt="" /> : <VscSparkle size={36} />}
+              {iconLargeUrl ? (
+                <img className={styles.appIconLarge} src={iconLargeUrl} alt="" />
+              ) : (
+                <VscSparkle size={36} />
+              )}
             </div>
             <div className={styles.heroTitle}>{title}</div>
             <div className={styles.heroSub}>Developer Productivity Suite</div>
@@ -79,25 +78,47 @@ export default function AboutDialog({
           </div>
 
           <div className={styles.desc}>
-            A comprehensive collection of developer tools designed to streamline your workflow. From encoding/decoding utilities to text formatting and network diagnostics.
+            A comprehensive collection of developer tools designed to streamline your workflow. From
+            encoding/decoding utilities to text formatting and network diagnostics.
           </div>
 
           <div className={styles.grid}>
             <InfoItem label="License" value="MIT License" />
             <InfoItem label="Platform" value="Cross-platform" />
             <InfoItem label="Framework" value="React + TypeScript" />
-            <InfoItem label="Last Updated" value={new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })} />
+            <InfoItem
+              label="Last Updated"
+              value={new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+              })}
+            />
           </div>
 
           <div className={styles.links}>
-            <LinkButton icon={<VscGithub size={14} />} label="View on GitHub" href="https://github.com/devtoolbox" />
-            <LinkButton icon={<VscGlobe size={14} />} label="Official Website" href="https://devtoolbox.dev" />
-            <LinkButton icon={<VscMail size={14} />} label="Contact Support" href="mailto:support@devtoolbox.dev" />
+            <LinkButton
+              icon={<VscGithub size={14} />}
+              label="View on GitHub"
+              href="https://github.com/devtoolbox"
+            />
+            <LinkButton
+              icon={<VscGlobe size={14} />}
+              label="Official Website"
+              href="https://devtoolbox.dev"
+            />
+            <LinkButton
+              icon={<VscMail size={14} />}
+              label="Contact Support"
+              href="mailto:support@devtoolbox.dev"
+            />
           </div>
         </div>
 
         <div className={styles.footer}>
-          <div className={styles.footerText}>© {new Date().getFullYear()} {title}. All rights reserved.</div>
+          <div className={styles.footerText}>
+            © {new Date().getFullYear()} {title}. All rights reserved.
+          </div>
           <button type="button" className={styles.footerBtn} onClick={onClose}>
             Close
           </button>

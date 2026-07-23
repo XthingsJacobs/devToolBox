@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useI18n, getModuleLocale } from '../../../i18n';
+import { cryptoService, fileService } from '../../../services';
 import styles from './CsrGenerator.module.css';
 
 const KEY_SIZES = [2048, 3072, 4096];
@@ -26,7 +27,7 @@ export default function CsrGenerator() {
     setGenerating(true);
     setError('');
     try {
-      const result = await window.electronAPI?.generateCSR({
+      const result = await cryptoService.generateCSR({
         commonName: commonName.trim() || undefined,
         organization: organization.trim() || undefined,
         organizationalUnit: organizationalUnit.trim() || undefined,
@@ -60,7 +61,7 @@ export default function CsrGenerator() {
     const ext = activeTab === 'csr' ? 'csr' : 'key';
     const name =
       activeTab === 'csr' ? `${commonName || 'certificate'}.csr` : `${commonName || 'private'}.key`;
-    await window.electronAPI?.saveFileAs(name, currentOutput, [
+    await fileService.saveFileAs(name, currentOutput, [
       { name: ext.toUpperCase() + ' ' + mt('fileLabel'), extensions: [ext, 'pem'] },
     ]);
   };

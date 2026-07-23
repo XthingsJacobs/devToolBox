@@ -32,10 +32,10 @@
   height: 4px;
   transform: translate(-50%, -50%);
   border-radius: 2px;
-  background-color: rgba(255, 255, 255, 0.18);
+  background-color: color-mix(in oklab, var(--text-primary) 18%, transparent);
   box-shadow:
-    0 -8px 0 rgba(255, 255, 255, 0.18),
-    0 8px 0 rgba(255, 255, 255, 0.18);
+    0 -8px 0 color-mix(in oklab, var(--text-primary) 18%, transparent),
+    0 8px 0 color-mix(in oklab, var(--text-primary) 18%, transparent);
   transition:
     background-color 0.15s ease,
     box-shadow 0.15s ease,
@@ -44,18 +44,18 @@
 }
 
 .divider:hover::before {
-  background-color: rgba(97, 175, 239, 0.9);
+  background-color: color-mix(in oklab, var(--accent-secondary) 90%, transparent);
   box-shadow:
-    0 -8px 0 rgba(97, 175, 239, 0.9),
-    0 8px 0 rgba(97, 175, 239, 0.9);
+    0 -8px 0 color-mix(in oklab, var(--accent-secondary) 90%, transparent),
+    0 8px 0 color-mix(in oklab, var(--accent-secondary) 90%, transparent);
   opacity: 1;
 }
 
 .divider:active::before {
-  background-color: rgba(97, 175, 239, 0.95);
+  background-color: color-mix(in oklab, var(--accent-secondary) 95%, transparent);
   box-shadow:
-    0 -8px 0 rgba(97, 175, 239, 0.95),
-    0 8px 0 rgba(97, 175, 239, 0.95);
+    0 -8px 0 color-mix(in oklab, var(--accent-secondary) 95%, transparent),
+    0 8px 0 color-mix(in oklab, var(--accent-secondary) 95%, transparent);
 }
 
 .paneHeader {
@@ -120,7 +120,7 @@
 }
 
 .error {
-  color: #f48771;
+  color: var(--accent-error);
 }
 
 .statusBar {

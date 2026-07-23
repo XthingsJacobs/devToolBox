@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useI18n, getModuleLocale } from '../../../i18n';
+import { cryptoService, fileService } from '../../../services';
 import styles from './CaGenerator.module.css';
 
 const KEY_SIZES = [2048, 3072, 4096];
@@ -36,7 +37,7 @@ export default function CaGenerator() {
     setGenerating(true);
     setError('');
     try {
-      const result = await window.electronAPI?.generateCA({
+      const result = await cryptoService.generateCA({
         commonName: commonName.trim() || undefined,
         organization: organization.trim() || undefined,
         organizationalUnit: organizationalUnit.trim() || undefined,
@@ -70,7 +71,7 @@ export default function CaGenerator() {
     if (!currentOutput) return;
     const ext = activeTab === 'cert' ? 'crt' : 'key';
     const name = activeTab === 'cert' ? `${commonName || 'ca'}.crt` : `${commonName || 'ca'}.key`;
-    await window.electronAPI?.saveFileAs(name, currentOutput, [
+    await fileService.saveFileAs(name, currentOutput, [
       { name: ext.toUpperCase() + ' ' + mt('fileLabel'), extensions: [ext, 'pem'] },
     ]);
   };

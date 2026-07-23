@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { marked } from 'marked';
 import './Base64Help.css';
+import SafeHtml from '../../SafeHtml';
 
 import helpEn from './locales/help-en.md?raw';
 
@@ -24,7 +25,7 @@ export default function Base64Help({ onClose }: Base64HelpProps) {
             ✕
           </button>
         </div>
-        <div className="b64-help-body" dangerouslySetInnerHTML={{ __html: html }} />
+        <SafeHtml className="b64-help-body" html={html} profile="rich-text" />
       </div>
     </div>
   );

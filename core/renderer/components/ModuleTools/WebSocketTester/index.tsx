@@ -77,7 +77,13 @@ export default function WebSocketTester() {
       <div className={styles.footerBar}>
         <div className={styles.footerHint}>{layoutHint}</div>
         {collapsed !== 'none' ? (
-          <button className={styles.footerBtn} onClick={() => setCollapsed('none')} type="button" aria-label="Expand both" title="Expand Both">
+          <button
+            className={styles.footerBtn}
+            onClick={() => setCollapsed('none')}
+            type="button"
+            aria-label="Expand both"
+            title="Expand Both"
+          >
             <VscChromeRestore />
           </button>
         ) : null}

@@ -2,15 +2,14 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import type { Locale } from './types';
 import enCommon from './locales/en/common';
 import zhCNCommon from './locales/zh-CN/common';
+import { appService } from '../services';
 
 /**
  * Auto-scan module locales under ModuleTools:
  *   ../components/ModuleTools/{Name}/locales/en.ts
  */
 const moduleLocaleFiles = import.meta.glob<{ default: Record<string, string> }>(
-  [
-    '../components/ModuleTools/*/locales/*.ts',
-  ],
+  ['../components/ModuleTools/*/locales/*.ts'],
   { eager: true },
 );
 
@@ -95,14 +94,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     setSetting(next);
     localStorage.setItem(LOCALE_SETTING_KEY, next);
     setLocaleState(resolveLocale(next));
-    void window.electronAPI?.setLocale(next);
+    void appService.setLocale(next);
   }, []);
 
   useEffect(() => {
-    const api = window.electronAPI;
-    if (!api?.getLocale) return;
-    void api
-      .getLocale()
+    const request = appService.getLocale();
+    if (!request) return;
+    void request
       .then((res: unknown) => {
         const r = res as { setting?: unknown; locale?: unknown };
         const s = r?.setting;
@@ -117,20 +115,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const handler = (_event: unknown, newLocale: string) => {
-      if (newLocale === 'en' || newLocale === 'zh-CN') setLocaleState(newLocale);
-      void window.electronAPI?.getLocale?.().then((res: unknown) => {
-        const r = res as { setting?: unknown };
-        const s = r?.setting;
-        const nextSetting: LocaleSetting = s === 'auto' || s === 'en' || s === 'zh-CN' ? s : 'auto';
+    const handler = (newLocale: Locale) => {
+      setLocaleState(newLocale);
+      void appService.getLocale()?.then((res) => {
+        const nextSetting: LocaleSetting = res.setting;
         setSetting(nextSetting);
         localStorage.setItem(LOCALE_SETTING_KEY, nextSetting);
       });
     };
-    window.electronAPI?.onLocaleChanged(handler);
-    return () => {
-      window.electronAPI?.offLocaleChanged(handler);
-    };
+    return appService.onLocaleChanged(handler);
   }, []);
 
   const t = useCallback(

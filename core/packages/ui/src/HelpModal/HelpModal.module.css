@@ -2,7 +2,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12,7 +12,11 @@
 
 .modal {
   background-color: var(--bg-panel);
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--text-primary) 3%, transparent),
+    transparent
+  );
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   width: 90%;
@@ -41,7 +45,7 @@
   font-weight: 600;
   color: var(--text-primary);
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in oklab, var(--text-primary) 2%, transparent);
 }
 
 .closeBtn {

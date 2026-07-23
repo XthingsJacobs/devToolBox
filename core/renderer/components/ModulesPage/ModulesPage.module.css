@@ -73,7 +73,9 @@
   border: 1px solid var(--border-subtle);
   color: var(--text-tertiary);
   font-size: 12px;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
 }
 
 .refreshBtn:hover {
@@ -107,7 +109,9 @@
   font-size: 13px;
   color: var(--text-quaternary);
   border-bottom: 2px solid transparent;
-  transition: color 0.12s ease, border-color 0.12s ease;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .tab[data-active='1'] {
@@ -126,7 +130,7 @@
 
 .tabCount[data-active='1'] {
   background: var(--accent-primary);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .spacer {
@@ -220,8 +224,8 @@
   border-radius: 12px;
   padding: 12px 16px;
   margin-bottom: 14px;
-  background: #0a1628;
-  border: 1px solid color-mix(in oklab, var(--accent-primary) 35%, transparent);
+  background: var(--state-info-bg);
+  border: 1px solid var(--state-info-border);
 }
 
 .upgradeLeft {
@@ -231,7 +235,7 @@
 }
 
 .upgradeIcon {
-  color: var(--accent-secondary);
+  color: var(--state-selected-text);
 }
 
 .upgradeText {
@@ -244,12 +248,12 @@
 .upgradeTitle {
   font-size: 13px;
   font-weight: 500;
-  color: var(--accent-secondary);
+  color: var(--state-selected-text);
 }
 
 .upgradeSub {
   font-size: 12px;
-  color: var(--text-quaternary);
+  color: var(--state-info-text);
 }
 
 .upgradeBtn {
@@ -258,7 +262,7 @@
   border-radius: 10px;
   background: var(--accent-primary);
   border: 1px solid color-mix(in oklab, var(--accent-primary-hover) 35%, transparent);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 12px;
   font-weight: 500;
   transition: background 0.12s ease;
@@ -355,6 +359,31 @@
   padding: 2px 7px;
 }
 
+.provenancePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--border-default);
+  color: var(--text-disabled);
+  font-size: 10px;
+}
+
+.provenancePill[data-status='verified'] {
+  border-color: color-mix(in oklab, var(--accent-success) 24%, transparent);
+  background: var(--accent-success-bg);
+  color: var(--accent-success);
+}
+
+.provenancePill[data-status='untrusted'],
+.provenancePill[data-status='unsigned'] {
+  border-color: color-mix(in oklab, var(--accent-warning) 24%, transparent);
+  background: color-mix(in oklab, var(--accent-warning) 10%, transparent);
+  color: var(--accent-warning);
+}
+
 .pillOk {
   display: inline-flex;
   align-items: center;
@@ -401,7 +430,10 @@
   align-items: center;
   gap: 8px;
   border: 1px solid transparent;
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .actionBtn:disabled {
@@ -411,7 +443,7 @@
 
 .actionBtn[data-variant='primary'] {
   background: var(--accent-primary);
-  color: #fff;
+  color: var(--text-on-accent);
   border-color: color-mix(in oklab, var(--accent-primary-hover) 35%, transparent);
 }
 
@@ -426,7 +458,7 @@
 }
 
 .actionBtn[data-variant='upgrade']:hover {
-  background: color-mix(in oklab, var(--accent-success-bg) 65%, #000);
+  background: color-mix(in oklab, var(--accent-success) 16%, var(--bg-secondary));
 }
 
 .actionBtn[data-variant='enabled'] {
@@ -467,9 +499,9 @@
   width: 11px;
   height: 11px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--control-knob);
   transition: transform 0.12s ease;
-  box-shadow: 0 1px 3px #00000066;
+  box-shadow: var(--shadow-control);
 }
 
 .toggleDot[data-enabled='1'] {
@@ -486,7 +518,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
 }
 
 .iconBtn:hover {

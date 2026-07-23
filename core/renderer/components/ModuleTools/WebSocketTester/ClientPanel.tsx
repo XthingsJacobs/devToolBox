@@ -110,11 +110,20 @@ export default function ClientPanel() {
     <div className={styles.container}>
       <div className={styles.inputBar}>
         <div className={styles.label}>URL</div>
-        <input className={styles.textInput} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="ws://host:port/path" />
+        <input
+          className={styles.textInput}
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="ws://host:port/path"
+        />
         <button className={`${styles.actionBtn} ${styles.primaryBtn}`} onClick={connect} disabled={connected}>
           Connect
         </button>
-        <button className={`${styles.actionBtn} ${styles.stopBtn}`} onClick={disconnect} disabled={!connected}>
+        <button
+          className={`${styles.actionBtn} ${styles.stopBtn}`}
+          onClick={disconnect}
+          disabled={!connected}
+        >
           Disconnect
         </button>
         <div className={styles.hint}>{statusText} · Protocol debugging</div>
@@ -156,7 +165,12 @@ export default function ClientPanel() {
       </div>
 
       <div className={styles.row}>
-        <input className={styles.msgInput} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Payload (text/JSON)" />
+        <input
+          className={styles.msgInput}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Payload (text/JSON)"
+        />
         <button className={`${styles.actionBtn} ${styles.primaryBtn}`} onClick={send} disabled={!connected}>
           Send Frame
         </button>

@@ -1,5 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
-import styles from './SettingsPage.module.css';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  VscColorMode,
+  VscDebugRestart,
+  VscExport,
+  VscFolderOpened,
+  VscGlobe,
+  VscInfo,
+  VscPulse,
+  VscRefresh,
+  VscTrash,
+} from 'react-icons/vsc';
+import type { DiagnosticLog, StartupRestartMode, StartupStatus } from '@devtoolbox/core';
 import { useTheme } from '../../theme';
 import { useI18n } from '../../i18n';
 import { APP_VERSION } from '../../appVersion';
@@ -9,68 +20,153 @@ import {
   loadMarketplaceRegistryUrl,
   saveMarketplaceRegistryUrl,
 } from '../../marketplace/registry';
-import {
-  VscColorMode,
-  VscDebug,
-  VscFolderOpened,
-  VscGlobe,
-  VscInfo,
-  VscKeyboardTab,
-  VscLock,
-  VscSettingsGear,
-  VscSync,
-  VscTrash,
-} from 'react-icons/vsc';
+import { appService, diagnosticsService } from '../../services';
+import styles from './SettingsPage.module.css';
 
-type SectionId =
-  | 'general'
-  | 'appearance'
-  | 'language'
-  | 'shortcuts'
-  | 'data'
-  | 'import'
-  | 'privacy'
-  | 'updates'
-  | 'about';
+export type SectionId = 'appearance' | 'language' | 'data' | 'diagnostics' | 'about';
 
 const NAV = [
-  { id: 'general' as const, label: 'General', Icon: VscSettingsGear, group: 'App' },
   { id: 'appearance' as const, label: 'Appearance', Icon: VscColorMode, group: 'App' },
   { id: 'language' as const, label: 'Language', Icon: VscGlobe, group: 'App' },
-  { id: 'shortcuts' as const, label: 'Shortcuts', Icon: VscKeyboardTab, group: 'App' },
-  { id: 'data' as const, label: 'Data & Cache', Icon: VscFolderOpened, group: 'System' },
-  { id: 'import' as const, label: 'Import / Export', Icon: VscDebug, group: 'System' },
-  { id: 'privacy' as const, label: 'Privacy', Icon: VscLock, group: 'System' },
-  { id: 'updates' as const, label: 'Updates', Icon: VscSync, group: 'System' },
+  { id: 'data' as const, label: 'Marketplace', Icon: VscFolderOpened, group: 'System', devOnly: true },
+  { id: 'diagnostics' as const, label: 'Diagnostics', Icon: VscPulse, group: 'System' },
   { id: 'about' as const, label: 'About', Icon: VscInfo, group: 'About' },
 ];
 
 const GROUPS = ['App', 'System', 'About'] as const;
 
-export default function SettingsPage() {
+export default function SettingsPage({
+  initialSection = 'appearance',
+  startupStatus,
+  onRestart,
+}: {
+  initialSection?: SectionId;
+  startupStatus?: StartupStatus;
+  onRestart?: (mode: StartupRestartMode) => Promise<boolean>;
+}) {
   const { setting: themeSetting, setThemeSetting } = useTheme();
-  const { setting: localeSetting, setLocale } = useI18n();
-  const [active, setActive] = useState<SectionId>('general');
-  const [saved, setSaved] = useState(false);
+  const { locale, setting: localeSetting, setLocale } = useI18n();
+  const [active, setActive] = useState<SectionId>(initialSection);
   const [versionText, setVersionText] = useState(`v${APP_VERSION}`);
   const [registryUrl, setRegistryUrl] = useState('');
+  const [diagnostics, setDiagnostics] = useState<DiagnosticLog | null>(null);
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
+  const [diagnosticsAction, setDiagnosticsAction] = useState<'idle' | 'exporting' | 'clearing'>('idle');
+  const [diagnosticsStatus, setDiagnosticsStatus] = useState('');
+  const [recoveryRestarting, setRecoveryRestarting] = useState(false);
+  const diagnosticText = diagnosticsCopy(locale);
+  const effectiveStartupStatus: StartupStatus = startupStatus ?? {
+    safeMode: false,
+    reason: null,
+    consecutiveFailures: 0,
+    failureThreshold: 2,
+    startedAt: '',
+  };
+  const visibleNav = useMemo(
+    () => NAV.filter((item) => !item.devOnly || ALLOW_CUSTOM_MARKETPLACE_REGISTRY_URL),
+    [],
+  );
+  const activeNav = useMemo(() => visibleNav.find((item) => item.id === active), [active, visibleNav]);
 
   useEffect(() => {
-    const api = window.electronAPI;
-    if (!api?.getAppInfo) return;
-    void api.getAppInfo().then((v) => {
-      const r = v as { version?: unknown };
-      const ver = typeof r?.version === 'string' ? r.version : '';
-      if (ver) setVersionText(`v${ver}`);
+    void appService.getInfo()?.then((value) => {
+      const version = typeof value?.version === 'string' ? value.version : '';
+      if (version) setVersionText(`v${version}`);
     });
   }, []);
 
   useEffect(() => {
-    if (!ALLOW_CUSTOM_MARKETPLACE_REGISTRY_URL) return;
-    setRegistryUrl(loadMarketplaceRegistryUrl());
+    if (ALLOW_CUSTOM_MARKETPLACE_REGISTRY_URL) setRegistryUrl(loadMarketplaceRegistryUrl());
   }, []);
 
-  const activeNav = useMemo(() => NAV.find((n) => n.id === active), [active]);
+  useEffect(() => {
+    setActive(initialSection);
+  }, [initialSection]);
+
+  const refreshDiagnostics = useCallback(async () => {
+    const request = diagnosticsService.list();
+    if (!request) {
+      setDiagnosticsStatus(diagnosticsCopy(locale).unavailable);
+      return;
+    }
+    setDiagnosticsLoading(true);
+    try {
+      setDiagnostics(await request);
+    } catch {
+      setDiagnosticsStatus(diagnosticsCopy(locale).loadFailed);
+    } finally {
+      setDiagnosticsLoading(false);
+    }
+  }, [locale]);
+
+  useEffect(() => {
+    if (active === 'diagnostics') void refreshDiagnostics();
+  }, [active, refreshDiagnostics]);
+
+  const recentDiagnostics = useMemo(
+    () => [...(diagnostics?.events ?? [])].slice(-100).reverse(),
+    [diagnostics],
+  );
+
+  const exportDiagnostics = async () => {
+    const request = diagnosticsService.export();
+    if (!request) return;
+    setDiagnosticsAction('exporting');
+    setDiagnosticsStatus('');
+    try {
+      const result = await request;
+      setDiagnosticsStatus(
+        result.success
+          ? `${diagnosticText.savedTo} ${result.filePath}`
+          : result.error === 'canceled'
+            ? diagnosticText.exportCanceled
+            : diagnosticText.exportFailed,
+      );
+    } catch {
+      setDiagnosticsStatus(diagnosticText.exportFailed);
+    } finally {
+      setDiagnosticsAction('idle');
+    }
+  };
+
+  const clearDiagnostics = async () => {
+    if (!window.confirm(diagnosticText.clearConfirm)) return;
+    const request = diagnosticsService.clear();
+    if (!request) return;
+    setDiagnosticsAction('clearing');
+    setDiagnosticsStatus('');
+    try {
+      await request;
+      setDiagnosticsStatus(diagnosticText.cleared);
+      await refreshDiagnostics();
+    } catch {
+      setDiagnosticsStatus(diagnosticText.clearFailed);
+    } finally {
+      setDiagnosticsAction('idle');
+    }
+  };
+
+  const restartFromRecovery = async () => {
+    const mode: StartupRestartMode = effectiveStartupStatus.safeMode ? 'normal' : 'safe';
+    const restart = onRestart ?? ((restartMode: StartupRestartMode) => appService.restart(restartMode));
+    const request = restart(mode);
+    if (!request) {
+      setDiagnosticsStatus(diagnosticText.restartFailed);
+      return;
+    }
+    setRecoveryRestarting(true);
+    setDiagnosticsStatus('');
+    try {
+      const accepted = await request;
+      if (!accepted) {
+        setRecoveryRestarting(false);
+        setDiagnosticsStatus(diagnosticText.restartFailed);
+      }
+    } catch {
+      setRecoveryRestarting(false);
+      setDiagnosticsStatus(diagnosticText.restartFailed);
+    }
+  };
 
   return (
     <div className={styles.page}>
@@ -81,7 +177,8 @@ export default function SettingsPage() {
         </div>
 
         {GROUPS.map((group) => {
-          const items = NAV.filter((n) => n.group === group);
+          const items = visibleNav.filter((item) => item.group === group);
+          if (!items.length) return null;
           return (
             <div key={group} className={styles.navGroup}>
               <div className={styles.navGroupTitle}>{group}</div>
@@ -120,53 +217,10 @@ export default function SettingsPage() {
               )}
               <div>
                 <div className={styles.headerTitle}>{activeNav?.label}</div>
-                <div className={styles.headerSub}>{desc(active)}</div>
+                <div className={styles.headerSub}>{description(active)}</div>
               </div>
             </div>
-            <button
-              type="button"
-              className={styles.saveBtn}
-              data-saved={saved ? '1' : '0'}
-              onClick={() => {
-                setSaved(true);
-                window.setTimeout(() => setSaved(false), 1800);
-              }}
-            >
-              {saved ? 'Saved!' : 'Save Changes'}
-            </button>
           </div>
-
-          {active === 'general' && (
-            <div className={styles.stack}>
-              <Card title="Application" subtitle="Core behavior and startup options">
-                <Row label="Auto-check for updates" desc="Automatically check for new versions on startup">
-                  <Toggle value />
-                </Row>
-                <Divider />
-                <Row label="Send usage statistics" desc="Help improve DevToolBox with anonymous usage data">
-                  <Toggle />
-                </Row>
-                <Divider />
-                <Row label="Desktop notifications" desc="Show notifications for completed operations">
-                  <Toggle value />
-                </Row>
-              </Card>
-
-              <Card title="Editor" subtitle="Monospace editor preferences">
-                <Row label="Font size" desc="Monospace editor font size">
-                  <Select value="13" options={['11', '12', '13', '14', '16', '18']} onChange={() => {}} />
-                </Row>
-                <Divider />
-                <Row label="Word wrap" desc="Wrap long lines in the editor">
-                  <Toggle value />
-                </Row>
-                <Divider />
-                <Row label="Tab size" desc="Number of spaces per indent level">
-                  <Select value="2" options={['2', '4', '8']} onChange={() => {}} />
-                </Row>
-              </Card>
-            </div>
-          )}
 
           {active === 'appearance' && (
             <div className={styles.stack}>
@@ -176,26 +230,17 @@ export default function SettingsPage() {
                     { id: 'auto' as const, label: 'Auto' },
                     { id: 'dark' as const, label: 'Dark' },
                     { id: 'light' as const, label: 'Light' },
-                  ].map((t) => (
+                  ].map((theme) => (
                     <button
-                      key={t.id}
+                      key={theme.id}
                       type="button"
                       className={styles.themeCard}
-                      data-active={themeSetting === t.id ? '1' : '0'}
-                      onClick={() => setThemeSetting(t.id)}
+                      data-active={themeSetting === theme.id ? '1' : '0'}
+                      aria-pressed={themeSetting === theme.id}
+                      onClick={() => setThemeSetting(theme.id)}
                     >
-                      <div className={styles.themePreview} data-theme={t.id} />
-                      <div className={styles.themeLabel}>{t.label}</div>
-                    </button>
-                  ))}
-                </div>
-              </Card>
-
-              <Card title="Density" subtitle="Adjust interface information density">
-                <div className={styles.densityRow}>
-                  {['Compact', 'Comfortable', 'Spacious'].map((d) => (
-                    <button key={d} type="button" className={styles.densityBtn} data-active={d === 'Comfortable' ? '1' : '0'}>
-                      {d}
+                      <ThemePreview theme={theme.id} />
+                      <div className={styles.themeLabel}>{theme.label}</div>
                     </button>
                   ))}
                 </div>
@@ -208,73 +253,200 @@ export default function SettingsPage() {
               <Card title="Interface Language" subtitle="Set the display language for DevToolBox UI">
                 <div className={styles.langList}>
                   {[
-                    { id: 'auto' as const, label: 'Auto (Follow System)', sub: 'Uses your OS language setting' },
+                    {
+                      id: 'auto' as const,
+                      label: 'Auto (Follow System)',
+                      sub: 'Uses your OS language setting',
+                    },
                     { id: 'en' as const, label: 'English', sub: 'English' },
                     { id: 'zh-CN' as const, label: 'Simplified Chinese', sub: '简体中文' },
-                  ].map((l) => (
+                  ].map((language) => (
                     <button
-                      key={l.id}
+                      key={language.id}
                       type="button"
                       className={styles.langItem}
-                      data-active={localeSetting === l.id ? '1' : '0'}
-                      onClick={() => setLocale(l.id)}
+                      aria-pressed={localeSetting === language.id}
+                      data-active={localeSetting === language.id ? '1' : '0'}
+                      onClick={() => setLocale(language.id)}
                     >
-                      <span className={styles.radio} data-active={localeSetting === l.id ? '1' : '0'}>
-                        <span className={styles.radioDot} data-active={localeSetting === l.id ? '1' : '0'} />
+                      <span className={styles.radio} data-active={localeSetting === language.id ? '1' : '0'}>
+                        <span
+                          className={styles.radioDot}
+                          data-active={localeSetting === language.id ? '1' : '0'}
+                        />
                       </span>
                       <span className={styles.langText}>
-                        <span className={styles.langLabel}>{l.label}</span>
-                        <span className={styles.langSub}>{l.sub}</span>
+                        <span className={styles.langLabel}>{language.label}</span>
+                        <span className={styles.langSub}>{language.sub}</span>
                       </span>
                     </button>
                   ))}
                 </div>
-                <div className={styles.notice}>A restart may be required for language changes to fully take effect.</div>
+                <div className={styles.notice}>
+                  A restart may be required for language changes to fully take effect.
+                </div>
               </Card>
             </div>
           )}
 
-          {active === 'data' && (
+          {active === 'data' && ALLOW_CUSTOM_MARKETPLACE_REGISTRY_URL && (
             <div className={styles.stack}>
-              <Card title="Storage" subtitle="Manage application data and cache">
-                <Row label="Cache size" desc="Temporary data and compiled tool outputs">
-                  <div className={styles.cacheRow}>
-                    <span className={styles.cachePill}>148 MB</span>
-                    <button type="button" className={styles.smallBtn}>
-                      <VscTrash />
-                      Clear
+              <Card
+                title="Marketplace Registry"
+                subtitle="Override the registry source for local plugin development"
+              >
+                <div className={styles.formField}>
+                  <div className={styles.fieldHeader}>
+                    <label className={styles.fieldLabel} htmlFor="marketplace-registry-url">
+                      Registry URL
+                    </label>
+                    <div className={styles.fieldDescription} id="marketplace-registry-description">
+                      Empty value uses the default registry
+                    </div>
+                  </div>
+                  <div className={styles.registryRow}>
+                    <input
+                      id="marketplace-registry-url"
+                      className={styles.input}
+                      value={registryUrl}
+                      placeholder={DEFAULT_MARKETPLACE_REGISTRY_URL}
+                      aria-describedby="marketplace-registry-description"
+                      onChange={(event) => setRegistryUrl(event.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className={styles.smallBtn}
+                      onClick={() => {
+                        saveMarketplaceRegistryUrl(registryUrl);
+                        window.dispatchEvent(new Event('devtoolbox:registryUrlChanged'));
+                      }}
+                    >
+                      Apply
                     </button>
                   </div>
-                </Row>
+                </div>
+                <div className={styles.notice}>Supports HTTPS and file:// URLs in development builds.</div>
+              </Card>
+            </div>
+          )}
+
+          {active === 'diagnostics' && (
+            <div className={styles.stack}>
+              <Card title={diagnosticText.recoveryTitle} subtitle={diagnosticText.recoverySubtitle}>
+                <div className={styles.recoveryRow}>
+                  <div className={styles.recoveryState}>
+                    <span
+                      className={styles.recoveryBadge}
+                      data-safe={effectiveStartupStatus.safeMode ? '1' : '0'}
+                    >
+                      {effectiveStartupStatus.safeMode ? diagnosticText.safeMode : diagnosticText.normalMode}
+                    </span>
+                    <span className={styles.recoveryDescription}>
+                      {effectiveStartupStatus.safeMode
+                        ? diagnosticText.safeModeDescription
+                        : diagnosticText.normalModeDescription}
+                    </span>
+                    <span className={styles.recoveryFailures}>
+                      {diagnosticText.startupFailures}: {effectiveStartupStatus.consecutiveFailures}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.primaryBtn}
+                    disabled={recoveryRestarting}
+                    onClick={() => void restartFromRecovery()}
+                  >
+                    <VscDebugRestart />
+                    {recoveryRestarting
+                      ? diagnosticText.restarting
+                      : effectiveStartupStatus.safeMode
+                        ? diagnosticText.restartNormal
+                        : diagnosticText.restartSafe}
+                  </button>
+                </div>
               </Card>
 
-              {ALLOW_CUSTOM_MARKETPLACE_REGISTRY_URL && (
-                <Card title="Marketplace (Dev)" subtitle="Override registry source for local plugin development">
-                  <Row label="Registry URL" desc="Empty value uses the default registry">
-                    <div className={styles.registryRow}>
-                      <input
-                        className={styles.input}
-                        value={registryUrl}
-                        placeholder={DEFAULT_MARKETPLACE_REGISTRY_URL}
-                        onChange={(e) => setRegistryUrl(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className={styles.smallBtn}
-                        onClick={() => {
-                          saveMarketplaceRegistryUrl(registryUrl);
-                          window.dispatchEvent(new Event('devtoolbox:registryUrlChanged'));
-                        }}
-                      >
-                        Apply
-                      </button>
-                    </div>
-                  </Row>
-                  <div className={styles.notice}>Supports http(s) URLs and file:// URLs (dev only).</div>
-                </Card>
-              )}
+              <Card title={diagnosticText.title} subtitle={diagnosticText.subtitle}>
+                <div className={styles.diagnosticMetrics}>
+                  <div className={styles.diagnosticMetric}>
+                    <span className={styles.diagnosticMetricValue}>{diagnostics?.events.length ?? 0}</span>
+                    <span className={styles.diagnosticMetricLabel}>{diagnosticText.retained}</span>
+                  </div>
+                  <div className={styles.diagnosticMetric}>
+                    <span className={styles.diagnosticMetricValue}>{diagnostics?.droppedCount ?? 0}</span>
+                    <span className={styles.diagnosticMetricLabel}>{diagnosticText.dropped}</span>
+                  </div>
+                  <div className={styles.diagnosticMetric}>
+                    <span className={styles.diagnosticMetricValue}>
+                      {formatBytes(diagnostics?.maxBytes ?? 0)}
+                    </span>
+                    <span className={styles.diagnosticMetricLabel}>{diagnosticText.localLimit}</span>
+                  </div>
+                </div>
+                <div className={styles.diagnosticActions}>
+                  <button
+                    type="button"
+                    className={styles.smallBtn}
+                    disabled={diagnosticsLoading || diagnosticsAction !== 'idle'}
+                    onClick={() => void refreshDiagnostics()}
+                  >
+                    <VscRefresh />
+                    {diagnosticText.refresh}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.primaryBtn}
+                    disabled={diagnosticsAction !== 'idle'}
+                    onClick={() => void exportDiagnostics()}
+                  >
+                    <VscExport />
+                    {diagnosticsAction === 'exporting' ? diagnosticText.exporting : diagnosticText.export}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.dangerBtn}
+                    disabled={diagnosticsAction !== 'idle' || !diagnostics?.events.length}
+                    onClick={() => void clearDiagnostics()}
+                  >
+                    <VscTrash />
+                    {diagnosticText.clear}
+                  </button>
+                </div>
+                <div className={styles.privacyNotice}>{diagnosticText.privacy}</div>
+                {diagnosticsStatus && (
+                  <div className={styles.diagnosticStatus} role="status">
+                    {diagnosticsStatus}
+                  </div>
+                )}
+              </Card>
 
-              <DangerCard />
+              <Card title={diagnosticText.recentTitle} subtitle={diagnosticText.recentSubtitle}>
+                {diagnosticsLoading ? (
+                  <div className={styles.diagnosticEmpty}>{diagnosticText.loading}</div>
+                ) : recentDiagnostics.length === 0 ? (
+                  <div className={styles.diagnosticEmpty}>{diagnosticText.empty}</div>
+                ) : (
+                  <div className={styles.diagnosticList}>
+                    {recentDiagnostics.map((event) => (
+                      <div key={event.id} className={styles.diagnosticEvent}>
+                        <div className={styles.diagnosticEventTop}>
+                          <span className={styles.diagnosticLevel} data-level={event.level}>
+                            {event.level}
+                          </span>
+                          <span className={styles.diagnosticSource}>
+                            {event.source}
+                            {event.scope ? ` · ${event.scope}` : ''}
+                          </span>
+                          <time className={styles.diagnosticTime} dateTime={event.timestamp}>
+                            {new Date(event.timestamp).toLocaleString(locale)}
+                          </time>
+                        </div>
+                        <div className={styles.diagnosticMessage}>{event.message}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
             </div>
           )}
 
@@ -282,10 +454,10 @@ export default function SettingsPage() {
             <div className={styles.stack}>
               <Card title="DevToolBox" subtitle="Developer productivity utilities hub">
                 <div className={styles.aboutHero}>
-                  <div className={styles.aboutLogo}>⚙️</div>
+                  <div className={styles.aboutLogo}>DT</div>
                   <div>
                     <div className={styles.aboutName}>DevToolBox</div>
-                    <div className={styles.aboutMeta}>{`Version ${versionText.startsWith('v') ? versionText.slice(1) : versionText}`}</div>
+                    <div className={styles.aboutMeta}>{`Version ${versionText.replace(/^v/, '')}`}</div>
                   </div>
                 </div>
                 <div className={styles.kv}>
@@ -293,24 +465,14 @@ export default function SettingsPage() {
                     ['License', 'Apache-2.0'],
                     ['Runtime', 'Electron + React'],
                     ['Platform', 'macOS / Windows'],
-                  ].map(([k, v]) => (
-                    <div key={k} className={styles.kvRow}>
-                      <span className={styles.kvKey}>{k}</span>
-                      <span className={styles.kvVal}>{v}</span>
+                  ].map(([key, value]) => (
+                    <div key={key} className={styles.kvRow}>
+                      <span className={styles.kvKey}>{key}</span>
+                      <span className={styles.kvVal}>{value}</span>
                     </div>
                   ))}
                 </div>
               </Card>
-            </div>
-          )}
-
-          {!['general', 'appearance', 'language', 'data', 'about'].includes(active) && (
-            <div className={styles.empty}>
-              <div className={styles.emptyIcon}>
-                <VscLock />
-              </div>
-              <div className={styles.emptyTitle}>{activeNav?.label} Settings</div>
-              <div className={styles.emptySub}>This section is under construction</div>
             </div>
           )}
         </div>
@@ -319,19 +481,120 @@ export default function SettingsPage() {
   );
 }
 
-function desc(id: SectionId) {
-  const map: Record<SectionId, string> = {
-    general: 'App behavior, editor preferences and startup options',
-    appearance: 'Theme, density and visual customizations',
+function description(id: SectionId): string {
+  return {
+    appearance: 'Theme and visual preferences',
     language: 'Interface display language and locale',
-    shortcuts: 'Custom keyboard shortcut bindings',
-    data: 'Cache management, storage and history',
-    import: 'Import and export your DevToolBox configuration',
-    privacy: 'Telemetry, crash reporting and data sharing',
-    updates: 'Auto-update channel and release preferences',
+    data: 'Development marketplace source',
+    diagnostics: 'Local runtime events and support bundle',
     about: 'Version info, license and credits',
+  }[id];
+}
+
+function formatBytes(bytes: number): string {
+  if (!bytes) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  return `${Math.round(bytes / 1024)} KiB`;
+}
+
+function ThemePreview({ theme }: { theme: 'auto' | 'dark' | 'light' }) {
+  return (
+    <span className={styles.themePreview} data-theme={theme} aria-hidden="true">
+      <span className={styles.themePreviewPane} data-preview-theme={theme}>
+        <span className={styles.themePreviewSidebar}>
+          <span className={styles.themePreviewLogo} />
+          <span className={styles.themePreviewNavActive} />
+          <span className={styles.themePreviewNav} />
+        </span>
+        <span className={styles.themePreviewMain}>
+          <span className={styles.themePreviewHeading} />
+          <span className={styles.themePreviewLine} />
+          <span className={styles.themePreviewPanels}>
+            <span />
+            <span />
+          </span>
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function diagnosticsCopy(locale: 'en' | 'zh-CN') {
+  if (locale === 'zh-CN') {
+    return {
+      title: '本地诊断',
+      subtitle: '查看脱敏后的运行时事件，或导出支持诊断包',
+      retained: '保留事件',
+      dropped: '已丢弃',
+      localLimit: '本地上限',
+      refresh: '刷新',
+      export: '导出诊断包',
+      exporting: '正在导出…',
+      clear: '清空日志',
+      privacy:
+        '诊断数据只保存在本机。凭据、内容/正文/载荷字段、私钥和用户主目录会在写入前自动脱敏；只有点击导出后才会生成可分享的 JSON 文件。',
+      recentTitle: '最近事件',
+      recentSubtitle: '最多显示最近 100 条脱敏事件',
+      loading: '正在读取诊断事件…',
+      empty: '当前没有诊断事件。',
+      unavailable: '当前运行环境不支持诊断功能。',
+      loadFailed: '无法读取诊断事件。',
+      savedTo: '诊断包已保存到：',
+      exportCanceled: '已取消导出。',
+      exportFailed: '诊断包导出失败。',
+      clearConfirm: '确定要清空本机诊断日志吗？此操作无法撤销。',
+      cleared: '本机诊断日志已清空。',
+      clearFailed: '无法清空诊断日志。',
+      recoveryTitle: '启动恢复',
+      recoverySubtitle: '在插件隔离模式和正常模式之间安全重启',
+      safeMode: '安全模式',
+      normalMode: '正常模式',
+      safeModeDescription: 'Marketplace 插件在本次会话中已暂停，不会修改它们的永久启用状态。',
+      normalModeDescription: '内置工具和已启用的 Marketplace 插件会正常加载。',
+      startupFailures: '连续启动失败',
+      restartSafe: '以安全模式重启',
+      restartNormal: '以正常模式重启',
+      restarting: '正在重启…',
+      restartFailed: '无法重新启动应用。',
+    };
+  }
+  return {
+    title: 'Local diagnostics',
+    subtitle: 'Review redacted runtime events or export a support bundle',
+    retained: 'Retained events',
+    dropped: 'Dropped',
+    localLimit: 'Local limit',
+    refresh: 'Refresh',
+    export: 'Export bundle',
+    exporting: 'Exporting…',
+    clear: 'Clear log',
+    privacy:
+      'Diagnostics stay on this device. Credentials, content/body/payload fields, private keys, and the home directory are redacted before storage; a shareable JSON file is created only when you export it.',
+    recentTitle: 'Recent events',
+    recentSubtitle: 'Shows up to the 100 most recent redacted events',
+    loading: 'Loading diagnostic events…',
+    empty: 'No diagnostic events have been recorded.',
+    unavailable: 'Diagnostics are unavailable in this runtime.',
+    loadFailed: 'Unable to load diagnostic events.',
+    savedTo: 'Diagnostic bundle saved to:',
+    exportCanceled: 'Export canceled.',
+    exportFailed: 'Diagnostic bundle export failed.',
+    clearConfirm: 'Clear the local diagnostic log? This cannot be undone.',
+    cleared: 'Local diagnostic log cleared.',
+    clearFailed: 'Unable to clear diagnostic events.',
+    recoveryTitle: 'Startup recovery',
+    recoverySubtitle: 'Restart safely with or without Marketplace plugin isolation',
+    safeMode: 'Safe mode',
+    normalMode: 'Normal mode',
+    safeModeDescription:
+      'Marketplace plugins are paused for this session without changing their enabled state.',
+    normalModeDescription: 'Built-in tools and enabled Marketplace plugins load normally.',
+    startupFailures: 'Consecutive startup failures',
+    restartSafe: 'Restart in safe mode',
+    restartNormal: 'Restart normally',
+    restarting: 'Restarting…',
+    restartFailed: 'Unable to restart the application.',
   };
-  return map[id];
 }
 
 function Card({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
@@ -344,74 +607,6 @@ function Card({ title, subtitle, children }: { title: string; subtitle: string; 
         </div>
       </div>
       <div className={styles.cardBody}>{children}</div>
-    </div>
-  );
-}
-
-function Row({ label, desc, children }: { label: string; desc: string; children: React.ReactNode }) {
-  return (
-    <div className={styles.row}>
-      <div className={styles.rowText}>
-        <div className={styles.rowLabel}>{label}</div>
-        <div className={styles.rowDesc}>{desc}</div>
-      </div>
-      <div className={styles.rowRight}>{children}</div>
-    </div>
-  );
-}
-
-function Divider() {
-  return <div className={styles.divider} />;
-}
-
-function Toggle({ value = false }: { value?: boolean }) {
-  const [on, setOn] = useState(value);
-  return (
-    <button type="button" className={styles.toggle} data-on={on ? '1' : '0'} onClick={() => setOn((v) => !v)} aria-label="Toggle">
-      <span className={styles.toggleDot} data-on={on ? '1' : '0'} />
-    </button>
-  );
-}
-
-function Select({ value, options, onChange }: { value: string; options: string[]; onChange: (v: string) => void }) {
-  return (
-    <select className={styles.select} value={value} onChange={(e) => onChange(e.target.value)}>
-      {options.map((o) => (
-        <option key={o} value={o}>
-          {o}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function DangerCard() {
-  return (
-    <div className={styles.danger}>
-      <div className={styles.dangerHead}>
-        <VscTrash className={styles.dangerIcon} />
-        <div>
-          <div className={styles.dangerTitle}>Danger Zone</div>
-          <div className={styles.dangerSub}>Irreversible actions — proceed with caution</div>
-        </div>
-      </div>
-      <div className={styles.dangerBody}>
-        {[
-          { label: 'Reset All Settings', desc: 'Restore all settings to factory defaults' },
-          { label: 'Delete All Data', desc: 'Permanently delete all local app data and history' },
-        ].map((x, idx) => (
-          <div key={x.label} className={styles.dangerRow} data-divider={idx > 0 ? '1' : '0'}>
-            <div>
-              <div className={styles.dangerRowLabel}>{x.label}</div>
-              <div className={styles.dangerRowDesc}>{x.desc}</div>
-            </div>
-            <button type="button" className={styles.dangerBtn}>
-              <VscTrash />
-              {x.label.startsWith('Delete') ? 'Delete' : 'Reset'}
-            </button>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

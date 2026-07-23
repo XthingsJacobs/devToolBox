@@ -37,7 +37,11 @@
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: linear-gradient(135deg, color-mix(in oklab, var(--accent-primary) 12%, transparent), color-mix(in oklab, var(--cat-security) 12%, transparent));
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent-primary) 12%, transparent),
+    color-mix(in oklab, var(--cat-security) 12%, transparent)
+  );
   border: 1px solid color-mix(in oklab, var(--accent-primary) 20%, transparent);
   color: var(--accent-secondary);
 }
@@ -82,13 +86,15 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
   padding: 0 16px;
-  box-shadow: 0 2px 12px #00000033;
-  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: var(--shadow-soft);
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
 }
 
 .searchBox[data-focused='1'] {
   border-color: var(--border-subtle);
-  box-shadow: 0 2px 12px #00000033;
+  box-shadow: var(--shadow-soft);
 }
 
 .searchIcon {
@@ -146,7 +152,7 @@
   border-radius: 12px;
   border: 1px solid var(--border-subtle);
   background: var(--bg-elevated);
-  box-shadow: 0 16px 44px #000000aa;
+  box-shadow: var(--shadow-popover);
   overflow: hidden;
   z-index: 20;
 }
@@ -249,7 +255,9 @@
   border: 1px solid transparent;
   padding: 6px 10px;
   flex-shrink: 0;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .quickNavItem:hover {
@@ -312,7 +320,11 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--accent-primary) 12%, transparent));
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--accent-primary) 12%, transparent)
+  );
   opacity: 0;
   transition: opacity 0.12s ease;
 }
@@ -333,7 +345,11 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--accent-primary) 12%, transparent));
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in oklab, var(--accent-primary) 12%, transparent)
+  );
   opacity: 0;
   transition: opacity 0.12s ease;
 }
@@ -384,7 +400,9 @@
   border: 2px dashed transparent;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.12s ease, border-color 0.12s ease;
+  transition:
+    opacity 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .widget[data-dragging='1']::after {
@@ -519,7 +537,11 @@
 }
 
 .widgetResizeHandle:hover {
-  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--accent-primary) 12%, transparent));
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--accent-primary) 12%, transparent)
+  );
 }
 
 .section {
@@ -586,7 +608,10 @@
   min-height: 140px;
   display: flex;
   flex-direction: column;
-  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
 }
 
 .toolCard:hover {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Component, useEffect, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
 import styles from './ToolsPage.module.css';
 import type { Category, Module } from '../../types';
 import { moduleEntryLoaderMap, modulePluginEntryUrlMap } from '../../data/placeholder';
@@ -6,6 +6,89 @@ import PluginHost from '../PluginHost';
 import ToolListPanel from '../ToolListPanel';
 import ToolTabs, { type OpenTool } from '../ToolTabs';
 import { VscScreenFull, VscScreenNormal } from 'react-icons/vsc';
+import { recordDiagnostic } from '../../lib/diagnostics';
+
+interface ToolFailurePanelProps {
+  toolName: string;
+  message: string;
+  onRetry: () => void;
+  onClose?: () => void;
+}
+
+function ToolFailurePanel({ toolName, message, onRetry, onClose }: ToolFailurePanelProps) {
+  return (
+    <div className={styles.failure} role="alert">
+      <div className={styles.failureCard}>
+        <div className={styles.failureEyebrow}>Tool unavailable</div>
+        <h2 className={styles.failureTitle}>{toolName}</h2>
+        <p className={styles.failureMessage}>{message}</p>
+        <div className={styles.failureActions}>
+          <button type="button" className={styles.failurePrimaryButton} onClick={onRetry}>
+            Retry
+          </button>
+          {onClose && (
+            <button type="button" className={styles.failureButton} onClick={onClose}>
+              Close tool
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ToolRuntimeBoundaryProps {
+  toolName: string;
+  children: ReactNode;
+  onRetry: () => void;
+  onClose?: () => void;
+}
+
+interface ToolRuntimeBoundaryState {
+  error: Error | null;
+}
+
+export class ToolRuntimeBoundary extends Component<ToolRuntimeBoundaryProps, ToolRuntimeBoundaryState> {
+  state: ToolRuntimeBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error): ToolRuntimeBoundaryState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    recordDiagnostic({
+      level: 'error',
+      source: 'tool',
+      scope: this.props.toolName,
+      message: error.message || 'Tool runtime failed',
+      details: { error, componentStack: info.componentStack },
+    });
+    console.error(`Tool runtime failed: ${this.props.toolName}`, error, info.componentStack);
+  }
+
+  private retry = () => {
+    this.props.onRetry();
+    this.setState({ error: null });
+  };
+
+  render() {
+    if (this.state.error) {
+      return (
+        <ToolFailurePanel
+          toolName={this.props.toolName}
+          message={this.state.error.message || 'The tool stopped unexpectedly.'}
+          onRetry={this.retry}
+          onClose={this.props.onClose}
+        />
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error && error.message ? error.message : 'The tool could not be loaded.';
+}
 
 function categoryColor(categoryId: string): string {
   switch (categoryId) {
@@ -60,7 +143,16 @@ export default function ToolsPage({
   const corePluginEntryMap = modulePluginEntryUrlMap;
   const loadedRef = useRef(new Map<string, React.ComponentType>());
   const loadingRef = useRef(new Set<string>());
+  const loadErrorsRef = useRef(new Map<string, string>());
+  const runtimeVersionsRef = useRef(new Map<string, number>());
   const [, forceLoaded] = useState(0);
+  const [loadRequestRevision, requestLoad] = useState(0);
+
+  const toolNameById = useMemo(
+    () =>
+      new Map(categories.flatMap((category) => category.modules.map((module) => [module.id, module.name]))),
+    [categories],
+  );
 
   const selectedModule: Module | null = useMemo(() => {
     if (!selectedModuleId) return null;
@@ -120,22 +212,39 @@ export default function ToolsPage({
       void loader()
         .then((m) => {
           loadedRef.current.set(moduleId, m.default);
+          loadErrorsRef.current.delete(moduleId);
           loadingRef.current.delete(moduleId);
           forceLoaded((v) => v + 1);
         })
-        .catch(() => {
+        .catch((error: unknown) => {
+          loadErrorsRef.current.set(moduleId, errorMessage(error));
           loadingRef.current.delete(moduleId);
           forceLoaded((v) => v + 1);
         });
     }
-  }, [openedTools]);
+  }, [loadRequestRevision, openedTools]);
+
+  const retryTool = (moduleId: string) => {
+    loadedRef.current.delete(moduleId);
+    loadingRef.current.delete(moduleId);
+    loadErrorsRef.current.delete(moduleId);
+    runtimeVersionsRef.current.set(moduleId, (runtimeVersionsRef.current.get(moduleId) ?? 0) + 1);
+    requestLoad((v) => v + 1);
+  };
 
   return (
     <div
       className={styles.page}
       style={
         isFullscreen
-          ? { position: 'fixed', inset: 0, zIndex: 9999, width: '100vw', height: '100vh', background: 'var(--bg-primary)' }
+          ? {
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9999,
+              width: '100vw',
+              height: '100vh',
+              background: 'var(--bg-primary)',
+            }
           : undefined
       }
     >
@@ -167,12 +276,26 @@ export default function ToolsPage({
 
           {selectedModule && (
             <div className={styles.toolHeader}>
-              <div className={styles.toolHeaderIcon} style={{ background: `${activeColor}12`, borderColor: `${activeColor}28`, color: activeColor }}>
+              <div
+                className={styles.toolHeaderIcon}
+                style={{
+                  background: `${activeColor}12`,
+                  borderColor: `${activeColor}28`,
+                  color: activeColor,
+                }}
+              >
                 {selectedModule.icon}
               </div>
               <div className={styles.toolHeaderMeta}>
                 <div className={styles.toolHeaderTitle}>{selectedModule.name}</div>
-                <span className={styles.toolHeaderPill} style={{ background: `${activeColor}15`, borderColor: `${activeColor}28`, color: activeColor }}>
+                <span
+                  className={styles.toolHeaderPill}
+                  style={{
+                    background: `${activeColor}15`,
+                    borderColor: `${activeColor}28`,
+                    color: activeColor,
+                  }}
+                >
                   {activeCategory?.name ?? selectedModule.categoryId}
                 </span>
               </div>
@@ -200,10 +323,35 @@ export default function ToolsPage({
             {Array.from(mountedRef.current).map((moduleId) => {
               if (corePluginEntryMap.has(moduleId)) return null;
               const Component = loadedRef.current.get(moduleId);
+              const loadError = loadErrorsRef.current.get(moduleId);
               const isActive = selectedModuleId === moduleId;
+              const toolName = toolNameById.get(moduleId) ?? moduleId;
+              const runtimeVersion = runtimeVersionsRef.current.get(moduleId) ?? 0;
               return (
-                <div key={moduleId} className={styles.keepAlive} style={{ display: isActive ? undefined : 'none' }}>
-                  {Component ? <Component /> : <div className={styles.empty}>Loading...</div>}
+                <div
+                  key={moduleId}
+                  className={styles.keepAlive}
+                  style={{ display: isActive ? undefined : 'none' }}
+                >
+                  {loadError ? (
+                    <ToolFailurePanel
+                      toolName={toolName}
+                      message={loadError}
+                      onRetry={() => retryTool(moduleId)}
+                      onClose={() => onCloseTool(moduleId)}
+                    />
+                  ) : Component ? (
+                    <ToolRuntimeBoundary
+                      key={`${moduleId}:${runtimeVersion}`}
+                      toolName={toolName}
+                      onRetry={() => retryTool(moduleId)}
+                      onClose={() => onCloseTool(moduleId)}
+                    >
+                      <Component />
+                    </ToolRuntimeBoundary>
+                  ) : (
+                    <div className={styles.empty}>Loading...</div>
+                  )}
                 </div>
               );
             })}
@@ -212,9 +360,22 @@ export default function ToolsPage({
               const entryUrl = corePluginEntryMap.get(moduleId);
               if (!entryUrl) return null;
               const isActive = selectedModuleId === moduleId;
+              const toolName = toolNameById.get(moduleId) ?? moduleId;
+              const runtimeVersion = runtimeVersionsRef.current.get(moduleId) ?? 0;
               return (
-                <div key={moduleId} className={styles.keepAlive} style={{ display: isActive ? undefined : 'none' }}>
-                  <PluginHost pluginId={moduleId} entryUrl={entryUrl} />
+                <div
+                  key={moduleId}
+                  className={styles.keepAlive}
+                  style={{ display: isActive ? undefined : 'none' }}
+                >
+                  <ToolRuntimeBoundary
+                    key={`${moduleId}:${runtimeVersion}`}
+                    toolName={toolName}
+                    onRetry={() => retryTool(moduleId)}
+                    onClose={() => onCloseTool(moduleId)}
+                  >
+                    <PluginHost pluginId={moduleId} entryUrl={entryUrl} />
+                  </ToolRuntimeBoundary>
                 </div>
               );
             })}
@@ -223,9 +384,22 @@ export default function ToolsPage({
               const entryUrl = marketplaceEntryMap.get(pluginId);
               if (!entryUrl) return null;
               const isActive = selectedModuleId === pluginId;
+              const toolName = toolNameById.get(pluginId) ?? pluginId;
+              const runtimeVersion = runtimeVersionsRef.current.get(pluginId) ?? 0;
               return (
-                <div key={pluginId} className={styles.keepAlive} style={{ display: isActive ? undefined : 'none' }}>
-                  <PluginHost pluginId={pluginId} entryUrl={entryUrl} />
+                <div
+                  key={pluginId}
+                  className={styles.keepAlive}
+                  style={{ display: isActive ? undefined : 'none' }}
+                >
+                  <ToolRuntimeBoundary
+                    key={`${pluginId}:${runtimeVersion}`}
+                    toolName={toolName}
+                    onRetry={() => retryTool(pluginId)}
+                    onClose={() => onCloseTool(pluginId)}
+                  >
+                    <PluginHost pluginId={pluginId} entryUrl={entryUrl} />
+                  </ToolRuntimeBoundary>
                 </div>
               );
             })}

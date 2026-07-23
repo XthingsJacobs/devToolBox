@@ -1,21 +1,28 @@
 import type { InstalledMarketplacePlugin, MarketplaceRegistryEntry } from './types';
+import { marketplaceService } from '../services';
 
 export async function listInstalledPlugins(): Promise<InstalledMarketplacePlugin[]> {
-  return (await window.electronAPI?.marketplaceListInstalled()) ?? [];
+  return (await marketplaceService.listInstalled()) ?? [];
 }
 
-export async function installPlugin(entry: MarketplaceRegistryEntry): Promise<{ success: boolean; error?: string }> {
-  if (!window.electronAPI?.marketplaceInstall) return { success: false, error: 'electronAPI not available' };
-  return window.electronAPI.marketplaceInstall(entry);
+export async function installPlugin(
+  entry: MarketplaceRegistryEntry,
+): Promise<{ success: boolean; error?: string }> {
+  return (await marketplaceService.install(entry)) ?? { success: false, error: 'electronAPI not available' };
 }
 
 export async function uninstallPlugin(id: string): Promise<{ success: boolean; error?: string }> {
-  if (!window.electronAPI?.marketplaceUninstall) return { success: false, error: 'electronAPI not available' };
-  return window.electronAPI.marketplaceUninstall(id);
+  return (await marketplaceService.uninstall(id)) ?? { success: false, error: 'electronAPI not available' };
 }
 
-export async function setPluginEnabled(id: string, enabled: boolean): Promise<{ success: boolean; error?: string }> {
-  if (!window.electronAPI?.marketplaceSetEnabled) return { success: false, error: 'electronAPI not available' };
-  return window.electronAPI.marketplaceSetEnabled(id, enabled);
+export async function setPluginEnabled(
+  id: string,
+  enabled: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  return (
+    (await marketplaceService.setEnabled(id, enabled)) ?? {
+      success: false,
+      error: 'electronAPI not available',
+    }
+  );
 }
-

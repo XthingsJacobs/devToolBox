@@ -3,6 +3,7 @@ import { marked } from 'marked';
 import { useI18n, getModuleLocale } from '../../../i18n';
 import { HelpModal } from '@@components';
 import styles from './UnicodeTool.module.css';
+import SafeHtml from '../../SafeHtml';
 
 import helpEn from './locales/help-en.md?raw';
 const HELP_TITLE = 'Unicode Help';
@@ -201,7 +202,7 @@ export default function UnicodeTool() {
       </div>
       {showHelp && (
         <HelpModal title={HELP_TITLE} onClose={() => setShowHelp(false)}>
-          <div dangerouslySetInnerHTML={{ __html: helpHtml }} />
+          <SafeHtml html={helpHtml} profile="rich-text" />
         </HelpModal>
       )}
     </div>

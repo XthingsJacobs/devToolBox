@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import type { CertInfo } from '../../../types/electron';
+import type { CertInfo } from '@devtoolbox/core';
 import { useI18n, getModuleLocale } from '../../../i18n';
+import { cryptoService, fileService } from '../../../services';
 import styles from './CertViewer.module.css';
 
 export default function CertViewer() {
@@ -19,13 +20,16 @@ export default function CertViewer() {
       return;
     }
     try {
-      const result = await window.electronAPI?.parseCert(pem.trim());
-      if (result?.success && result.info) {
+      const result = await cryptoService.parseCert(pem.trim());
+      if (!result) {
+        setCertInfo(null);
+        setError(mt('cannotParse'));
+      } else if (result.success) {
         setCertInfo(result.info);
         setError('');
       } else {
         setCertInfo(null);
-        setError(result?.error ?? mt('cannotParse'));
+        setError(result.error);
       }
     } catch {
       setCertInfo(null);
@@ -39,7 +43,7 @@ export default function CertViewer() {
   };
 
   const handleLoadFile = async () => {
-    const result = await window.electronAPI?.openFile([
+    const result = await fileService.openFile([
       { name: mt('certFiles'), extensions: ['pem', 'crt', 'cer', 'cert'] },
       { name: mt('allFiles'), extensions: ['*'] },
     ]);

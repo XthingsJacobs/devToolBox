@@ -1,15 +1,34 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './ModulesPage.module.css';
-import type { InstalledMarketplacePlugin, MarketplaceRegistry, MarketplaceRegistryEntry } from '../../marketplace/types';
+import type {
+  InstalledMarketplacePlugin,
+  MarketplaceRegistry,
+  MarketplaceRegistryEntry,
+} from '../../marketplace/types';
 import {
   DEFAULT_MARKETPLACE_REGISTRY_URL,
   fetchMarketplaceRegistry,
   getBundledRegistry,
   loadMarketplaceRegistryUrl,
 } from '../../marketplace/registry';
-import { installPlugin, listInstalledPlugins, setPluginEnabled, uninstallPlugin } from '../../marketplace/api';
+import {
+  installPlugin,
+  listInstalledPlugins,
+  setPluginEnabled,
+  uninstallPlugin,
+} from '../../marketplace/api';
 import { compareVersions, isNewerVersion } from '../../marketplace/version';
-import { VscArrowUp, VscCheck, VscChevronDown, VscExtensions, VscRefresh, VscSearch, VscTrash } from 'react-icons/vsc';
+import {
+  VscArrowUp,
+  VscCheck,
+  VscChevronDown,
+  VscExtensions,
+  VscRefresh,
+  VscSearch,
+  VscTrash,
+  VscVerifiedFilled,
+  VscWarning,
+} from 'react-icons/vsc';
 import { marketplacePluginIconFromManifest } from '../../marketplace/icons';
 import { useI18n } from '../../i18n';
 import { getMarketplaceManifestText } from '../../marketplace/i18n';
@@ -33,7 +52,11 @@ function categoryColor(categoryId: string) {
   }
 }
 
-export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: InstalledMarketplacePlugin[]) => void }) {
+export default function ModulesPage({
+  onUpdated,
+}: {
+  onUpdated?: (installed: InstalledMarketplacePlugin[]) => void;
+}) {
   const bundledRegistry = useMemo(() => getBundledRegistry(), []);
   const { locale } = useI18n();
   const [activeTab, setActiveTab] = useState<TabId>('installed');
@@ -105,7 +128,10 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
   const installedMap = useMemo(() => new Map(installed.map((p) => [p.id, p])), [installed]);
 
   const cats = useMemo(() => {
-    const list = activeTab === 'installed' ? installed : marketplaceLatest.map((e) => ({ manifest: e.manifest } as InstalledMarketplacePlugin));
+    const list =
+      activeTab === 'installed'
+        ? installed
+        : marketplaceLatest.map((e) => ({ manifest: e.manifest }) as InstalledMarketplacePlugin);
     const uniq = Array.from(new Set(list.map((x) => x.manifest.categoryId).filter(Boolean))).sort();
     return ['All', ...uniq];
   }, [activeTab, installed, marketplaceLatest]);
@@ -117,7 +143,8 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
     for (const p of installed) {
       const latest = registryLatestMap.get(p.id);
       if (!latest) continue;
-      if (isNewerVersion(String(latest.manifest.version ?? ''), String(p.version ?? ''))) res.push({ inst: p, latest });
+      if (isNewerVersion(String(latest.manifest.version ?? ''), String(p.version ?? '')))
+        res.push({ inst: p, latest });
     }
     return res;
   }, [installed, registryLatestMap]);
@@ -199,13 +226,20 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
               {upgradeEntries.length > 0 && (
                 <>
                   <span className={styles.dotSep}>·</span>
-                  <span className={styles.headerWarn}>{upgradeEntries.length} update{upgradeEntries.length > 1 ? 's' : ''}</span>
+                  <span className={styles.headerWarn}>
+                    {upgradeEntries.length} update{upgradeEntries.length > 1 ? 's' : ''}
+                  </span>
                 </>
               )}
             </div>
           </div>
         </div>
-        <button type="button" className={styles.refreshBtn} onClick={() => void refreshAll({ force: true })} aria-label="Refresh">
+        <button
+          type="button"
+          className={styles.refreshBtn}
+          onClick={() => void refreshAll({ force: true })}
+          aria-label="Refresh"
+        >
           <VscRefresh className={refreshing ? 'animate-spin' : ''} />
           Refresh
         </button>
@@ -237,7 +271,11 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
 
         <div className={styles.filters}>
           <div className={styles.selectWrap}>
-            <select className={styles.select} value={filterCat} onChange={(e) => setFilterCat(e.target.value)}>
+            <select
+              className={styles.select}
+              value={filterCat}
+              onChange={(e) => setFilterCat(e.target.value)}
+            >
               {cats.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -249,7 +287,12 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
 
           <div className={styles.search}>
             <VscSearch className={styles.searchIcon} />
-            <input className={styles.searchInput} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search modules…" />
+            <input
+              className={styles.searchInput}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search modules…"
+            />
           </div>
         </div>
       </div>
@@ -276,26 +319,59 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
           <div className={styles.cards}>
             {filteredInstalled.map((p) => {
               const latest = registryLatestMap.get(p.id);
-              const hasUpdate = latest ? isNewerVersion(String(latest.manifest.version ?? ''), String(p.version ?? '')) : false;
+              const hasUpdate = latest
+                ? isNewerVersion(String(latest.manifest.version ?? ''), String(p.version ?? ''))
+                : false;
               const color = categoryColor(p.manifest.categoryId);
               return (
                 <div key={p.id} className={styles.card}>
-                  <div className={styles.cardIcon} style={{ color, background: `${color}12`, borderColor: `${color}22` }}>
+                  <div
+                    className={styles.cardIcon}
+                    style={{ color, background: `${color}12`, borderColor: `${color}22` }}
+                  >
                     {marketplacePluginIconFromManifest(p.manifest)}
                   </div>
                   <div className={styles.cardBody}>
                     <div className={styles.cardTop}>
-                      <div className={styles.cardName}>{getMarketplaceManifestText(p.manifest, locale).name}</div>
+                      <div className={styles.cardName}>
+                        {getMarketplaceManifestText(p.manifest, locale).name}
+                      </div>
                       <span className={styles.pill}>v{p.version}</span>
                       {hasUpdate && latest?.manifest.version ? (
-                        <span className={`${styles.pill} ${styles.pillUpgrade}`}>v{latest.manifest.version}</span>
+                        <span className={`${styles.pill} ${styles.pillUpgrade}`}>
+                          v{latest.manifest.version}
+                        </span>
                       ) : null}
                       <span className={styles.pillCat} style={{ color, background: `${color}12` }}>
                         {p.manifest.categoryId}
                       </span>
+                      <span
+                        className={styles.provenancePill}
+                        data-status={p.provenance?.status ?? 'legacy'}
+                        title={
+                          p.provenance?.status === 'verified'
+                            ? `Verified publisher: ${p.provenance.publisher ?? 'unknown'}\nSource: ${p.provenance.source?.repository ?? 'unknown'}\nRevision: ${p.provenance.source?.revision ?? 'unknown'}`
+                            : p.provenance?.status === 'untrusted'
+                              ? `Signature key is not trusted: ${p.provenance.publisher ?? 'unknown'}`
+                              : p.provenance?.status === 'unsigned'
+                                ? 'Installed without a package signature while audit mode was active'
+                                : 'Installed before provenance tracking was available'
+                        }
+                      >
+                        {p.provenance?.status === 'verified' ? <VscVerifiedFilled /> : <VscWarning />}
+                        {p.provenance?.status === 'verified'
+                          ? `Verified · ${p.provenance.publisher ?? 'publisher'}`
+                          : p.provenance?.status === 'untrusted'
+                            ? 'Untrusted signature'
+                            : p.provenance?.status === 'unsigned'
+                              ? 'Unsigned'
+                              : 'Legacy install'}
+                      </span>
                       {!p.enabled && <span className={styles.pillMuted}>Disabled</span>}
                     </div>
-                    <div className={styles.cardDesc}>{getMarketplaceManifestText(p.manifest, locale).description}</div>
+                    <div className={styles.cardDesc}>
+                      {getMarketplaceManifestText(p.manifest, locale).description}
+                    </div>
                     {p.manifest.author ? <div className={styles.cardMeta}>by {p.manifest.author}</div> : null}
                   </div>
 
@@ -323,7 +399,12 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
                       </span>
                       {p.enabled ? 'Enabled' : 'Disabled'}
                     </button>
-                    <button type="button" className={styles.iconBtn} onClick={() => void handleUninstall(p.id)} aria-label="Uninstall">
+                    <button
+                      type="button"
+                      className={styles.iconBtn}
+                      onClick={() => void handleUninstall(p.id)}
+                      aria-label="Uninstall"
+                    >
                       <VscTrash />
                     </button>
                   </div>
@@ -338,24 +419,41 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
             {filteredMarketplace.map((entry) => {
               const id = entry.manifest.id;
               const inst = installedMap.get(id);
-              const hasUpdate = inst ? isNewerVersion(String(entry.manifest.version ?? ''), String(inst.version ?? '')) : false;
+              const hasUpdate = inst
+                ? isNewerVersion(String(entry.manifest.version ?? ''), String(inst.version ?? ''))
+                : false;
               const color = categoryColor(entry.manifest.categoryId);
               return (
                 <div key={id} className={styles.card}>
-                  <div className={styles.cardIcon} style={{ color, background: `${color}12`, borderColor: `${color}22` }}>
+                  <div
+                    className={styles.cardIcon}
+                    style={{ color, background: `${color}12`, borderColor: `${color}22` }}
+                  >
                     {marketplacePluginIconFromManifest(entry.manifest)}
                   </div>
                   <div className={styles.cardBody}>
                     <div className={styles.cardTop}>
-                      <div className={styles.cardName}>{getMarketplaceManifestText(entry.manifest, locale).name}</div>
-                      {entry.manifest.version ? <span className={styles.pill}>v{entry.manifest.version}</span> : null}
+                      <div className={styles.cardName}>
+                        {getMarketplaceManifestText(entry.manifest, locale).name}
+                      </div>
+                      {entry.manifest.version ? (
+                        <span className={styles.pill}>v{entry.manifest.version}</span>
+                      ) : null}
                       <span className={styles.pillCat} style={{ color, background: `${color}12` }}>
                         {entry.manifest.categoryId}
                       </span>
-                      {inst && <span className={styles.pillOk}><VscCheck /> Installed</span>}
+                      {inst && (
+                        <span className={styles.pillOk}>
+                          <VscCheck /> Installed
+                        </span>
+                      )}
                     </div>
-                    <div className={styles.cardDesc}>{getMarketplaceManifestText(entry.manifest, locale).description}</div>
-                    {entry.manifest.author ? <div className={styles.cardMeta}>by {entry.manifest.author}</div> : null}
+                    <div className={styles.cardDesc}>
+                      {getMarketplaceManifestText(entry.manifest, locale).description}
+                    </div>
+                    {entry.manifest.author ? (
+                      <div className={styles.cardMeta}>by {entry.manifest.author}</div>
+                    ) : null}
                   </div>
 
                   <div className={styles.actions}>
@@ -391,7 +489,9 @@ export default function ModulesPage({ onUpdated }: { onUpdated?: (installed: Ins
                 </div>
               );
             })}
-            {filteredMarketplace.length === 0 && <div className={styles.empty}>Marketplace registry is empty</div>}
+            {filteredMarketplace.length === 0 && (
+              <div className={styles.empty}>Marketplace registry is empty</div>
+            )}
           </div>
         )}
 

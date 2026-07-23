@@ -3,6 +3,8 @@
  * Runs on renderer startup and executes migrations in version order.
  */
 
+import { recordDiagnostic } from '../lib/diagnostics';
+
 interface Migration {
   version: string;
   migrate: () => void;
@@ -67,6 +69,13 @@ export function runMigrations(appVersion: string): void {
       m.migrate();
       localStorage.setItem(DATA_VERSION_KEY, m.version);
     } catch (err) {
+      recordDiagnostic({
+        level: 'error',
+        source: 'renderer',
+        scope: `migration.${m.version}`,
+        message: err instanceof Error ? err.message : 'Data migration failed',
+        details: err,
+      });
       console.error(`Migration to ${m.version} failed:`, err);
       break;
     }

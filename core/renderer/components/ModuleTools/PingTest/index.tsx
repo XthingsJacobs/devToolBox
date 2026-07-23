@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useI18n, getModuleLocale } from '../../../i18n';
+import { networkService } from '../../../services';
 import styles from './PingTest.module.css';
 
 const COUNT_OPTIONS = [4, 8, 16, 32];
@@ -26,7 +27,7 @@ export default function PingTest() {
 
   const cleanup = useCallback(() => {
     if (handlersRef.current) {
-      window.electronAPI?.offPingListeners(
+      networkService.offPingListeners(
         handlersRef.current.data,
         handlersRef.current.error,
         handlersRef.current.done,
@@ -39,7 +40,7 @@ export default function PingTest() {
   useEffect(() => {
     return () => {
       cleanup();
-      window.electronAPI?.pingStop();
+      networkService.pingStop();
     };
   }, [cleanup]);
 
@@ -54,23 +55,23 @@ export default function PingTest() {
     setError('');
     setOutput('');
 
-    const dataHandler = window.electronAPI?.onPingData((data: string) => {
+    const dataHandler = networkService.onPingData((data: string) => {
       setOutput((prev) => prev + data);
     });
-    const errorHandler = window.electronAPI?.onPingError((err: string) => {
+    const errorHandler = networkService.onPingError((err: string) => {
       setError(err);
     });
-    const doneHandler = window.electronAPI?.onPingDone(() => {
+    const doneHandler = networkService.onPingDone(() => {
       setLoading(false);
       cleanup();
     });
     handlersRef.current = { data: dataHandler, error: errorHandler, done: doneHandler };
 
-    window.electronAPI?.pingStart(target, count);
+    networkService.pingStart(target, count);
   };
 
   const handleStop = () => {
-    window.electronAPI?.pingStop();
+    networkService.pingStop();
     setLoading(false);
     cleanup();
   };

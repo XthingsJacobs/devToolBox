@@ -98,7 +98,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .toolHeaderBtn:hover {
@@ -106,9 +109,9 @@
 }
 
 .toolHeaderBtn[data-active='1'] {
-  background: #1f3a5f;
-  border-color: color-mix(in oklab, var(--accent-primary) 20%, transparent);
-  color: var(--accent-secondary);
+  background: var(--state-selected-bg);
+  border-color: var(--state-selected-border);
+  color: var(--state-selected-text);
 }
 
 .keepAlive {
@@ -138,4 +141,84 @@
   font-size: 12px;
   margin-top: 4px;
   color: var(--text-disabled);
+}
+
+.failure {
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(
+      circle at 50% 25%,
+      color-mix(in oklab, var(--accent-error) 9%, transparent),
+      transparent 48%
+    ),
+    var(--bg-primary);
+}
+
+.failureCard {
+  width: min(460px, 100%);
+  padding: 28px;
+  border: 1px solid color-mix(in oklab, var(--accent-error) 24%, var(--border-default));
+  border-radius: 16px;
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-float);
+}
+
+.failureEyebrow {
+  margin-bottom: 8px;
+  color: var(--accent-error);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.failureTitle {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.failureMessage {
+  margin: 10px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.failureActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.failureButton,
+.failurePrimaryButton {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 9px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+}
+
+.failurePrimaryButton {
+  border-color: color-mix(in oklab, var(--accent-primary) 55%, var(--border-default));
+  background: var(--accent-primary);
+  color: var(--button-primary-text, #fff);
+}
+
+.failureButton:hover,
+.failurePrimaryButton:hover {
+  filter: brightness(1.08);
 }

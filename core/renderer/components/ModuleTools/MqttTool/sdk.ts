@@ -1,3 +1,5 @@
+import { fileService, networkService } from '../../../services';
+
 type EventMessage = { type: 'devtoolbox:sdk:event'; event: string; data?: unknown };
 type Listener<T = unknown> = (data: T) => void;
 
@@ -23,9 +25,7 @@ function emit(event: string, data: unknown): void {
 
 function ensureMqttBridge(): void {
   if (mqttHandler) return;
-  const api = window.electronAPI;
-  if (!api?.onMqttEvent) return;
-  mqttHandler = api.onMqttEvent((id, ev, data) => {
+  mqttHandler = networkService.onMqttEvent((id, ev, data) => {
     if (ev === 'connected') emit('mqtt.connected', { id });
     else if (ev === 'reconnect') emit('mqtt.reconnect', { id });
     else if (ev === 'close') emit('mqtt.close', { id });
@@ -35,8 +35,7 @@ function ensureMqttBridge(): void {
       const msg = String(d['message'] ?? data ?? '');
       const code = String(d['code'] ?? '');
       emit('mqtt.error', { id, message: code ? `${msg} (${code})` : msg });
-    }
-    else if (ev === 'message') {
+    } else if (ev === 'message') {
       const d = isRecord(data) ? data : {};
       emit('mqtt.message', {
         id,
@@ -65,9 +64,7 @@ export function onSdkEvent<T = unknown>(name: string, fn: Listener<T>): () => vo
 
 export async function mqttConnect(params: unknown): Promise<void> {
   ensureMqttBridge();
-  const api = window.electronAPI;
-  if (!api?.mqttConnect) return;
-  const res = await api.mqttConnect(params);
+  const res = await networkService.mqttConnect(params);
   if (res?.ok) return;
   const msg = String(res?.error?.message ?? 'MQTT connect failed');
   const id = isRecord(params) && typeof params.id === 'string' ? params.id : 'default';
@@ -76,37 +73,36 @@ export async function mqttConnect(params: unknown): Promise<void> {
 }
 
 export async function mqttDisconnect(id: string): Promise<void> {
-  const api = window.electronAPI;
-  if (!api?.mqttDisconnect) return;
-  await api.mqttDisconnect(id);
+  await networkService.mqttDisconnect(id);
 }
 
 export async function mqttSubscribe(id: string, topic: string, qos: number): Promise<void> {
-  const api = window.electronAPI;
-  if (!api?.mqttSubscribe) return;
-  await api.mqttSubscribe(id, topic, qos);
+  await networkService.mqttSubscribe(id, topic, qos);
 }
 
 export async function mqttUnsubscribe(id: string, topic: string): Promise<void> {
-  const api = window.electronAPI;
-  if (!api?.mqttUnsubscribe) return;
-  await api.mqttUnsubscribe(id, topic);
+  await networkService.mqttUnsubscribe(id, topic);
 }
 
-export async function mqttPublish(id: string, topic: string, payload: string, qos: number, retain: boolean): Promise<void> {
-  const api = window.electronAPI;
-  if (!api?.mqttPublish) return;
-  await api.mqttPublish(id, topic, payload, qos, retain);
+export async function mqttPublish(
+  id: string,
+  topic: string,
+  payload: string,
+  qos: number,
+  retain: boolean,
+): Promise<void> {
+  await networkService.mqttPublish(id, topic, payload, qos, retain);
 }
 
-export async function openFileBase64(filters?: { name: string; extensions: string[] }[]): Promise<
-  { name: string; contentB64: string } | null
-> {
-  const api = window.electronAPI;
-  if (!api?.openFile) return null;
-  const res = await api.openFile(filters, 'base64');
+export async function openFileBase64(
+  filters?: { name: string; extensions: string[] }[],
+): Promise<{ name: string; contentB64: string } | null> {
+  const res = await fileService.openFile(filters, 'base64');
   if (!res) return null;
-  const name = String(res.filePath ?? '').split(/[\\/]/).pop() ?? '';
+  const name =
+    String(res.filePath ?? '')
+      .split(/[\\/]/)
+      .pop() ?? '';
   return { name, contentB64: String(res.content ?? '') };
 }
 

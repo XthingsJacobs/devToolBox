@@ -21,4 +21,3 @@ RFC 4122 defines standard namespace UUIDs:
 - **Namespace UUID**: A UUID that scopes the name. The final UUID is derived from `(namespace UUID + name)`.
   - Changing the namespace UUID or the name will change the output UUID.
   - Using a custom namespace UUID lets you create your own deterministic UUID space.
-
