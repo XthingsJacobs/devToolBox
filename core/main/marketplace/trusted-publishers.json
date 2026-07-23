@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "mode": "audit",
+  "publishers": [
+    {
+      "publisher": "devtoolbox-official",
+      "keyId": "sha256-27d34403da3feda5439b477441d9ae8af076e91252a84fd335a0d721ece729f6",
+      "publicKey": "MCowBQYDK2VwAyEAhxhTwqxDdBCnFnH4EmpYql0ikkUDgS60FLq1WdFQaME=",
+      "pluginIds": [
+        "market-emoji-search",
+        "market-exchange-rate",
+        "market-ip-lookup",
+        "market-matter-catalog"
+      ],
+      "sourceRepositories": ["https://github.com/XthingsJacobs/devToolBox"]
+    }
+  ]
+}

@@ -5,6 +5,8 @@ import { register as registerAppIpc } from './ipc/app';
 import { register as registerMarketplaceIpc } from './ipc/marketplace';
 import { register as registerBackupIpc } from './ipc/backup';
 import { register as registerHttpIpc } from './ipc/http';
+import { register as registerDiagnosticsIpc } from './ipc/diagnostics';
+import { register as registerStartupIpc } from './ipc/startup';
 import { checkForUpdatesInteractive, initUpdater } from './updater';
 import {
   register as registerLocaleIpc,
@@ -20,14 +22,13 @@ import {
   broadcastThemeChange,
   setCurrentThemeSetting,
 } from './ipc/theme';
+import { registerPluginProtocol, registerPluginScheme } from './protocols/plugin-protocol';
+import { DiagnosticStore } from './diagnostics';
+import { StartupHealthTracker } from './startup-health';
+import { createRendererNavigationTarget, isRendererNavigationAllowed } from './navigation-policy';
 
 // Auto-scan module-level IPC (removing a module folder removes its IPC automatically)
-const moduleIpcFiles = import.meta.glob<{ register: () => void }>(
-  [
-    '../renderer/components/ModuleTools/*/ipc.ts',
-  ],
-  { eager: true },
-);
+const moduleIpcFiles = import.meta.glob<{ register: () => void }>(['./modules/*.ts'], { eager: true });
 
 type Locale = ReturnType<typeof getCurrentLocale>;
 
@@ -35,10 +36,33 @@ const APP_VERSION = app.getVersion().split('-')[0];
 const BUILD_NUMBER = '20260317';
 
 app.name = 'DevToolBox';
+registerPluginScheme();
 
 const IS_DEV = Boolean(process.env.VITE_DEV_SERVER_URL);
 if (IS_DEV) {
   app.setPath('userData', path.join(app.getPath('appData'), 'DevToolBox-dev'));
+}
+
+const diagnostics = new DiagnosticStore({
+  filePath: path.join(app.getPath('userData'), 'diagnostics', 'events.json'),
+  onPersistenceError: (error) => console.warn('Unable to persist diagnostics:', error),
+});
+const startupHealth = new StartupHealthTracker({
+  filePath: path.join(app.getPath('userData'), 'diagnostics', 'startup-health.json'),
+  onPersistenceError: (error) => console.warn('Unable to persist startup health:', error),
+});
+const startupStatus = startupHealth.beginStartup();
+if (startupStatus.safeMode) {
+  diagnostics.record({
+    level: 'warn',
+    source: 'main',
+    scope: 'startup.safe-mode',
+    message:
+      startupStatus.reason === 'manual'
+        ? 'Application started in user-requested safe mode'
+        : 'Application entered safe mode after repeated incomplete startups',
+    details: { consecutiveFailures: startupStatus.consecutiveFailures },
+  });
 }
 
 let mainWindow: BrowserWindow | null = null;
@@ -54,6 +78,7 @@ const WINDOW_CONFIG = {
   webPreferences: {
     contextIsolation: true,
     nodeIntegration: false,
+    sandbox: true,
     preload: path.join(__dirname, '../preload/index.js'),
   },
 };
@@ -132,9 +157,12 @@ async function showAboutMessageBox(): Promise<void> {
     title: txt.aboutTitle,
     message: 'DevToolBox',
     icon: getAboutIcon(),
-    detail: [`${txt.company}: Jacobs`, `${txt.developer}: Jacobs`, `${txt.version}: ${APP_VERSION}`, `${txt.build}: ${BUILD_NUMBER}`].join(
-      '\n',
-    ),
+    detail: [
+      `${txt.company}: Jacobs`,
+      `${txt.developer}: Jacobs`,
+      `${txt.version}: ${APP_VERSION}`,
+      `${txt.build}: ${BUILD_NUMBER}`,
+    ].join('\n'),
   });
 }
 
@@ -326,33 +354,62 @@ function buildMenu(): void {
 }
 
 function createWindow(): void {
-  const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
   const win = new BrowserWindow({
     ...WINDOW_CONFIG,
-    webPreferences: {
-      ...WINDOW_CONFIG.webPreferences,
-      webSecurity: !isDev,
-      allowRunningInsecureContent: isDev,
-    },
   });
   mainWindow = win;
+  const navigationTarget = createRendererNavigationTarget(
+    process.env.VITE_DEV_SERVER_URL,
+    path.join(__dirname, '../../dist/index.html'),
+  );
+  const guardNavigation = (event: Electron.Event, targetUrl: string) => {
+    if (isRendererNavigationAllowed(targetUrl, navigationTarget.policy)) return;
+    event.preventDefault();
+    diagnostics.record({
+      level: 'warn',
+      source: 'main',
+      scope: 'renderer-navigation',
+      message: 'Blocked an untrusted main-window navigation',
+    });
+  };
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.on('will-navigate', guardNavigation);
+  win.webContents.on('will-redirect', guardNavigation);
+  win.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(false);
+  });
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null;
   });
+  win.on('unresponsive', () => {
+    diagnostics.record({
+      level: 'warn',
+      source: 'main',
+      scope: 'browser-window',
+      message: 'Main window became unresponsive',
+    });
+  });
+  win.webContents.on('preload-error', (_event, preloadPath, error) => {
+    diagnostics.record({
+      level: 'error',
+      source: 'main',
+      scope: 'preload',
+      message: 'Preload script failed',
+      details: { preloadPath, error },
+    });
+  });
+  win.webContents.on('render-process-gone', (_event, details) => {
+    diagnostics.record({
+      level: details.reason === 'clean-exit' ? 'info' : 'error',
+      source: 'main',
+      scope: 'renderer-process',
+      message: `Renderer process exited: ${details.reason}`,
+      details,
+    });
+  });
   win.setFullScreen(true);
 
-  const devUrl = process.env.VITE_DEV_SERVER_URL;
-  if (devUrl) {
-    try {
-      const u = new URL(devUrl);
-      u.hostname = 'localhost';
-      void win.loadURL(u.toString());
-    } catch {
-      void win.loadURL(devUrl);
-    }
-  } else {
-    void win.loadFile(path.join(__dirname, '../../dist/index.html'));
-  }
+  void win.loadURL(navigationTarget.entryUrl);
 }
 
 // Register framework-level IPC handlers
@@ -368,7 +425,16 @@ registerThemeIpc((theme) => {
 });
 registerFileIpc();
 registerAppIpc(APP_VERSION, BUILD_NUMBER);
-registerMarketplaceIpc();
+registerDiagnosticsIpc(diagnostics, {
+  version: APP_VERSION,
+  build: BUILD_NUMBER,
+  startupStatus,
+});
+registerStartupIpc(startupHealth);
+registerMarketplaceIpc(
+  (event) => diagnostics.record(event),
+  () => !startupStatus.safeMode,
+);
 registerBackupIpc();
 
 // Auto-register all module-level IPC (dedupe: each register function is called only once)
@@ -384,12 +450,14 @@ for (const [, mod] of Object.entries(moduleIpcFiles)) {
 
 app.on('ready', () => {
   buildMenu();
+  registerPluginProtocol({ runtimeEnabled: () => !startupStatus.safeMode });
   createWindow();
   registerHttpIpc();
   initUpdater(() => mainWindow);
 });
 
 app.on('before-quit', (e) => {
+  startupHealth.markCleanExit();
   if (flushingStorage) return;
   const win = mainWindow;
   if (!win) return;
@@ -418,3 +486,12 @@ const handleSignal = () => {
 };
 process.on('SIGINT', handleSignal);
 process.on('SIGTERM', handleSignal);
+process.on('uncaughtExceptionMonitor', (error, origin) => {
+  diagnostics.record({
+    level: 'error',
+    source: 'main',
+    scope: 'uncaught-exception',
+    message: error.message || 'Uncaught main-process exception',
+    details: { origin, error },
+  });
+});
