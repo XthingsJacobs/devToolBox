@@ -37,6 +37,7 @@ Use `pnpm format` only when you intend to rewrite files; use `pnpm format:check`
 - Base branch: `main`
 - Workflow: fork from `main` → create a focused feature branch → open a PR back to `main`
 - Keep each PR focused (one feature / one refactor / one bug fix).
+- Write all Git commit messages in English, preferably using concise Conventional Commit style.
 - Do not commit secrets (tokens, private keys, certificates).
 - For UI changes, include screenshots or screen recordings when possible.
 
