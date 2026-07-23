@@ -15,11 +15,6 @@ on:
         description: Release tag (leave empty to use <version>-<build>)
         required: false
         default: ''
-      include_macos_x64:
-        description: Build macOS Intel (x64)
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: write
@@ -58,6 +53,9 @@ jobs:
           - name: macos-arm64
             os: macos-latest
             macArgs: --arm64
+          - name: macos-x64
+            os: macos-13
+            macArgs: --x64
           - name: windows-x64
             os: windows-latest
     runs-on: ${{ matrix.os }}
@@ -134,6 +132,44 @@ jobs:
         if: runner.os == 'Windows'
         run: pnpm package:win
 
+      - name: Verify packaged assets
+        shell: bash
+        env:
+          RELEASE_TARGET: ${{ matrix.name }}
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const target = process.env.RELEASE_TARGET;
+          const files = [];
+          function walk(dir) {
+            if (!fs.existsSync(dir)) return;
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const file = path.join(dir, entry.name);
+              if (entry.isDirectory()) walk(file);
+              else files.push(file.split(path.sep).join('/'));
+            }
+          }
+          walk('release');
+
+          const expectedByTarget = {
+            'macos-arm64': [/DevToolBox-.*-mac-arm64\.dmg$/, /DevToolBox-.*-mac-arm64\.zip$/],
+            'macos-x64': [/DevToolBox-.*-mac-x64\.dmg$/, /DevToolBox-.*-mac-x64\.zip$/],
+            'windows-x64': [/DevToolBox-.*-win-x64\.exe$/, /DevToolBox-.*-win-x64\.zip$/],
+          };
+          const expected = expectedByTarget[target] || [];
+          const missing = expected.filter((pattern) => !files.some((file) => pattern.test(file)));
+          if (missing.length > 0) {
+            console.error(`Missing packaged assets for ${target}:`);
+            for (const pattern of missing) console.error(`- ${pattern}`);
+            console.error('Files found:');
+            for (const file of files) console.error(`- ${file}`);
+            process.exit(1);
+          }
+          console.log(`Verified packaged assets for ${target}.`);
+          NODE
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -145,14 +181,14 @@ jobs:
             release/**/DevToolBox-*-mac-*.zip.blockmap
             release/**/DevToolBox-*-win-*.exe
             release/**/DevToolBox-*-win-*.exe.blockmap
+            release/**/DevToolBox-*-win-*.zip
+            release/**/DevToolBox-*-win-*.zip.blockmap
             release/**/latest*.yml
             release/**/latest*.yaml
 
-  build_macos_x64:
+  supply_chain:
     needs: prepare
-    if: ${{ github.event.inputs.include_macos_x64 == 'true' }}
-    runs-on: macos-13
-    environment: release
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -178,65 +214,25 @@ jobs:
           RELEASE_BUILD: ${{ needs.prepare.outputs.build }}
         run: node scripts/release-vars.mjs apply
 
-      - name: Marketplace Build
-        run: pnpm -C marketplace build
+      - name: Generate SBOM and third-party notices
+        run: node scripts/generate-supply-chain.mjs --output-dir release-metadata
 
-      - name: Write builtin backup key
-        run: node -e "const fs=require('node:fs'); const k=process.env.SECRET_KEY; if(!k){ console.log('SECRET_KEY is not set. Using built-in dev backup key.'); process.exit(0);} fs.writeFileSync('key.txt', k, 'utf-8');"
-        env:
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
-
-      - name: Prepare macOS signing
-        run: |
-          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
-          CERT_PATH="$RUNNER_TEMP/devtoolbox-signing.p12"
-          API_KEY_PATH="$RUNNER_TEMP/apple-api-key.p8"
-
-          python3 -c "import base64,os,pathlib; pathlib.Path(os.environ['CERT_PATH']).write_bytes(base64.b64decode(os.environ['MAC_CERT_P12_BASE64'])); pathlib.Path(os.environ['API_KEY_PATH']).write_bytes(base64.b64decode(os.environ['APPLE_API_KEY_P8_BASE64']))"
-
-          security create-keychain -p "$MAC_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$MAC_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$CERT_PATH" -P "$MAC_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security list-keychains -d user -s "$KEYCHAIN_PATH"
-          security default-keychain -s "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$MAC_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          echo "CSC_LINK=$CERT_PATH" >> "$GITHUB_ENV"
-          echo "APPLE_API_KEY=$API_KEY_PATH" >> "$GITHUB_ENV"
-        env:
-          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
-          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
-          MAC_KEYCHAIN_PASSWORD: ${{ secrets.MAC_KEYCHAIN_PASSWORD }}
-          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
-          CERT_PATH: ${{ runner.temp }}/devtoolbox-signing.p12
-          API_KEY_PATH: ${{ runner.temp }}/apple-api-key.p8
-
-      - name: Package (macOS x64)
-        run: pnpm package:mac -- --x64
-        env:
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-
-      - name: Upload artifacts (macOS x64)
+      - name: Upload release metadata
         uses: actions/upload-artifact@v4
         with:
-          name: release-macos-x64
-          path: |
-            release/**/DevToolBox-*-mac-*.dmg
-            release/**/DevToolBox-*-mac-*.dmg.blockmap
-            release/**/DevToolBox-*-mac-*.zip
-            release/**/DevToolBox-*-mac-*.zip.blockmap
-            release/**/latest*.yml
-            release/**/latest*.yaml
+          name: release-metadata
+          path: release-metadata/*
+          if-no-files-found: error
 
   release:
-    needs: [prepare, build, build_macos_x64]
-    if: ${{ always() && needs.build.result == 'success' && (needs.build_macos_x64.result == 'success' || needs.build_macos_x64.result == 'skipped') }}
+    needs: [prepare, build, supply_chain]
+    if: ${{ always() && needs.build.result == 'success' && needs.supply_chain.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
       - name: Download artifacts (macOS arm64)
         uses: actions/download-artifact@v4
         with:
@@ -244,7 +240,6 @@ jobs:
           path: release-macos-arm64
 
       - name: Download artifacts (macOS x64)
-        if: ${{ github.event.inputs.include_macos_x64 == 'true' }}
         uses: actions/download-artifact@v4
         with:
           name: release-macos-x64
@@ -255,6 +250,15 @@ jobs:
         with:
           name: release-windows-x64
           path: release-windows
+
+      - name: Download release metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: release-metadata
+          path: release-metadata
+
+      - name: Generate release checksums
+        run: node scripts/generate-checksums.mjs release-macos-arm64 release-macos-x64 release-windows release-metadata --output release-metadata/SHA256SUMS
 
       - name: Release (Attempt 1)
         id: release1
@@ -282,8 +286,11 @@ jobs:
             release-macos-x64/**/latest*.yaml
             release-windows/**/DevToolBox-*-win-*.exe
             release-windows/**/DevToolBox-*-win-*.exe.blockmap
+            release-windows/**/DevToolBox-*-win-*.zip
+            release-windows/**/DevToolBox-*-win-*.zip.blockmap
             release-windows/**/latest*.yml
             release-windows/**/latest*.yaml
+            release-metadata/*
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -319,8 +326,11 @@ jobs:
             release-macos-x64/**/latest*.yaml
             release-windows/**/DevToolBox-*-win-*.exe
             release-windows/**/DevToolBox-*-win-*.exe.blockmap
+            release-windows/**/DevToolBox-*-win-*.zip
+            release-windows/**/DevToolBox-*-win-*.zip.blockmap
             release-windows/**/latest*.yml
             release-windows/**/latest*.yaml
+            release-metadata/*
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -354,8 +364,11 @@ jobs:
             release-macos-x64/**/latest*.yaml
             release-windows/**/DevToolBox-*-win-*.exe
             release-windows/**/DevToolBox-*-win-*.exe.blockmap
+            release-windows/**/DevToolBox-*-win-*.zip
+            release-windows/**/DevToolBox-*-win-*.zip.blockmap
             release-windows/**/latest*.yml
             release-windows/**/latest*.yaml
+            release-metadata/*
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

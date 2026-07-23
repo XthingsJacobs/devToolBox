@@ -102,6 +102,7 @@ import sp from '@@components/SplitPane/SplitPane.module.css';
 import ResponsiveActions from '@components/ResponsiveActions';
 import { useSplitPane, HelpModal, ToolSection } from '@@components';
 import { useI18n, getModuleLocale } from '../../../i18n';
+import SafeHtml from '../../SafeHtml';
 
 import helpEn from './locales/help-en.md?raw';
 
@@ -186,7 +187,7 @@ export default function ${componentName}() {
 
       {showHelp && (
         <HelpModal title={mt('helpTitle')} onClose={() => setShowHelp(false)}>
-          <div dangerouslySetInnerHTML={{ __html: helpHtml }} />
+          <SafeHtml html={helpHtml} profile="rich-text" />
         </HelpModal>
       )}
     </div>
@@ -373,11 +374,18 @@ async function main() {
       'utf8',
     );
 
-    await writeFile(
-      path.join(moduleDir, 'config.tsx'),
-      `import type { ModuleConfig } from '../../../types';\nimport ${componentName} from './index';\n\nconst config: ModuleConfig = {\n  id: '${moduleId}',\n  name: '${name}',\n  description: '${description}',\n  categoryId: '${categoryId}',\n  component: ${componentName},\n};\n\nexport default config;\n`,
-      'utf8',
-    );
+    const manifest = {
+      id: moduleId,
+      name,
+      description,
+      sdkVersion: 'core',
+      entry: './index.tsx',
+      categoryId,
+      author: 'DevToolBox',
+      iconKey: 'vsc:VscCode',
+      permissions: [],
+    };
+    await writeFile(path.join(moduleDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 
     await writeFile(path.join(moduleDir, `${folderName}.module.css`), `.root {\n}\n`, 'utf8');
 
@@ -388,7 +396,7 @@ async function main() {
     );
 
     process.stdout.write(`Created: ${moduleDir}\n`);
-    process.stdout.write('Tip: run `pnpm lint:modules` to validate the module structure.\n');
+    process.stdout.write('Tip: customize manifest.json, then run `pnpm lint:modules`.\n');
   } finally {
     await rl.close();
   }

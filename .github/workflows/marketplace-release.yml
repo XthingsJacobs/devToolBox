@@ -49,9 +49,20 @@ jobs:
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           MARKETPLACE_TAG: ${{ github.event.inputs.tag }}
+          MARKETPLACE_REQUIRE_SIGNATURES: ${{ vars.MARKETPLACE_REQUIRE_SIGNATURES || 'false' }}
+          MARKETPLACE_SIGNING_PRIVATE_KEY_BASE64: ${{ secrets.MARKETPLACE_SIGNING_PRIVATE_KEY_BASE64 }}
+          MARKETPLACE_SIGNING_PUBLISHER: devtoolbox-official
 
       - name: Write keep list
         run: node -e "const fs=require('node:fs'); const path=require('node:path'); const dir='marketplace/release-dist'; const zips=fs.existsSync(dir)?fs.readdirSync(dir).filter(f=>f.endsWith('.zip')):[]; fs.writeFileSync(path.join(dir,'keep-zips.json'), JSON.stringify({ zips }, null, 2), 'utf8');"
+
+      - name: Verify marketplace provenance and artifacts
+        run: node marketplace/scripts/verify-release.mjs marketplace/release-dist/registry.json
+        env:
+          MARKETPLACE_REQUIRE_SIGNATURES: ${{ vars.MARKETPLACE_REQUIRE_SIGNATURES || 'false' }}
+
+      - name: Generate checksums
+        run: node scripts/generate-checksums.mjs marketplace/release-dist/registry.json marketplace/release-dist/*.zip --output marketplace/release-dist/SHA256SUMS
 
       - name: List release artifacts
         run: |
@@ -65,6 +76,7 @@ jobs:
           path: |
             marketplace/release-dist/registry.json
             marketplace/release-dist/keep-zips.json
+            marketplace/release-dist/SHA256SUMS
             marketplace/release-dist/*.zip
           if-no-files-found: error
 
@@ -99,6 +111,7 @@ jobs:
           target_commitish: main
           files: |
             marketplace-release/registry.json
+            marketplace-release/SHA256SUMS
             marketplace-release/*.zip
           fail_on_unmatched_files: false
         env:
@@ -119,6 +132,7 @@ jobs:
           target_commitish: main
           files: |
             marketplace-release/registry.json
+            marketplace-release/SHA256SUMS
             marketplace-release/*.zip
           fail_on_unmatched_files: false
         env:
@@ -137,6 +151,7 @@ jobs:
           target_commitish: main
           files: |
             marketplace-release/registry.json
+            marketplace-release/SHA256SUMS
             marketplace-release/*.zip
           fail_on_unmatched_files: false
         env:

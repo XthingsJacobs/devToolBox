@@ -3,11 +3,13 @@ set -euo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
 print_info()  { echo -e "${CYAN}[INFO]${NC} $1"; }
 print_ok()    { echo -e "${GREEN}[OK]${NC} $1"; }
+print_warn()  { echo -e "${YELLOW}[WARN]${NC} $1" >&2; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
 repo_root() {
@@ -81,7 +83,7 @@ Usage:
   ./cli.sh <command> [args...]
 
 Commands:
-  dev                           Run desktop dev server
+  dev [vite args...]             Run desktop dev server (auto-selects a free Vite port)
   build                         Build renderer + main/preload
   clear                         Clear local user data / marketplace artifacts (interactive)
   plugin create                  Create a marketplace plugin template (interactive)
@@ -101,24 +103,353 @@ ensure_cmd() {
   fi
 }
 
-cmd_doctor() {
-  ensure_cmd node
-  ensure_cmd pnpm
-  print_ok "Node $(node -v) | pnpm $(pnpm -v)"
-  if command -v git >/dev/null 2>&1; then
-    print_ok "Git $(git --version | awk '{print $3}')"
+required_node_major() {
+  if [[ -f "$ROOT_DIR/.nvmrc" ]]; then
+    sed -E 's/^v?([0-9]+).*/\1/' < "$ROOT_DIR/.nvmrc" | tr -d '[:space:]'
+    return 0
+  fi
+  echo "20"
+}
+
+check_node_version() {
+  local required_major
+  local current_major
+  required_major="$(required_node_major)"
+  current_major="$(node -p "process.versions.node.split('.')[0]")"
+  if [[ -n "$required_major" && "$current_major" != "$required_major" ]]; then
+    if [[ "${DEVTOOLBOX_ALLOW_UNSUPPORTED_NODE:-0}" == "1" ]]; then
+      print_warn "Unsupported Node.js $(node -v). Expected Node.js $required_major.x; continuing because DEVTOOLBOX_ALLOW_UNSUPPORTED_NODE=1."
+      return 0
+    fi
+    print_error "Unsupported Node.js $(node -v). DevToolBox requires Node.js $required_major.x from .nvmrc."
+    print_error "Use Node 20 before running this command, for example: nvm use"
+    return 1
   fi
 }
 
-cmd_dev() {
+check_pnpm_version() {
+  local current_major
+  current_major="$(pnpm -v | awk -F. '{print $1}')"
+  if [[ "$current_major" != "10" ]]; then
+    if [[ "${DEVTOOLBOX_ALLOW_UNSUPPORTED_PNPM:-0}" == "1" ]]; then
+      print_warn "Unsupported pnpm $(pnpm -v). Expected pnpm 10.x; continuing because DEVTOOLBOX_ALLOW_UNSUPPORTED_PNPM=1."
+      return 0
+    fi
+    print_error "Unsupported pnpm $(pnpm -v). DevToolBox requires pnpm 10.x."
+    print_error "Install the pinned package manager: corepack enable && corepack prepare pnpm@10.10.0 --activate"
+    return 1
+  fi
+}
+
+human_bytes() {
+  local bytes="${1:-0}"
+  awk -v b="$bytes" 'BEGIN {
+    if (b <= 0) { print "unknown"; exit }
+    printf "%.1f GiB", b / 1024 / 1024 / 1024
+  }'
+}
+
+disk_available_bytes() {
+  df -Pk "$ROOT_DIR" 2>/dev/null | awk 'NR == 2 { printf "%.0f", $4 * 1024 }'
+}
+
+memory_total_bytes() {
+  if command -v sysctl >/dev/null 2>&1; then
+    sysctl -n hw.memsize 2>/dev/null && return 0
+  fi
+  if [[ -r /proc/meminfo ]]; then
+    awk '/^MemTotal:/ { printf "%.0f", $2 * 1024 }' /proc/meminfo
+    return 0
+  fi
+  echo 0
+}
+
+memory_available_bytes() {
+  if command -v memory_pressure >/dev/null 2>&1; then
+    local mp
+    mp="$(memory_pressure -Q 2>/dev/null || true)"
+    local total
+    local percent
+    total="$(awk '/The system has/ { print $4 }' <<<"$mp")"
+    percent="$(awk -F': ' '/free percentage/ { gsub(/%/, "", $2); print $2 }' <<<"$mp")"
+    if [[ "$total" =~ ^[0-9]+$ && "$percent" =~ ^[0-9]+$ ]]; then
+      awk -v t="$total" -v p="$percent" 'BEGIN { printf "%.0f", t * p / 100 }'
+      return 0
+    fi
+  fi
+  if command -v vm_stat >/dev/null 2>&1; then
+    vm_stat 2>/dev/null | awk '
+      /page size of/ { page = $8; gsub(/[^0-9]/, "", page) }
+      /Pages free/ { free = $3; gsub(/\./, "", free) }
+      /Pages inactive/ { inactive = $3; gsub(/\./, "", inactive) }
+      /Pages speculative/ { speculative = $3; gsub(/\./, "", speculative) }
+      END {
+        if (page > 0) printf "%.0f", (free + inactive + speculative) * page;
+      }'
+    return 0
+  fi
+  if [[ -r /proc/meminfo ]]; then
+    awk '/^MemAvailable:/ { printf "%.0f", $2 * 1024 }' /proc/meminfo
+    return 0
+  fi
+  echo 0
+}
+
+print_system_summary() {
+  local total_mem
+  local available_mem
+  local disk_available
+  total_mem="$(memory_total_bytes)"
+  available_mem="$(memory_available_bytes)"
+  disk_available="$(disk_available_bytes)"
+  print_info "OS: $(uname -s) $(uname -m)"
+  print_info "Memory: $(human_bytes "$available_mem") available / $(human_bytes "$total_mem") total"
+  print_info "Disk: $(human_bytes "$disk_available") available at $ROOT_DIR"
+}
+
+port_in_use() {
+  local port="$1"
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+    return $?
+  fi
+  if command -v nc >/dev/null 2>&1; then
+    nc -z 127.0.0.1 "$port" >/dev/null 2>&1
+    return $?
+  fi
+  node - "$port" <<'NODE'
+const net = require('node:net');
+const port = Number(process.argv[2]);
+const server = net.createServer();
+server.once('error', () => process.exit(0));
+server.once('listening', () => server.close(() => process.exit(1)));
+server.listen(port, '127.0.0.1');
+NODE
+}
+
+print_port_owner() {
+  local port="$1"
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | sed 's/^/  /' >&2 || true
+  else
+    print_warn "Install lsof to inspect the process that owns port $port."
+  fi
+}
+
+select_dev_port() {
+  local desired="$1"
+  if ! port_in_use "$desired"; then
+    echo "$desired"
+    return 0
+  fi
+
+  print_warn "Port $desired is already in use." >&2
+  print_port_owner "$desired"
+  if [[ "${DEVTOOLBOX_STRICT_PORT:-0}" == "1" ]]; then
+    print_error "DEVTOOLBOX_STRICT_PORT=1 is set, so the dev server will not auto-select another port."
+    return 1
+  fi
+
+  local port
+  for ((port = desired + 1; port <= desired + 50; port += 1)); do
+    if ! port_in_use "$port"; then
+      print_info "Using free dev port $port instead. Set DEVTOOLBOX_STRICT_PORT=1 to fail on conflicts." >&2
+      echo "$port"
+      return 0
+    fi
+  done
+
+  print_error "No free dev port found in range $desired-$((desired + 50))."
+  return 1
+}
+
+package_diagnostics_file() {
+  echo "$ROOT_DIR/.devtoolbox-diagnostics/package-preflight.txt"
+}
+
+write_package_diagnostics() {
+  local platform="$1"
+  local arch="$2"
+  local file
+  file="$(package_diagnostics_file)"
+  mkdir -p "$(dirname "$file")"
+  {
+    echo "DevToolBox package diagnostics"
+    echo "Generated: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    echo "Platform target: $platform"
+    echo "Arch target: ${arch:-default}"
+    echo "Repository: $ROOT_DIR"
+    echo "Git branch: $(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+    echo "Git commit: $(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    echo "OS: $(uname -a)"
+    echo "Node: $(node -v 2>/dev/null || echo missing)"
+    echo "pnpm: $(pnpm -v 2>/dev/null || echo missing)"
+    echo "Memory available: $(human_bytes "$(memory_available_bytes)")"
+    echo "Memory total: $(human_bytes "$(memory_total_bytes)")"
+    echo "Disk available: $(human_bytes "$(disk_available_bytes)")"
+    echo "NODE_OPTIONS: ${NODE_OPTIONS:-<empty>}"
+  } >"$file"
+  echo "$file"
+}
+
+check_package_resources() {
+  local min_mem=$((3 * 1024 * 1024 * 1024))
+  local recommended_mem=$((4 * 1024 * 1024 * 1024))
+  local min_disk=$((8 * 1024 * 1024 * 1024))
+  local recommended_disk=$((12 * 1024 * 1024 * 1024))
+  local available_mem
+  local available_disk
+  available_mem="$(memory_available_bytes)"
+  available_disk="$(disk_available_bytes)"
+
+  print_system_summary
+
+  if [[ "$available_mem" =~ ^[0-9]+$ && "$available_mem" -gt 0 ]]; then
+    if (( available_mem < min_mem )); then
+      print_error "Packaging needs at least $(human_bytes "$min_mem") available memory; current: $(human_bytes "$available_mem")."
+      print_error "Close memory-heavy apps and retry, or set DEVTOOLBOX_SKIP_RESOURCE_CHECK=1 if you want to force it."
+      return 1
+    fi
+    if (( available_mem < recommended_mem )); then
+      print_warn "Available memory is below the recommended $(human_bytes "$recommended_mem") for packaging."
+    fi
+  else
+    print_warn "Could not determine available memory."
+  fi
+
+  if [[ "$available_disk" =~ ^[0-9]+$ && "$available_disk" -gt 0 ]]; then
+    if (( available_disk < min_disk )); then
+      print_error "Packaging needs at least $(human_bytes "$min_disk") free disk space; current: $(human_bytes "$available_disk")."
+      return 1
+    fi
+    if (( available_disk < recommended_disk )); then
+      print_warn "Free disk space is below the recommended $(human_bytes "$recommended_disk") for packaging."
+    fi
+  else
+    print_warn "Could not determine available disk space."
+  fi
+}
+
+run_package_preflight() {
+  local platform="$1"
+  local arch="$2"
+  local status=0
+  print_info "Running package preflight..."
+  check_node_version || status=1
+  check_pnpm_version || status=1
+  if [[ "${DEVTOOLBOX_SKIP_RESOURCE_CHECK:-0}" != "1" ]]; then
+    check_package_resources || status=1
+  else
+    print_warn "Skipping memory/disk resource checks because DEVTOOLBOX_SKIP_RESOURCE_CHECK=1."
+  fi
+
+  if [[ "$(uname -s)" == "Darwin" && ( "$platform" == "windows" || "$platform" == "all" ) ]]; then
+    if ! command -v wine >/dev/null 2>&1 || ! command -v mono >/dev/null 2>&1; then
+      print_error "Windows packaging on macOS requires wine + mono."
+      print_error "Install: brew install --cask wine-stable && brew install mono"
+      print_error "Or run packaging on Windows / GitHub Actions."
+      status=1
+    fi
+  fi
+
+  local diag
+  diag="$(write_package_diagnostics "$platform" "$arch")"
+  print_info "Package diagnostics: $diag"
+
+  if (( status != 0 )); then
+    print_error "Package preflight failed. Fix the issues above and retry."
+    return "$status"
+  fi
+  print_ok "Package preflight passed"
+}
+
+print_package_failure_hint() {
+  local status="$1"
+  local diag
+  diag="$(package_diagnostics_file)"
+  print_error "Package step failed with exit code $status."
+  if [[ "$status" == "137" || "$status" == "143" ]]; then
+    print_error "This often means the process was killed by the OS because of memory pressure."
+  fi
+  print_error "Diagnostics: $diag"
+  print_error "Run ./cli.sh doctor for environment details."
+}
+
+run_package_step() {
+  local label="$1"
+  shift
+  print_info "$label..."
+  if "$@"; then
+    print_ok "$label completed"
+  else
+    local status=$?
+    print_package_failure_hint "$status"
+    exit "$status"
+  fi
+}
+
+cmd_doctor() {
+  ensure_cmd node
   ensure_cmd pnpm
+  local status=0
+  if check_node_version; then
+    print_ok "Node $(node -v) | pnpm $(pnpm -v)"
+  else
+    status=1
+  fi
+  check_pnpm_version || status=1
+  if command -v git >/dev/null 2>&1; then
+    print_ok "Git $(git --version | awk '{print $3}')"
+  fi
+  print_system_summary
+  local dev_port="${DEVTOOLBOX_DEV_PORT:-5173}"
+  if port_in_use "$dev_port"; then
+    print_warn "Dev port $dev_port is in use:"
+    print_port_owner "$dev_port"
+  else
+    print_ok "Dev port $dev_port is free"
+  fi
+  return "$status"
+}
+
+cmd_dev() {
+  ensure_cmd node
+  ensure_cmd pnpm
+  check_node_version
+  check_pnpm_version
   unset NODE_OPTIONS
   export DEVTOOLBOX_DEBUG="${DEVTOOLBOX_DEBUG:-1}"
-  pnpm dev
+  local -a vite_args=()
+  if [[ "$#" -gt 0 ]]; then
+    vite_args=("$@")
+  fi
+
+  local has_port_arg=0
+  local arg
+  for arg in "$@"; do
+    if [[ "$arg" == "--port" || "$arg" == "-p" || "$arg" == --port=* ]]; then
+      has_port_arg=1
+      break
+    fi
+  done
+  if (( has_port_arg == 0 )); then
+    local selected_port
+    selected_port="$(select_dev_port "${DEVTOOLBOX_DEV_PORT:-5173}")"
+    vite_args+=(--port "$selected_port")
+  fi
+
+  if [[ "${#vite_args[@]}" -gt 0 ]]; then
+    pnpm exec vite "${vite_args[@]}"
+  else
+    pnpm exec vite
+  fi
 }
 
 cmd_build() {
+  ensure_cmd node
   ensure_cmd pnpm
+  check_node_version
+  check_pnpm_version
   pnpm build
 }
 
@@ -217,6 +548,8 @@ cmd_clear() {
 cmd_plugin() {
   ensure_cmd pnpm
   ensure_cmd node
+  check_node_version
+  check_pnpm_version
   local action="${1:-}"
   shift || true
 
@@ -256,7 +589,7 @@ cmd_plugin() {
     local repository
     repository="$(prompt 'Repository' 'https://example.com')"
     local permissions_raw
-    permissions_raw="$(prompt 'Permissions (comma separated)' 'storage:kv')"
+    permissions_raw="$(prompt 'Permissions (comma separated)' 'storage:kv,system:getInfo,system:notifications')"
 
     name="${name//$'\n'/ }"
     description="${description//$'\n'/ }"
@@ -318,10 +651,11 @@ EOF
   "version": "$version",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -p tsconfig.json --noEmit && vite build"
+    "dev": "vite --config ../../shared/vite.config.ts",
+    "build": "tsc -p tsconfig.json --noEmit && vite build --config ../../shared/vite.config.ts"
   },
   "dependencies": {
+    "@devtoolbox/plugin-sdk": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -337,35 +671,9 @@ EOF
 
     cat >"$module_dir/tsconfig.json" <<'EOF'
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "moduleResolution": "Bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "strict": true
-  },
+  "extends": "../../tsconfig.plugin.json",
   "include": ["src"]
 }
-EOF
-
-    cat >"$module_dir/vite.config.ts" <<'EOF'
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-  plugins: [react()],
-  base: './',
-  build: {
-    outDir: 'package',
-    emptyOutDir: true,
-  },
-});
 EOF
 
     cat >"$module_dir/index.html" <<'EOF'
@@ -384,66 +692,16 @@ EOF
 EOF
 
     cat >"$module_dir/src/main.tsx" <<'EOF'
-import { createRoot } from 'react-dom/client';
 import App from './App';
+import { mountPlugin } from '@devtoolbox/plugin-sdk/react';
 import './style.css';
 
-createRoot(document.getElementById('root')!).render(<App />);
-EOF
-
-    cat >"$module_dir/src/sdk.ts" <<'EOF'
-export type SdkError = { code: string; message: string; details?: unknown };
-export type SdkResult<T> = { ok: true; data?: T } | { ok: false; error: SdkError };
-
-type ResponseMessage =
-  | { type: 'devtoolbox:sdk:response'; requestId: string; ok: true; data?: unknown }
-  | { type: 'devtoolbox:sdk:response'; requestId: string; ok: false; error: SdkError };
-
-const pending = new Map<string, (res: SdkResult<unknown>) => void>();
-
-window.addEventListener('message', (event: MessageEvent) => {
-  const msg = event.data as ResponseMessage;
-  if (!msg || msg.type !== 'devtoolbox:sdk:response') return;
-  const cb = pending.get(msg.requestId);
-  if (!cb) return;
-  pending.delete(msg.requestId);
-  if (msg.ok) cb({ ok: true, data: msg.data });
-  else cb({ ok: false, error: msg.error });
-});
-
-export function callSdk<T = unknown>(method: string, params?: unknown, timeoutMs = 15000): Promise<SdkResult<T>> {
-  const requestId = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-  const payload = { type: 'devtoolbox:sdk:request', requestId, method, params };
-  window.parent.postMessage(payload, '*');
-  return new Promise((resolve) => {
-    pending.set(requestId, resolve as any);
-    window.setTimeout(() => {
-      const cb = pending.get(requestId);
-      if (!cb) return;
-      pending.delete(requestId);
-      resolve({ ok: false, error: { code: 'timeout', message: 'SDK request timeout' } });
-    }, timeoutMs);
-  });
-}
-
-export const sdk = {
-  system: {
-    getInfo: () => callSdk('system.getInfo'),
-    notify: (params: unknown) => callSdk('system.notify', params),
-  },
-  storage: {
-    get: (key: string) => callSdk('storage.get', { key }),
-    set: (key: string, value: unknown) => callSdk('storage.set', { key, value }),
-  },
-  log: {
-    info: (message: string, data?: unknown) => callSdk('log.info', { message, data }),
-  },
-};
+mountPlugin(<App />);
 EOF
 
     cat >"$module_dir/src/App.tsx" <<EOF
 import { useEffect, useState } from 'react';
-import { sdk } from './sdk';
+import { sdk } from '@devtoolbox/plugin-sdk';
 
 type Info = { platform?: string; arch?: string; appVersion?: string };
 
@@ -575,6 +833,9 @@ EOF
       exit 1
     fi
 
+    print_info "Building Plugin SDK release output"
+    pnpm --filter @devtoolbox/plugin-sdk build
+
     print_info "Building plugins: ${#ids[@]}"
     for id in "${ids[@]}"; do
       print_info "  build: $id"
@@ -607,6 +868,9 @@ EOF
     print_error "Plugin not found: marketplace/modules/$plugin_id"
     exit 1
   fi
+
+  print_info "Building Plugin SDK release output"
+  pnpm --filter @devtoolbox/plugin-sdk build
 
   print_info "Building plugin: $plugin_id"
   pnpm --filter "@devtoolbox/plugin-$plugin_id" build
@@ -641,49 +905,39 @@ cmd_package() {
   ensure_cmd node
   ensure_cmd pnpm
 
-  local builder_args=""
+  local builder_args=()
   case "$platform" in
-    macos) builder_args="--mac" ;;
-    windows) builder_args="--win" ;;
-    all) builder_args="--mac --win" ;;
+    macos) builder_args+=(--mac) ;;
+    windows) builder_args+=(--win) ;;
+    all) builder_args+=(--mac --win) ;;
   esac
-
-  if [[ "$(uname -s)" == "Darwin" && ( "$platform" == "windows" || "$platform" == "all" ) ]]; then
-    if ! command -v wine &>/dev/null || ! command -v mono &>/dev/null; then
-      print_error "Windows packaging on macOS requires wine + mono."
-      print_error "Install: brew install --cask wine-stable && brew install mono"
-      print_error "Or run packaging on Windows / GitHub Actions."
-      exit 1
-    fi
-  fi
 
   if [[ "$platform" == "macos" || "$platform" == "all" ]]; then
     case "$arch" in
-      arm64) builder_args="$builder_args --arm64" ;;
-      x64) builder_args="$builder_args --x64" ;;
-      universal) builder_args="$builder_args --universal" ;;
+      arm64) builder_args+=(--arm64) ;;
+      x64) builder_args+=(--x64) ;;
+      universal) builder_args+=(--universal) ;;
       "") ;;
     esac
   fi
 
   unset NODE_OPTIONS
+  run_package_preflight "$platform" "$arch"
+  export npm_config_jobs="${npm_config_jobs:-1}"
 
-  print_info "Installing dependencies..."
-  pnpm install
-  print_ok "Dependencies installed"
+  run_package_step "Installing dependencies" pnpm install --frozen-lockfile --child-concurrency=1
 
-  print_info "Building..."
-  pnpm build
-  print_ok "Build completed"
+  run_package_step "Building" pnpm build
+  run_package_step "Checking bundle budget" pnpm bundle:check
+  run_package_step "Generating supply-chain reports" pnpm supply-chain:generate
 
   if ! (node -p "require('electron/package.json').version" >/dev/null 2>&1); then
     print_error "Cannot resolve electron from node_modules. Run pnpm install in devToolBox."
     exit 1
   fi
+  run_package_step "Validating esbuild binary" node -e "require('esbuild').transformSync('const ok = true', { minify: true })"
 
-  print_info "Packaging ($platform${arch:+/$arch})..."
-  pnpm exec electron-builder $builder_args
-  print_ok "Packaging completed"
+  run_package_step "Packaging ($platform${arch:+/$arch})" pnpm exec electron-builder "${builder_args[@]}" --publish never
 
   if [[ -d release ]]; then
     find release -maxdepth 1 -type f -name '*.zip*' -delete 2>/dev/null || true
@@ -701,7 +955,10 @@ cmd_package() {
 }
 
 cmd_check() {
+  ensure_cmd node
   ensure_cmd pnpm
+  check_node_version
+  check_pnpm_version
   pnpm lint
   pnpm typecheck
   pnpm test
@@ -709,7 +966,10 @@ cmd_check() {
 }
 
 cmd_tool_new() {
+  ensure_cmd node
   ensure_cmd pnpm
+  check_node_version
+  check_pnpm_version
   pnpm new:tool
 }
 
@@ -720,7 +980,7 @@ main() {
   case "$cmd" in
     help|-h|--help) usage ;;
     doctor) cmd_doctor ;;
-    dev) cmd_dev ;;
+    dev) cmd_dev "$@" ;;
     build) cmd_build ;;
     clear) cmd_clear ;;
     plugin) cmd_plugin "$@" ;;
@@ -738,4 +998,6 @@ main() {
   esac
 }
 
-main "$@"
+if [[ "${DEVTOOLBOX_CLI_SOURCE_ONLY:-0}" != "1" ]]; then
+  main "$@"
+fi

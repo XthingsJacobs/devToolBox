@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 dist-electron/
+.devtoolbox-diagnostics/
 
 # Release artifacts
 release/
@@ -32,6 +33,7 @@ key.txt
 # Marketplace local dev artifacts
 marketplace/.local-dist/
 marketplace/registry.local.json
+marketplace/.signing/
 
 # Docs site build output
 docs-site/site/

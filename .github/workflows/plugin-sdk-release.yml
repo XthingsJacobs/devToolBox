@@ -1,0 +1,80 @@
+name: Plugin SDK Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: npm package version
+        required: true
+        default: 1.0.0
+      publish:
+        description: Publish to npm after building the tarball
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Set package version
+        working-directory: core/packages/plugin-sdk
+        run: npm version "$SDK_VERSION" --no-git-tag-version --ignore-scripts
+        env:
+          SDK_VERSION: ${{ inputs.version }}
+
+      - name: Build and validate package
+        run: |
+          pnpm --filter @devtoolbox/plugin-sdk build
+          pnpm --filter @devtoolbox/plugin-sdk pack:check
+
+      - name: Pack npm tarball
+        run: |
+          mkdir -p plugin-sdk-artifacts
+          npm pack ./core/packages/plugin-sdk/dist --pack-destination plugin-sdk-artifacts
+
+      - name: Generate release metadata
+        run: |
+          node scripts/generate-supply-chain.mjs --package-dir core/packages/plugin-sdk/dist --output-dir plugin-sdk-artifacts
+          node scripts/generate-checksums.mjs plugin-sdk-artifacts --output plugin-sdk-artifacts/SHA256SUMS
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-sdk-${{ inputs.version }}
+          path: plugin-sdk-artifacts/*
+          if-no-files-found: error
+
+      - name: Publish to npm
+        if: ${{ inputs.publish }}
+        working-directory: core/packages/plugin-sdk/dist
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

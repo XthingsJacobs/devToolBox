@@ -35,8 +35,8 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Lint Modules
-        run: pnpm lint:modules
+      - name: Audit production dependencies
+        run: pnpm audit:prod
 
       - name: Lint
         run: pnpm lint
@@ -50,8 +50,25 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Bundle Budget
+        run: pnpm bundle:check
+
+      - name: Supply Chain Metadata
+        run: pnpm supply-chain:generate
+
+      - name: Electron Preload Smoke
+        run: xvfb-run -a pnpm test:electron
+
+      - name: Electron Renderer Smoke
+        run: xvfb-run -a pnpm test:renderer
+
+      - name: Plugin SDK Package
+        run: |
+          pnpm --filter @devtoolbox/plugin-sdk build
+          pnpm --filter @devtoolbox/plugin-sdk pack:check
+
       - name: Marketplace Typecheck
         run: pnpm -C marketplace typecheck
 
-      - name: Marketplace Build
+      - name: Marketplace Build and Bundle Budget
         run: pnpm -C marketplace build

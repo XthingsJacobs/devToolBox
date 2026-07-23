@@ -25,7 +25,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
       - name: Install dependencies
         run: pip install -r docs-site/requirements.txt
+      - name: Validate documentation structure
+        run: node scripts/lint-docs.mjs
       - name: Build docs
         run: mkdocs build -f docs-site/mkdocs.yml --strict

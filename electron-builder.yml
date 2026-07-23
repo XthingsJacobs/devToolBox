@@ -7,6 +7,7 @@ files:
   - package.json
   - dist/**/*
   - dist-electron/**/*
+  - '!node_modules/**/*'
 extraResources:
   - from: key.txt
     to: key.txt
@@ -15,7 +16,7 @@ mac:
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.inherit.plist
+  entitlementsInherit: build/entitlements.mac.plist
   target:
     - dmg
     - zip
@@ -23,6 +24,9 @@ mac:
 win:
   target:
     - target: nsis
+      arch:
+        - x64
+    - target: zip
       arch:
         - x64
   artifactName: '${productName}-${version}-win-${arch}.${ext}'

@@ -10,6 +10,40 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
 
+const rendererCspDirectives = [
+  "default-src 'self'",
+  "base-uri 'none'",
+  "connect-src 'self' ws: wss:",
+  "font-src 'self' data:",
+  "form-action 'none'",
+  "frame-src 'self' devtoolbox-plugin: data: blob:",
+  "img-src 'self' data: blob:",
+  "media-src 'self' data: blob:",
+  "object-src 'none'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "worker-src 'self' blob:",
+];
+
+function rendererContentSecurityPolicy(): Plugin {
+  let command: 'serve' | 'build' = 'serve';
+  return {
+    name: 'renderer-content-security-policy',
+    configResolved(config) {
+      command = config.command;
+    },
+    transformIndexHtml(html) {
+      const directives =
+        command === 'serve'
+          ? rendererCspDirectives.map((directive) =>
+              directive === "script-src 'self'" ? `${directive} 'unsafe-inline'` : directive,
+            )
+          : rendererCspDirectives;
+      return html.replace('__DEVTOOLBOX_RENDERER_CSP__', directives.join('; '));
+    },
+  };
+}
+
 function coreToolAssets(): Plugin {
   const prefix = '/__core_tools__/';
   const mimeByExt: Record<string, string> = {
@@ -63,30 +97,33 @@ function coreToolAssets(): Plugin {
       command = c.command;
     },
     configureServer(server: ViteDevServer) {
-      server.middlewares.use(prefix, async (req: Connect.IncomingMessage, res: Connect.ServerResponse, next: Connect.NextFunction) => {
-        try {
-          const url = typeof req.url === 'string' ? req.url : '';
-          const pathname = decodeURIComponent(url.split('?')[0] ?? '');
-          const rel = pathname.replace(/^\/+/, '');
-          const base = path.join(rootDir, 'components', 'ModuleTools');
-          const filePath = path.join(base, rel);
-          if (!filePath.startsWith(base)) {
-            res.statusCode = 403;
-            res.end();
-            return;
-          }
-          const stat = await fsp.stat(filePath).catch(() => null);
-          if (!stat || !stat.isFile()) {
+      server.middlewares.use(
+        prefix,
+        async (req: Connect.IncomingMessage, res: Connect.ServerResponse, next: Connect.NextFunction) => {
+          try {
+            const url = typeof req.url === 'string' ? req.url : '';
+            const pathname = decodeURIComponent(url.split('?')[0] ?? '');
+            const rel = pathname.replace(/^\/+/, '');
+            const base = path.join(rootDir, 'components', 'ModuleTools');
+            const filePath = path.join(base, rel);
+            if (!filePath.startsWith(base)) {
+              res.statusCode = 403;
+              res.end();
+              return;
+            }
+            const stat = await fsp.stat(filePath).catch(() => null);
+            if (!stat || !stat.isFile()) {
+              next();
+              return;
+            }
+            const ext = path.extname(filePath).toLowerCase();
+            res.setHeader('Content-Type', mimeByExt[ext] ?? 'application/octet-stream');
+            fs.createReadStream(filePath).pipe(res);
+          } catch {
             next();
-            return;
           }
-          const ext = path.extname(filePath).toLowerCase();
-          res.setHeader('Content-Type', mimeByExt[ext] ?? 'application/octet-stream');
-          fs.createReadStream(filePath).pipe(res);
-        } catch {
-          next();
-        }
-      });
+        },
+      );
     },
     async closeBundle() {
       if (command !== 'build') return;
@@ -105,7 +142,9 @@ function coreToolAssets(): Plugin {
           manifest = null;
         }
         const entry =
-          isRecord(manifest) && typeof manifest.entry === 'string' ? manifest.entry.trim().replace(/^\.\/+/, '') : '';
+          isRecord(manifest) && typeof manifest.entry === 'string'
+            ? manifest.entry.trim().replace(/^\.\/+/, '')
+            : '';
         if (!entry.toLowerCase().endsWith('.html')) continue;
         const entryDir = path.dirname(entry);
         const srcDir = path.join(toolsDir, folderName, entryDir);
@@ -120,9 +159,10 @@ export default defineConfig({
   base: './',
   server: {
     port: 5173,
-    strictPort: true,
+    strictPort: false,
   },
   plugins: [
+    rendererContentSecurityPolicy(),
     react(),
     coreToolAssets(),
     electron([
@@ -132,7 +172,7 @@ export default defineConfig({
           build: {
             outDir: path.resolve(__dirname, 'dist-electron/main'),
             rollupOptions: {
-              external: ['mqtt', 'ws', 'bufferutil', 'utf-8-validate'],
+              external: ['bufferutil', 'utf-8-validate'],
             },
           },
         },
@@ -172,9 +212,14 @@ export default defineConfig({
     'process.stderr': 'undefined',
     'process.version': '""',
   },
+  worker: {
+    format: 'es',
+  },
   root: 'core/renderer',
   build: {
     outDir: path.resolve(__dirname, 'dist'),
-    emptyOutDir: false,
+    emptyOutDir: true,
+    manifest: true,
+    chunkSizeWarningLimit: 1800,
   },
 });

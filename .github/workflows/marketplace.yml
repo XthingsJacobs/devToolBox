@@ -6,11 +6,15 @@ on:
       - main
     paths:
       - 'marketplace/**'
+      - 'core/packages/plugin-sdk/**'
+      - 'scripts/check-marketplace-bundle-budget.mjs'
   push:
     branches:
       - main
     paths:
       - 'marketplace/**'
+      - 'core/packages/plugin-sdk/**'
+      - 'scripts/check-marketplace-bundle-budget.mjs'
   workflow_dispatch:
 
 env:
@@ -42,5 +46,5 @@ jobs:
       - name: Marketplace Lint
         run: pnpm -C marketplace lint
 
-      - name: Marketplace Build
+      - name: Marketplace Build and Bundle Budget
         run: pnpm -C marketplace build
