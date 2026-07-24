@@ -109,6 +109,7 @@ Run `./cli.sh package` without arguments for the interactive flow.
 - macOS packages are written to `release/` as `.dmg` files.
 - Windows packages are written to `release/` as `.exe` files.
 - Packaging must generally run on the target operating system. Building Windows packages on macOS may require Wine and Mono; CI or a Windows machine is more reliable.
+- On Windows, `.\cli.ps1 package` switches the console to UTF-8 and prefetches electron-builder's `winCodeSign` resource tools. If GitHub returns `504`, retry later or set `ELECTRON_BUILDER_BINARIES_MIRROR`. If 7-Zip reports symbolic-link privileges, enable Windows Developer Mode or run PowerShell as Administrator; the CLI can repair the cache when the Windows files were already extracted.
 
 ## Backup protection
 

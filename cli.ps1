@@ -12,6 +12,22 @@ $ErrorActionPreference = 'Stop'
 $RootDir = if ($PSScriptRoot) { (Resolve-Path -LiteralPath $PSScriptRoot).Path } else { (Get-Location).Path }
 Set-Location -LiteralPath $RootDir
 
+function Use-Utf8Console {
+  try {
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    [Console]::InputEncoding = $utf8
+    [Console]::OutputEncoding = $utf8
+    $script:OutputEncoding = $utf8
+    if (Get-Command chcp.com -ErrorAction SilentlyContinue) {
+      & chcp.com 65001 *> $null
+    }
+  } catch {
+    # Keep running even if the host does not allow console encoding changes.
+  }
+}
+
+Use-Utf8Console
+
 function Write-Info([string]$Message) { Write-Host "[INFO] $Message" -ForegroundColor Cyan }
 function Write-Ok([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green }
 function Write-WarnLine([string]$Message) { Write-Host "[WARN] $Message" -ForegroundColor Yellow }
@@ -273,6 +289,96 @@ function Invoke-PackageStep([string]$Label, [string]$File, [string[]]$Arguments)
     exit $LASTEXITCODE
   }
   Write-Ok "$Label completed"
+}
+
+function Get-AppBuilderExecutable {
+  $pnpmDir = Join-Path $RootDir 'node_modules\.pnpm'
+  if (-not (Test-Path -LiteralPath $pnpmDir -PathType Container)) { return $null }
+  $packages = Get-ChildItem -LiteralPath $pnpmDir -Directory -Filter 'app-builder-bin@*' -ErrorAction SilentlyContinue
+  foreach ($package in $packages) {
+    $candidate = Join-Path $package.FullName 'node_modules\app-builder-bin\win\x64\app-builder.exe'
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+  }
+  return $null
+}
+
+function Get-ElectronBuilderCacheRoot {
+  if (-not [string]::IsNullOrWhiteSpace($env:ELECTRON_BUILDER_CACHE)) {
+    $resolved = Resolve-Path -LiteralPath $env:ELECTRON_BUILDER_CACHE -ErrorAction SilentlyContinue
+    if ($resolved) { return $resolved.Path }
+    return $env:ELECTRON_BUILDER_CACHE
+  }
+  $localAppData = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { Join-Path $HOME 'AppData\Local' }
+  return (Join-Path $localAppData 'electron-builder\Cache')
+}
+
+function Get-WinCodeSignFinalDir {
+  return (Join-Path (Join-Path (Get-ElectronBuilderCacheRoot) 'winCodeSign') 'winCodeSign-2.6.0')
+}
+
+function Test-WinCodeSignReady {
+  $dir = Get-WinCodeSignFinalDir
+  return (
+    (Test-Path -LiteralPath (Join-Path $dir 'rcedit-x64.exe') -PathType Leaf) -and
+    (Test-Path -LiteralPath (Join-Path $dir 'rcedit-ia32.exe') -PathType Leaf) -and
+    (Test-Path -LiteralPath (Join-Path $dir 'windows-10\x64\signtool.exe') -PathType Leaf)
+  )
+}
+
+function Repair-WinCodeSignCache {
+  $cacheDir = Join-Path (Get-ElectronBuilderCacheRoot) 'winCodeSign'
+  $finalDir = Get-WinCodeSignFinalDir
+  if (Test-WinCodeSignReady) { return $true }
+  if (Test-Path -LiteralPath $finalDir) { return $false }
+  if (-not (Test-Path -LiteralPath $cacheDir -PathType Container)) { return $false }
+
+  $candidate = Get-ChildItem -LiteralPath $cacheDir -Directory -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.Name -ne 'winCodeSign-2.6.0' -and
+      (Test-Path -LiteralPath (Join-Path $_.FullName 'rcedit-x64.exe') -PathType Leaf) -and
+      (Test-Path -LiteralPath (Join-Path $_.FullName 'rcedit-ia32.exe') -PathType Leaf) -and
+      (Test-Path -LiteralPath (Join-Path $_.FullName 'windows-10\x64\signtool.exe') -PathType Leaf)
+    } |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+
+  if (-not $candidate) { return $false }
+
+  Write-WarnLine "Repairing electron-builder winCodeSign cache from partial extraction: $($candidate.Name)"
+  New-Item -ItemType Directory -Force -Path $cacheDir | Out-Null
+  Copy-Item -LiteralPath $candidate.FullName -Destination $finalDir -Recurse -Force
+  return (Test-WinCodeSignReady)
+}
+
+function Initialize-WindowsCodeSignTools {
+  if (Test-WinCodeSignReady) { return }
+  if (Repair-WinCodeSignCache) {
+    Write-Ok 'electron-builder winCodeSign cache repaired'
+    return
+  }
+
+  $appBuilder = Get-AppBuilderExecutable
+  if (-not $appBuilder) {
+    Write-WarnLine 'Cannot find app-builder.exe in node_modules; electron-builder will try to fetch Windows resource tools during packaging.'
+    return
+  }
+
+  Write-Info 'Preparing electron-builder Windows resource tools...'
+  & $appBuilder 'download-artifact' '--name' 'winCodeSign'
+  if ($LASTEXITCODE -eq 0 -and (Test-WinCodeSignReady)) {
+    Write-Ok 'electron-builder Windows resource tools are ready'
+    return
+  }
+
+  if (Repair-WinCodeSignCache) {
+    Write-Ok 'electron-builder winCodeSign cache repaired'
+    return
+  }
+
+  Write-Err 'Failed to prepare electron-builder winCodeSign tools.'
+  Write-Err 'If GitHub download returns 504, retry later or configure ELECTRON_BUILDER_BINARIES_MIRROR.'
+  Write-Err 'If extraction reports symbolic-link privileges, enable Windows Developer Mode or run PowerShell as Administrator.'
+  exit 1
 }
 
 function Get-WindowsUserDataFallback {
@@ -721,6 +827,7 @@ function Invoke-Package([string[]]$PackageArgs) {
 
   Invoke-PackagePreflight 'windows' $arch
   Invoke-PackageStep 'Installing dependencies' 'pnpm' @('install', '--frozen-lockfile', '--child-concurrency=1')
+  Initialize-WindowsCodeSignTools
   Invoke-PackageStep 'Building' 'pnpm' @('build')
   Invoke-PackageStep 'Checking bundle budget' 'pnpm' @('bundle:check')
   Invoke-PackageStep 'Generating supply-chain reports' 'pnpm' @('supply-chain:generate')

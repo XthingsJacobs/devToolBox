@@ -109,6 +109,7 @@ Windows PowerShell：
 - macOS 安装包以 `.dmg` 文件写入 `release/`。
 - Windows 安装包以 `.exe` 文件写入 `release/`。
 - 通常应在目标操作系统上执行打包。在 macOS 上构建 Windows 安装包可能需要 Wine 和 Mono，使用 CI 或 Windows 设备会更可靠。
+- 在 Windows 上，`.\cli.ps1 package` 会将控制台切换为 UTF-8，并预先准备 electron-builder 的 `winCodeSign` 资源工具。如果 GitHub 返回 `504`，稍后重试或设置 `ELECTRON_BUILDER_BINARIES_MIRROR`。如果 7-Zip 提示符号链接权限，请启用 Windows 开发者模式或以管理员身份运行 PowerShell；当 Windows 文件已解压时，CLI 会尝试修复本地缓存。
 
 ## 备份保护
 

@@ -241,6 +241,8 @@ Windows PowerShell:
 
 Packaging runs build, bundle validation, and supply-chain generation. If packaging is killed by the OS, first check memory/disk with `./cli.sh doctor` or `.\cli.ps1 doctor`, close memory-heavy apps, and ensure Node.js and pnpm meet the minimum versions.
 
+On Windows, `.\cli.ps1 package` also switches the console to UTF-8 and prefetches electron-builder's `winCodeSign` resource tools. If GitHub returns a transient `504`, retry later or set `ELECTRON_BUILDER_BINARIES_MIRROR`. If 7-Zip reports symbolic-link privileges, enable Windows Developer Mode or run PowerShell as Administrator; the CLI can repair the cache when the Windows files were already extracted.
+
 ## Safety Notes for Agents
 
 - Treat the worktree as user-owned. Do not revert unrelated changes.
