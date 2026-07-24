@@ -9,8 +9,10 @@ files:
   - dist-electron/**/*
   - '!node_modules/**/*'
 extraResources:
-  - from: key.txt
-    to: key.txt
+  - from: .
+    to: .
+    filter:
+      - key.txt
 mac:
   category: public.app-category.developer-tools
   hardenedRuntime: true
