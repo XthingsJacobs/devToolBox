@@ -8,6 +8,7 @@ files:
   - dist/**/*
   - dist-electron/**/*
   - '!node_modules/**/*'
+afterPack: scripts/wait-windows-executable-ready.cjs
 extraResources:
   - from: .
     to: .
