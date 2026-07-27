@@ -4,8 +4,8 @@ These scripts support development and contributor workflows for DevToolBox.
 
 ## Overview
 
-- `lint-modules.mjs`: Validates each tool's runtime `manifest.json`, entry, category, and locale.
-- `lint-marketplace.mjs`: Validates Marketplace manifests, permissions, SDK compatibility, and network domains.
+- `lint-modules.mjs`: Validates each tool's runtime `manifest.json`, entry, category, English/Chinese locales, and help mirrors.
+- `lint-marketplace.mjs`: Validates Marketplace manifests, localized metadata, permissions, SDK compatibility, and network domains.
 - `lint-boundaries.mjs`: Prevents renderer privileged imports, unsafe HTML render paths, new direct IPC growth, and oversized tool entries.
 - `lint-docs.mjs`: Keeps translated page trees, language switches, links, structure, and MkDocs navigation in sync.
 - `new-tool.mjs`: Generates a manifest-based tool module scaffold under `core/renderer/components/ModuleTools/`.

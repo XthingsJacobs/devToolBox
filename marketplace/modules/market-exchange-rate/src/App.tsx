@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sdk } from '@devtoolbox/plugin-sdk';
+import { usePluginLocale } from '@devtoolbox/plugin-sdk/react';
+import { t } from './i18n';
 
 type CurrenciesMap = Record<string, string>;
 type LatestResponse = { amount: number; base: string; date: string; rates: Record<string, number> };
@@ -113,6 +115,7 @@ function clampIntString(v: string, min: number, max: number, fallback: number): 
 }
 
 export default function App() {
+  const locale = usePluginLocale();
   const [currencies, setCurrencies] = useState<CurrenciesMap>({});
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [rates, setRates] = useState<Record<string, number>>({});
@@ -165,7 +168,7 @@ export default function App() {
     return out;
   }, [targets, rates, amountNum, spreadPct, feePct, currencies]);
 
-  const loadCurrencies = async () => {
+  const loadCurrencies = useCallback(async () => {
     const res = await sdk.http.request<CurrenciesMap>({
       url: 'https://api.frankfurter.app/currencies',
       responseType: 'json',
@@ -173,11 +176,11 @@ export default function App() {
     });
     if (!res.ok) throw new Error(res.error.message);
     const body = (res.data?.data ?? {}) as unknown;
-    if (!body || typeof body !== 'object') throw new Error('Invalid currencies response');
+    if (!body || typeof body !== 'object') throw new Error(t(locale, 'invalidCurrencies'));
     setCurrencies(body as CurrenciesMap);
-  };
+  }, [locale]);
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     const res = await sdk.storage.get('exchange.settings');
     if (!res.ok) return;
     const raw = res.data;
@@ -195,14 +198,14 @@ export default function App() {
       decimals: typeof r.decimals === 'string' ? r.decimals : s.decimals,
       autoRefreshMin: typeof r.autoRefreshMin === 'string' ? r.autoRefreshMin : s.autoRefreshMin,
     }));
-  };
+  }, []);
 
-  const saveSettingsSoon = (next: Settings) => {
+  const saveSettingsSoon = useCallback((next: Settings) => {
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = window.setTimeout(() => {
       void sdk.storage.set('exchange.settings', next);
     }, 250);
-  };
+  }, []);
 
   const refresh = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -219,8 +222,8 @@ export default function App() {
         });
         if (!res.ok) throw new Error(res.error.message);
         const body = res.data?.data;
-        if (!body || typeof body !== 'object') throw new Error('Invalid rates response');
-        if (!('rates' in body) || !('date' in body)) throw new Error('Invalid rates response');
+        if (!body || typeof body !== 'object') throw new Error(t(locale, 'invalidRates'));
+        if (!('rates' in body) || !('date' in body)) throw new Error(t(locale, 'invalidRates'));
         const ratesValue = (body as { rates?: unknown }).rates;
         const dateValue = (body as { date?: unknown }).date;
         const nextRates =
@@ -236,7 +239,7 @@ export default function App() {
         setLoading(false);
       }
     },
-    [base, targetsKey],
+    [base, locale, targetsKey],
   );
 
   useEffect(() => {
@@ -255,11 +258,11 @@ export default function App() {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
       if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current);
     };
-  }, []);
+  }, [loadCurrencies, loadSettings]);
 
   useEffect(() => {
     saveSettingsSoon(settings);
-  }, [settings]);
+  }, [settings, saveSettingsSoon]);
 
   useEffect(() => {
     void refresh({ silent: true });
@@ -311,18 +314,19 @@ export default function App() {
     <div className="app">
       <div className="top">
         <div>
-          <div className="title">FX Rates / Currency Converter</div>
+          <div className="title">{t(locale, 'title')}</div>
           <div className="sub">
-            Source: api.frankfurter.app{rateDate ? ` (rate date: ${rateDate})` : ''}{' '}
-            {lastUpdated ? `· updated: ${lastUpdated}` : ''}
+            {t(locale, 'source')}: api.frankfurter.app
+            {rateDate ? ` (${t(locale, 'rateDate')}: ${rateDate})` : ''}{' '}
+            {lastUpdated ? `· ${t(locale, 'updated')}: ${lastUpdated}` : ''}
           </div>
         </div>
         <div className="actions">
           <button disabled={loading} onClick={() => void refresh()}>
-            {loading ? 'Refreshing…' : 'Refresh'}
+            {loading ? t(locale, 'refreshing') : t(locale, 'refresh')}
           </button>
           <button disabled={loading} onClick={reset}>
-            Reset
+            {t(locale, 'reset')}
           </button>
         </div>
       </div>
@@ -331,10 +335,10 @@ export default function App() {
 
       <div className="grid">
         <div className="card">
-          <div className="cardTitle">Query</div>
+          <div className="cardTitle">{t(locale, 'query')}</div>
 
           <div className="formRow">
-            <div className="label">Base</div>
+            <div className="label">{t(locale, 'base')}</div>
             <select value={base} onChange={(e) => onBaseChange(e.target.value)}>
               {baseOptions.map((c) => (
                 <option key={c} value={c}>
@@ -345,7 +349,7 @@ export default function App() {
           </div>
 
           <div className="formRow">
-            <div className="label">Amount</div>
+            <div className="label">{t(locale, 'amount')}</div>
             <input
               value={settings.amount}
               onChange={(e) => setSettings((s) => ({ ...s, amount: e.target.value }))}
@@ -353,26 +357,26 @@ export default function App() {
           </div>
 
           <div className="formRow">
-            <div className="label">Auto refresh</div>
+            <div className="label">{t(locale, 'autoRefresh')}</div>
             <select
               value={settings.autoRefreshMin}
               onChange={(e) => setSettings((s) => ({ ...s, autoRefreshMin: e.target.value }))}
             >
-              <option value="0">Off</option>
-              <option value="1">1 min</option>
-              <option value="5">5 min</option>
-              <option value="15">15 min</option>
-              <option value="60">60 min</option>
+              <option value="0">{t(locale, 'off')}</option>
+              <option value="1">1 {t(locale, 'min')}</option>
+              <option value="5">5 {t(locale, 'min')}</option>
+              <option value="15">15 {t(locale, 'min')}</option>
+              <option value="60">60 {t(locale, 'min')}</option>
             </select>
           </div>
         </div>
 
         <div className="card">
-          <div className="cardTitle">Calculator</div>
-          <div className="hint">Result = amount × rate × (1 + spread%) × (1 - fee%)</div>
+          <div className="cardTitle">{t(locale, 'calculator')}</div>
+          <div className="hint">{t(locale, 'calculatorHint')}</div>
 
           <div className="formRow">
-            <div className="label">Spread(%)</div>
+            <div className="label">{t(locale, 'spread')}</div>
             <input
               value={settings.spreadPct}
               onChange={(e) => setSettings((s) => ({ ...s, spreadPct: e.target.value }))}
@@ -380,7 +384,7 @@ export default function App() {
             />
           </div>
           <div className="formRow">
-            <div className="label">Fee(%)</div>
+            <div className="label">{t(locale, 'fee')}</div>
             <input
               value={settings.feePct}
               onChange={(e) => setSettings((s) => ({ ...s, feePct: e.target.value }))}
@@ -388,7 +392,7 @@ export default function App() {
             />
           </div>
           <div className="formRow">
-            <div className="label">Decimals</div>
+            <div className="label">{t(locale, 'decimals')}</div>
             <input
               value={settings.decimals}
               onChange={(e) =>
@@ -400,16 +404,16 @@ export default function App() {
 
         <div className="card targets">
           <div className="cardTop">
-            <div className="cardTitle">Targets ({targets.length})</div>
+            <div className="cardTitle">{t(locale, 'targets', { count: targets.length })}</div>
             <div className="cardActions">
-              <button onClick={clearTargets}>Clear</button>
+              <button onClick={clearTargets}>{t(locale, 'clear')}</button>
             </div>
           </div>
           <input
             className="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search code or name (e.g. CNY / yuan)"
+            placeholder={t(locale, 'searchPlaceholder')}
           />
           <div className="list">
             {filteredCurrencies.map(([code, name]) => {
@@ -437,17 +441,17 @@ export default function App() {
         </div>
 
         <div className="card tableCard">
-          <div className="cardTitle">Rates</div>
+          <div className="cardTitle">{t(locale, 'rates')}</div>
           <div className="tableWrap">
             <table>
               <thead>
                 <tr>
-                  <th>Currency</th>
+                  <th>{t(locale, 'currency')}</th>
                   <th>
-                    Rate (1 {flagForCurrency(base)} {base})
+                    {t(locale, 'rate')} (1 {flagForCurrency(base)} {base})
                   </th>
-                  <th>Conversion</th>
-                  <th className="muted">Inverse</th>
+                  <th>{t(locale, 'conversion')}</th>
+                  <th className="muted">{t(locale, 'inverse')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -467,15 +471,15 @@ export default function App() {
                       <td>
                         <div className="cellCol">
                           <div>
-                            <span className="muted">Raw: </span>
+                            <span className="muted">{t(locale, 'raw')}: </span>
                             {r.raw.toFixed(decimals)}
                           </div>
                           <div>
-                            <span className="muted">With spread: </span>
+                            <span className="muted">{t(locale, 'withSpread')}: </span>
                             {r.withSpread.toFixed(decimals)}
                           </div>
                           <div>
-                            <span className="muted">Final: </span>
+                            <span className="muted">{t(locale, 'final')}: </span>
                             {r.afterFee.toFixed(decimals)}
                           </div>
                         </div>
@@ -491,10 +495,10 @@ export default function App() {
                   <tr>
                     <td colSpan={4} className="empty">
                       {targets.length === 0
-                        ? 'Select target currencies'
+                        ? t(locale, 'selectTargets')
                         : loading
-                          ? 'Loading…'
-                          : 'No data (click Refresh)'}
+                          ? t(locale, 'loading')
+                          : t(locale, 'noDataRefresh')}
                     </td>
                   </tr>
                 )}
@@ -502,8 +506,7 @@ export default function App() {
             </table>
           </div>
           <div className="foot">
-            Note: This tool is for quick lookup and calculation. For financial-grade accuracy and compliance,
-            use your broker/bank quotes.
+            {t(locale, 'note')}
           </div>
         </div>
       </div>

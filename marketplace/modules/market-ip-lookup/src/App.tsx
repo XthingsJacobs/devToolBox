@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { sdk } from '@devtoolbox/plugin-sdk';
+import { usePluginLocale, type PluginLocale } from '@devtoolbox/plugin-sdk/react';
+import { providerLabel, t } from './i18n';
 
 type Row = { k: string; v: string };
 
@@ -103,18 +105,11 @@ type IpApiResponse = {
   reason?: string;
 };
 
-const providerLabel: Record<ProviderId, string> = {
-  auto: 'Auto',
-  ip2location: 'IP2Location.io',
-  ipinfo: 'ipinfo.io',
-  ipapi: 'ipapi.co',
-};
-
 function normalizeIpInput(v: string): string {
   return v.trim();
 }
 
-function buildRows(data: UnifiedResult | null): Row[] {
+function buildRows(data: UnifiedResult | null, locale: PluginLocale): Row[] {
   if (!data) return [];
   const rows: Row[] = [];
 
@@ -124,25 +119,25 @@ function buildRows(data: UnifiedResult | null): Row[] {
     rows.push({ k, v: t });
   };
 
-  push('Source', providerLabel[data.provider]);
+  push(t(locale, 'fieldSource'), providerLabel(locale, data.provider));
   push('IP', data.ip);
-  push('Country', data.countryName);
-  push('Country code', data.countryCode);
-  push('Region', data.regionName);
-  push('City', data.cityName);
-  push('ZIP', data.zipCode);
-  push('Latitude', data.latitude);
-  push('Longitude', data.longitude);
-  push('Time zone', data.timeZone);
-  push('ASN', data.asn);
-  push('AS', data.asName);
-  push('ISP', data.isp);
-  push('Org', data.org);
-  push('Domain', data.domain);
-  push('Usage type', data.usageType);
-  push('Address type', data.addressType);
-  push('Is proxy', data.isProxy);
-  push('Fraud score', data.fraudScore);
+  push(t(locale, 'fieldCountry'), data.countryName);
+  push(t(locale, 'fieldCountryCode'), data.countryCode);
+  push(t(locale, 'fieldRegion'), data.regionName);
+  push(t(locale, 'fieldCity'), data.cityName);
+  push(t(locale, 'fieldZip'), data.zipCode);
+  push(t(locale, 'fieldLatitude'), data.latitude);
+  push(t(locale, 'fieldLongitude'), data.longitude);
+  push(t(locale, 'fieldTimezone'), data.timeZone);
+  push(t(locale, 'fieldAsn'), data.asn);
+  push(t(locale, 'fieldAs'), data.asName);
+  push(t(locale, 'fieldIsp'), data.isp);
+  push(t(locale, 'fieldOrg'), data.org);
+  push(t(locale, 'fieldDomain'), data.domain);
+  push(t(locale, 'fieldUsageType'), data.usageType);
+  push(t(locale, 'fieldAddressType'), data.addressType);
+  push(t(locale, 'fieldIsProxy'), data.isProxy);
+  push(t(locale, 'fieldFraudScore'), data.fraudScore);
 
   return rows;
 }
@@ -282,6 +277,7 @@ async function setCache(ip: string, value: UnifiedResult): Promise<void> {
 }
 
 export default function App() {
+  const locale = usePluginLocale();
   const [mode, setMode] = useState<ProviderId>('auto');
   const [keys, setKeys] = useState<IpLookupKeys>({});
   const [ip, setIp] = useState('');
@@ -291,7 +287,7 @@ export default function App() {
   const [lastUpdated, setLastUpdated] = useState('');
   const saveTimerRef = useRef<number | null>(null);
 
-  const rows = useMemo(() => buildRows(result), [result]);
+  const rows = useMemo(() => buildRows(result, locale), [locale, result]);
 
   useEffect(() => {
     void (async () => {
@@ -366,8 +362,8 @@ export default function App() {
       }
 
       if (!out) {
-        const summary = tried.map((t) => `${providerLabel[t.provider]}: ${t.error}`).join(' | ');
-        throw new Error(summary || 'Lookup failed');
+        const summary = tried.map((item) => `${providerLabel(locale, item.provider)}: ${item.error}`).join(' | ');
+        throw new Error(summary || t(locale, 'lookupFailed'));
       }
 
       setResult(out);
@@ -388,18 +384,18 @@ export default function App() {
     <div className="app">
       <div className="top">
         <div>
-          <div className="title">IP Lookup</div>
+          <div className="title">{t(locale, 'title')}</div>
           <div className="sub">
-            Source: {providerLabel[result?.provider ?? mode]}
-            {lastUpdated ? ` · updated: ${lastUpdated}` : ''}
+            {t(locale, 'source')}: {providerLabel(locale, result?.provider ?? mode)}
+            {lastUpdated ? ` · ${t(locale, 'updated')}: ${lastUpdated}` : ''}
           </div>
         </div>
         <div className="actions">
           <button disabled={loading} onClick={() => void lookup(ip)}>
-            {loading ? 'Looking up…' : 'Lookup'}
+            {loading ? t(locale, 'lookingUp') : t(locale, 'lookup')}
           </button>
           <button disabled={loading} onClick={() => void lookup('')}>
-            My IP
+            {t(locale, 'myIp')}
           </button>
         </div>
       </div>
@@ -408,65 +404,65 @@ export default function App() {
 
       <div className="grid">
         <div className="card">
-          <div className="cardTitle">Query</div>
+          <div className="cardTitle">{t(locale, 'query')}</div>
 
           <div className="formRow">
-            <div className="label">Mode</div>
+            <div className="label">{t(locale, 'mode')}</div>
             <select value={mode} onChange={(e) => setMode(e.target.value as ProviderId)}>
-              <option value="auto">{providerLabel.auto}</option>
-              <option value="ip2location">{providerLabel.ip2location}</option>
-              <option value="ipinfo">{providerLabel.ipinfo}</option>
-              <option value="ipapi">{providerLabel.ipapi}</option>
+              <option value="auto">{providerLabel(locale, 'auto')}</option>
+              <option value="ip2location">{providerLabel(locale, 'ip2location')}</option>
+              <option value="ipinfo">{providerLabel(locale, 'ipinfo')}</option>
+              <option value="ipapi">{providerLabel(locale, 'ipapi')}</option>
             </select>
           </div>
 
           <div className="formRow">
-            <div className="label">IP2Location key</div>
+            <div className="label">{t(locale, 'ip2locationKey')}</div>
             <input
               value={String(keys.ip2location || '')}
               onChange={(e) => setKeys((k) => ({ ...k, ip2location: e.target.value }))}
-              placeholder="Optional (stored locally)"
+              placeholder={t(locale, 'optionalStoredLocally')}
             />
           </div>
 
           <div className="formRow">
-            <div className="label">ipinfo token</div>
+            <div className="label">{t(locale, 'ipinfoToken')}</div>
             <input
               value={String(keys.ipinfo || '')}
               onChange={(e) => setKeys((k) => ({ ...k, ipinfo: e.target.value }))}
-              placeholder="Optional (stored locally)"
+              placeholder={t(locale, 'optionalStoredLocally')}
             />
           </div>
 
           <div className="formRow">
-            <div className="label">IP</div>
+            <div className="label">{t(locale, 'ip')}</div>
             <input
               value={ip}
               onChange={(e) => setIp(e.target.value)}
-              placeholder="e.g. 8.8.8.8 / 2001:4860:4860::8888"
+              placeholder={t(locale, 'ipPlaceholder')}
             />
           </div>
 
           <div className="foot">
-            <div className="hint">Tips:</div>
-            <div className="hint">- Leave empty and click “My IP” to query current public IP</div>
-            <div className="hint">- Supports IPv4 / IPv6</div>
-            <div className="hint">- Auto mode will fallback when rate-limited</div>
-            <div className="hint">- Results are cached for 24h per IP (local only)</div>
+            <div className="hint">{t(locale, 'tips')}</div>
+            <div className="hint">{t(locale, 'tipMyIp')}</div>
+            <div className="hint">{t(locale, 'tipVersion')}</div>
+            <div className="hint">{t(locale, 'tipFallback')}</div>
+            <div className="hint">{t(locale, 'tipCache')}</div>
           </div>
         </div>
 
         <div className="card">
-          <div className="cardTitle">Result</div>
+          <div className="cardTitle">{t(locale, 'result')}</div>
           {rows.length === 0 ? (
-            <div className="empty">No data</div>
+            <div className="empty">{t(locale, 'noData')}</div>
           ) : (
             <div className="tableWrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Field</th>
-                    <th>Value</th>
+                    <th>{t(locale, 'field')}</th>
+                    <th>{t(locale, 'value')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -482,8 +478,7 @@ export default function App() {
           )}
           {result ? <pre className="raw">{JSON.stringify(result.raw, null, 2)}</pre> : null}
           <div className="foot">
-            Notes: This tool uses a third-party public API. For compliance or high accuracy requirements,
-            verify with your own data source.
+            {t(locale, 'note')}
           </div>
         </div>
       </div>

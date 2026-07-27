@@ -13,7 +13,7 @@ Marketplace plugins are independently packaged web applications that run inside 
 - Privileged work uses request/response messages through the host SDK; plugins do not receive Electron or Node.js APIs.
 - Compatibility is identified by `sdkVersion` in the manifest.
 
-The host passes the active theme and locale to the iframe. `mountPlugin` from `@devtoolbox/plugin-sdk/react` applies theme changes automatically; pass `{ locale: true }` when the plugin also handles `en` and `zh-CN` locale changes.
+The host passes the active theme and locale to the iframe. `mountPlugin` from `@devtoolbox/plugin-sdk/react` applies theme changes automatically; pass `{ locale: true }` when the plugin handles `en` and `zh-CN` locale changes, and read the current value with `usePluginLocale()`.
 
 `mountPlugin` also owns the host readiness handshake. It announces the plugin only after React commits successfully and retries until the host acknowledges it. Do not add a second ready loop to `index.html`. If startup does not complete within eight seconds, the host shows a timeout state and lets the user rebuild the iframe with **Reload plugin**.
 
@@ -37,6 +37,10 @@ marketplace/modules/market-json-query/
 ├── tsconfig.json
 └── src/
     ├── App.tsx
+    ├── i18n/
+    │   ├── en.ts
+    │   ├── zh-CN.ts
+    │   └── index.ts
     ├── main.tsx
     └── style.css
 ```
@@ -57,6 +61,8 @@ pnpm install
 Workspace development resolves the SDK source directly. `pnpm -C marketplace build` first creates the SDK release output and then makes Vite bundle that compiled output into every plugin, so the same package entry points are exercised before publication.
 
 If a plugin creates Workers, subscriptions, observers, or timers, release them from the owning React effect. Async actions should ignore stale responses after a newer request starts; iframe reload destroys the document but should not be the normal cleanup mechanism.
+
+Plugin UI translations live under `src/i18n/`. Keep one language per file, for example `src/i18n/en.ts` and `src/i18n/zh-CN.ts`; `src/i18n/index.ts` should only select the active language and expose helpers.
 
 ### Build and release the Plugin SDK
 
@@ -82,6 +88,16 @@ Example:
   "id": "market-json-query",
   "name": "JSON Query",
   "description": "Query and transform JSON documents",
+  "i18n": {
+    "en": {
+      "name": "JSON Query",
+      "description": "Query and transform JSON documents"
+    },
+    "zh-CN": {
+      "name": "JSON 查询",
+      "description": "查询和转换 JSON 文档"
+    }
+  },
   "version": "0.1.0",
   "sdkVersion": "1.0",
   "entry": "package/index.html",
@@ -101,6 +117,7 @@ The canonical TypeScript contract is `MarketplacePluginManifest` in `core/packag
 | --------------------------------------------- | -------------------------------------------------------------------------------- |
 | `id`                                          | Unique kebab-case ID prefixed with `market-`; it must match the module directory |
 | `name`, `description`                         | English fallback metadata                                                        |
+| `i18n.en`, `i18n.zh-CN`                       | Localized Marketplace display metadata                                           |
 | `version`                                     | Plugin package version                                                           |
 | `sdkVersion`                                  | Host SDK compatibility version; current templates use `1.0`                      |
 | `entry`                                       | Built web entry, normally `package/index.html`                                   |
@@ -109,7 +126,7 @@ The canonical TypeScript contract is `MarketplacePluginManifest` in `core/packag
 | `permissions`                                 | Non-empty list of requested capabilities                                         |
 | `httpDomains`                                 | Required when `http:external` or `http:proxy` is declared                        |
 
-Optional fields include localized metadata, icon information, tags, keywords, minimum application version, maintainers, environment allowlists, and deprecation metadata.
+Optional fields include icon information, tags, keywords, minimum application version, maintainers, environment allowlists, and deprecation metadata.
 
 ## Permissions
 

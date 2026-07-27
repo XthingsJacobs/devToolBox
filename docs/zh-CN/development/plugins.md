@@ -13,7 +13,7 @@ Marketplace 插件是独立打包并在隔离 iframe 中运行的 Web 应用。�
 - 特权操作通过宿主 SDK 的请求/响应消息完成；插件无法访问 Electron 或 Node.js API。
 - 兼容性由清单中的 `sdkVersion` 标识。
 
-宿主会把当前主题和语言传给 iframe。`@devtoolbox/plugin-sdk/react` 提供的 `mountPlugin` 会自动应用主题变化；如果插件同时处理 `en` 和 `zh-CN` 语言变化，请传入 `{ locale: true }`。
+宿主会把当前主题和语言传给 iframe。`@devtoolbox/plugin-sdk/react` 提供的 `mountPlugin` 会自动应用主题变化；如果插件处理 `en` 和 `zh-CN` 语言变化，请传入 `{ locale: true }`，并通过 `usePluginLocale()` 读取当前语言。
 
 `mountPlugin` 还负责宿主就绪握手。它只会在 React 成功提交后宣布插件就绪，并持续重试直到宿主确认。不要在 `index.html` 中添加第二套就绪循环。如果启动在八秒内没有完成，宿主会显示超时状态，并允许用户通过 **重新加载插件** 重建 iframe。
 
@@ -37,6 +37,10 @@ marketplace/modules/market-json-query/
 ├── tsconfig.json
 └── src/
     ├── App.tsx
+    ├── i18n/
+    │   ├── en.ts
+    │   ├── zh-CN.ts
+    │   └── index.ts
     ├── main.tsx
     └── style.css
 ```
@@ -57,6 +61,8 @@ pnpm install
 工作区开发会直接解析 SDK 源码。`pnpm -C marketplace build` 会先创建 SDK 发布产物，再让 Vite 把编译结果打入每个插件，因此发布前会实际验证相同的包入口。
 
 插件创建 Worker、订阅、Observer 或定时器时，应在所属 React Effect 中释放。新的请求开始后，异步操作应忽略旧响应；iframe 重新加载会销毁文档，但不应成为常规清理机制。
+
+插件 UI 翻译位于 `src/i18n/`。保持每种语言一个文件，例如 `src/i18n/en.ts` 和 `src/i18n/zh-CN.ts`；`src/i18n/index.ts` 只负责选择当前语言并导出辅助函数。
 
 ### 构建和发布 Plugin SDK
 
@@ -82,6 +88,16 @@ npm pack ./core/packages/plugin-sdk/dist
   "id": "market-json-query",
   "name": "JSON Query",
   "description": "Query and transform JSON documents",
+  "i18n": {
+    "en": {
+      "name": "JSON Query",
+      "description": "Query and transform JSON documents"
+    },
+    "zh-CN": {
+      "name": "JSON 查询",
+      "description": "查询和转换 JSON 文档"
+    }
+  },
   "version": "0.1.0",
   "sdkVersion": "1.0",
   "entry": "package/index.html",
@@ -101,6 +117,7 @@ npm pack ./core/packages/plugin-sdk/dist
 | --------------------------------------------- | ----------------------------------------------------------- |
 | `id`                                          | 唯一的 kebab-case ID，以 `market-` 开头，并与模块目录一致。 |
 | `name`、`description`                         | 英文回退元数据。                                            |
+| `i18n.en`、`i18n.zh-CN`                       | Marketplace 展示元数据的本地化文案。                        |
 | `version`                                     | 插件包版本。                                                |
 | `sdkVersion`                                  | 宿主 SDK 兼容版本；当前模板使用 `1.0`。                     |
 | `entry`                                       | 构建后的 Web 入口，通常为 `package/index.html`。            |
@@ -109,7 +126,7 @@ npm pack ./core/packages/plugin-sdk/dist
 | `permissions`                                 | 非空的请求能力列表。                                        |
 | `httpDomains`                                 | 声明 `http:external` 或 `http:proxy` 时必填。               |
 
-可选字段包括本地化元数据、图标信息、标签、关键词、最低应用版本、维护者、环境变量白名单和弃用元数据。
+可选字段包括图标信息、标签、关键词、最低应用版本、维护者、环境变量白名单和弃用元数据。
 
 ## 权限
 

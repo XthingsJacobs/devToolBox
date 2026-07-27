@@ -574,6 +574,10 @@ cmd_plugin() {
     name="$(prompt 'Plugin Name' "$plugin_id")"
     local description
     description="$(prompt 'Description' 'A marketplace plugin for DevToolBox')"
+    local name_zh
+    name_zh="$(prompt 'Plugin Name (zh-CN)' "$name")"
+    local description_zh
+    description_zh="$(prompt 'Description (zh-CN)' "$description")"
     local version
     version="$(prompt 'Version' '0.1.0')"
     local sdk_version
@@ -593,11 +597,15 @@ cmd_plugin() {
 
     name="${name//$'\n'/ }"
     description="${description//$'\n'/ }"
+    name_zh="${name_zh//$'\n'/ }"
+    description_zh="${description_zh//$'\n'/ }"
     author="${author//$'\n'/ }"
     homepage="${homepage//$'\n'/ }"
     repository="${repository//$'\n'/ }"
     name="${name//\\/\\\\}"; name="${name//\"/\\\"}"
     description="${description//\\/\\\\}"; description="${description//\"/\\\"}"
+    name_zh="${name_zh//\\/\\\\}"; name_zh="${name_zh//\"/\\\"}"
+    description_zh="${description_zh//\\/\\\\}"; description_zh="${description_zh//\"/\\\"}"
     author="${author//\\/\\\\}"; author="${author//\"/\\\"}"
     homepage="${homepage//\\/\\\\}"; homepage="${homepage//\"/\\\"}"
     repository="${repository//\\/\\\\}"; repository="${repository//\"/\\\"}"
@@ -608,7 +616,7 @@ cmd_plugin() {
       exit 1
     fi
 
-    mkdir -p "$module_dir/src"
+    mkdir -p "$module_dir/src/i18n"
 
     local permissions_json="[]"
     if [[ -n "${permissions_raw// /}" ]]; then
@@ -632,6 +640,16 @@ cmd_plugin() {
   "id": "$plugin_id",
   "name": "$name",
   "description": "$description",
+  "i18n": {
+    "en": {
+      "name": "$name",
+      "description": "$description"
+    },
+    "zh-CN": {
+      "name": "$name_zh",
+      "description": "$description_zh"
+    }
+  },
   "version": "$version",
   "sdkVersion": "$sdk_version",
   "entry": "package/index.html",
@@ -696,16 +714,64 @@ import App from './App';
 import { mountPlugin } from '@devtoolbox/plugin-sdk/react';
 import './style.css';
 
-mountPlugin(<App />);
+mountPlugin(<App />, { locale: true });
+EOF
+
+    cat >"$module_dir/src/i18n/en.ts" <<EOF
+const messages = {
+  title: "$name",
+  subtitle: "$description",
+  storageSample: "Storage Sample",
+  notify: "Notify",
+  emptyStorage: "Click Storage Sample to test sdk.storage",
+  loading: "Loading...",
+} as const;
+
+export type MessageKey = keyof typeof messages;
+
+export default messages;
+EOF
+
+    cat >"$module_dir/src/i18n/zh-CN.ts" <<EOF
+import type { MessageKey } from './en';
+
+const messages: Record<MessageKey, string> = {
+  title: "$name_zh",
+  subtitle: "$description_zh",
+  storageSample: "存储示例",
+  notify: "通知",
+  emptyStorage: "点击存储示例测试 sdk.storage",
+  loading: "加载中...",
+};
+
+export default messages;
+EOF
+
+    cat >"$module_dir/src/i18n/index.ts" <<'EOF'
+import type { PluginLocale } from '@devtoolbox/plugin-sdk/react';
+import en, { type MessageKey } from './en';
+import zhCN from './zh-CN';
+
+const messages: Record<PluginLocale, Record<MessageKey, string>> = {
+  en,
+  'zh-CN': zhCN,
+};
+
+export function t(locale: PluginLocale, key: MessageKey): string {
+  return messages[locale]?.[key] ?? messages.en[key] ?? key;
+}
 EOF
 
     cat >"$module_dir/src/App.tsx" <<EOF
 import { useEffect, useState } from 'react';
 import { sdk } from '@devtoolbox/plugin-sdk';
+import { usePluginLocale } from '@devtoolbox/plugin-sdk/react';
+import { t } from './i18n';
 
 type Info = { platform?: string; arch?: string; appVersion?: string };
 
 export default function App() {
+  const locale = usePluginLocale();
   const [info, setInfo] = useState<Info | null>(null);
   const [kv, setKv] = useState('');
 
@@ -724,24 +790,24 @@ export default function App() {
 
   return (
     <div className="app">
-      <h1>$name</h1>
-      <div className="muted">$description</div>
+      <h1>{t(locale, 'title')}</h1>
+      <div className="muted">{t(locale, 'subtitle')}</div>
       <div className="card">
         <div className="row">
-          <button onClick={() => void writeSample()}>Storage Sample</button>
+          <button onClick={() => void writeSample()}>{t(locale, 'storageSample')}</button>
           <button
             onClick={() =>
               void sdk.system.notify({ title: 'DevToolBox', body: 'Hello from marketplace plugin', level: 'info' })
             }
           >
-            Notify
+            {t(locale, 'notify')}
           </button>
         </div>
-        <pre className="pre">{kv || 'Click "Storage Sample" to test sdk.storage'}</pre>
+        <pre className="pre">{kv || t(locale, 'emptyStorage')}</pre>
       </div>
       <div className="card">
         <div className="label">system.getInfo</div>
-        <pre className="pre">{info ? JSON.stringify(info, null, 2) : 'Loading...'}</pre>
+        <pre className="pre">{info ? JSON.stringify(info, null, 2) : t(locale, 'loading')}</pre>
       </div>
     </div>
   );

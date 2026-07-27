@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sdk } from '@devtoolbox/plugin-sdk';
+import { usePluginLocale } from '@devtoolbox/plugin-sdk/react';
+import { t } from './i18n';
 
 type ParsedTable = { headers: string[]; rows: string[][] };
 type DeviceTypeEntry = { anchorId: string; title: string; clusterTable?: ParsedTable };
@@ -140,6 +142,7 @@ const defaultSettings: MatterCatalogSettings = {
 };
 
 export default function App() {
+  const locale = usePluginLocale();
   const [settings, setSettings] = useState<MatterCatalogSettings>(defaultSettings);
   const [docTitle, setDocTitle] = useState('Matter Device Library');
   const [deviceTypes, setDeviceTypes] = useState<DeviceTypeEntry[]>([]);
@@ -197,13 +200,14 @@ export default function App() {
         if (!res.ok) throw new Error(res.error.message);
         const status = res.data?.status ?? 0;
         const html = String(res.data?.data ?? '');
-        if (!html) throw new Error('Empty response');
+        if (!html) throw new Error(t(locale, 'emptyResponse'));
         const parsed = parseDeviceLibraryHtml(html);
         setDocTitle(parsed.title);
         setDeviceTypes(parsed.deviceTypes);
         setParsedCount(parsed.deviceTypes.length);
         if (parsed.deviceTypes.length === 0) {
-          throw new Error(status ? `No device types parsed (HTTP ${status})` : 'No device types parsed');
+          const message = t(locale, 'noDeviceTypesParsed');
+          throw new Error(status ? `${message} (HTTP ${status})` : message);
         }
 
         setLastUpdated(new Date().toISOString());
@@ -216,7 +220,7 @@ export default function App() {
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         setError(msg);
-        void sdk.log.error('Failed to load Matter Device Library', {
+        void sdk.log.error(t(locale, 'loadFailedLog'), {
           message: msg,
           version: settings.version,
         });
@@ -224,7 +228,7 @@ export default function App() {
         setLoading(false);
       }
     },
-    [settings.deviceAnchorId, settings.version],
+    [locale, settings.deviceAnchorId, settings.version],
   );
 
   useEffect(() => {
@@ -248,18 +252,19 @@ export default function App() {
     <div className="app">
       <div className="top">
         <div>
-          <div className="title">Matter Catalog</div>
+          <div className="title">{t(locale, 'title')}</div>
           <div className="sub">
-            Source: leconiot.com · Document: {docTitle} · Version: {settings.version} · Parsed: {parsedCount}
-            {lastUpdated ? ` · updated: ${lastUpdated}` : ''}
+            {t(locale, 'source')}: leconiot.com · {t(locale, 'document')}: {docTitle} ·{' '}
+            {t(locale, 'version')}: {settings.version} · {t(locale, 'parsed')}: {parsedCount}
+            {lastUpdated ? ` · ${t(locale, 'updated')}: ${lastUpdated}` : ''}
           </div>
         </div>
         <div className="actions">
           <button disabled={loading} onClick={() => void refresh()}>
-            {loading ? 'Refreshing…' : 'Refresh'}
+            {loading ? t(locale, 'refreshing') : t(locale, 'refresh')}
           </button>
           <a className="btnLink" href={buildDocUrl(settings.version)} target="_blank" rel="noreferrer">
-            Open Spec
+            {t(locale, 'openSpec')}
           </a>
         </div>
       </div>
@@ -268,16 +273,16 @@ export default function App() {
 
       <div className="grid">
         <div className="card">
-          <div className="cardTitle">Query</div>
+          <div className="cardTitle">{t(locale, 'query')}</div>
 
           <div className="formRow">
-            <div className="label">Matter version</div>
+            <div className="label">{t(locale, 'matterVersion')}</div>
             <div className="rowInput">
               <input
                 value={settings.version}
                 onChange={(e) => setSettings((s) => ({ ...s, version: e.target.value }))}
                 list="matterVersionOptions"
-                placeholder="e.g. 1.2"
+                placeholder={t(locale, 'versionPlaceholder')}
               />
               <datalist id="matterVersionOptions">
                 {versionOptions.map((v) => (
@@ -288,16 +293,16 @@ export default function App() {
           </div>
 
           <div className="formRow">
-            <div className="label">Device filter</div>
+            <div className="label">{t(locale, 'deviceFilter')}</div>
             <input
               value={settings.filter}
               onChange={(e) => setSettings((s) => ({ ...s, filter: e.target.value }))}
-              placeholder="Search device type"
+              placeholder={t(locale, 'deviceFilterPlaceholder')}
             />
           </div>
 
           <div className="formRow">
-            <div className="label">Device type</div>
+            <div className="label">{t(locale, 'deviceType')}</div>
             <select
               value={settings.deviceAnchorId}
               onChange={(e) => setSettings((s) => ({ ...s, deviceAnchorId: e.target.value }))}
@@ -311,7 +316,7 @@ export default function App() {
           </div>
 
           <div className="meta">
-            <div className="muted">Matched: {visibleDeviceTypes.length}</div>
+            <div className="muted">{t(locale, 'matched')}: {visibleDeviceTypes.length}</div>
             {settings.deviceAnchorId ? (
               <a
                 className="link"
@@ -319,18 +324,18 @@ export default function App() {
                 target="_blank"
                 rel="noreferrer"
               >
-                Open selected section
+                {t(locale, 'openSelectedSection')}
               </a>
             ) : null}
           </div>
         </div>
 
         <div className="card content">
-          <div className="cardTitle">Cluster requirements</div>
+          <div className="cardTitle">{t(locale, 'clusterRequirements')}</div>
           {!selectedDevice ? (
-            <div className="empty">Select a device type</div>
+            <div className="empty">{t(locale, 'selectDeviceType')}</div>
           ) : !selectedTable ? (
-            <div className="empty">No cluster table found for this device type</div>
+            <div className="empty">{t(locale, 'noClusterTable')}</div>
           ) : (
             <div className="tableWrap">
               <table>
@@ -354,8 +359,7 @@ export default function App() {
             </div>
           )}
           <div className="foot">
-            Notes: Data is extracted from the HTML spec page and may lag behind the newest Matter releases.
-            Use the “Open Spec” link for the authoritative source.
+            {t(locale, 'note')}
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { readFile, readdir } from 'node:fs/promises';
+import { access, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
@@ -46,6 +46,62 @@ function requireString(manifest, field, errors, prefix) {
     errors.push(`${prefix}: missing ${field}`);
 }
 
+async function exists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function localeKeys(filePath) {
+  const raw = await readFile(filePath, 'utf8');
+  return Array.from(raw.matchAll(/^\s*(?:'([^']+)'|([A-Za-z0-9_]+)):/gm), (match) => match[1] ?? match[2]);
+}
+
+function checkLocalizedManifest(manifest, errors, prefix) {
+  if (!isRecord(manifest.i18n)) {
+    errors.push(`${prefix}: manifest.i18n is required`);
+    return;
+  }
+  for (const locale of ['en', 'zh-CN']) {
+    const block = manifest.i18n[locale];
+    if (!isRecord(block)) {
+      errors.push(`${prefix}: manifest.i18n.${locale} is required`);
+      continue;
+    }
+    if (typeof block.name !== 'string' || !block.name.trim()) {
+      errors.push(`${prefix}: manifest.i18n.${locale}.name is missing`);
+    }
+    if (typeof block.description !== 'string' || !block.description.trim()) {
+      errors.push(`${prefix}: manifest.i18n.${locale}.description is missing`);
+    }
+  }
+}
+
+async function checkPluginI18nFiles(moduleDir, errors, prefix) {
+  const legacySingleFile = path.join(moduleDir, 'src/i18n.ts');
+  if (await exists(legacySingleFile)) {
+    errors.push(`${prefix}: use src/i18n/en.ts and src/i18n/zh-CN.ts instead of src/i18n.ts`);
+  }
+
+  const enPath = path.join(moduleDir, 'src/i18n/en.ts');
+  const zhPath = path.join(moduleDir, 'src/i18n/zh-CN.ts');
+  const enExists = await exists(enPath);
+  const zhExists = await exists(zhPath);
+  if (!enExists) errors.push(`${prefix}: missing src/i18n/en.ts`);
+  if (!zhExists) errors.push(`${prefix}: missing src/i18n/zh-CN.ts`);
+  if (!enExists || !zhExists) return;
+
+  const enKeys = await localeKeys(enPath);
+  const zhKeys = await localeKeys(zhPath);
+  const missing = enKeys.filter((key) => !zhKeys.includes(key));
+  const extra = zhKeys.filter((key) => !enKeys.includes(key));
+  if (missing.length) errors.push(`${prefix}: src/i18n/zh-CN.ts is missing keys: ${missing.join(', ')}`);
+  if (extra.length) errors.push(`${prefix}: src/i18n/zh-CN.ts has extra keys: ${extra.join(', ')}`);
+}
+
 async function main() {
   const baseDir = path.join(rootDir, 'marketplace/modules');
   const folders = (await readdir(baseDir, { withFileTypes: true }))
@@ -57,9 +113,10 @@ async function main() {
 
   for (const folder of folders) {
     const prefix = `marketplace/${folder}`;
+    const moduleDir = path.join(baseDir, folder);
     let manifest;
     try {
-      manifest = JSON.parse(await readFile(path.join(baseDir, folder, 'manifest.json'), 'utf8'));
+      manifest = JSON.parse(await readFile(path.join(moduleDir, 'manifest.json'), 'utf8'));
     } catch {
       errors.push(`${prefix}: missing or invalid manifest.json`);
       continue;
@@ -93,6 +150,7 @@ async function main() {
     ]) {
       requireString(manifest, field, errors, prefix);
     }
+    checkLocalizedManifest(manifest, errors, prefix);
     if (manifest.sdkVersion !== '1.0') {
       errors.push(`${prefix}: unsupported sdkVersion: ${String(manifest.sdkVersion)}`);
     }
@@ -111,6 +169,8 @@ async function main() {
     for (const domain of domains) {
       if (!isHttpDomain(domain)) errors.push(`${prefix}: invalid httpDomain: ${String(domain)}`);
     }
+
+    await checkPluginI18nFiles(moduleDir, errors, prefix);
   }
 
   if (errors.length) {

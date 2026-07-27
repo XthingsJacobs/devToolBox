@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { sdk } from '@devtoolbox/plugin-sdk';
+import { usePluginLocale } from '@devtoolbox/plugin-sdk/react';
+import { t } from './i18n';
 
-type Locale = 'en' | 'zh-CN';
 type EmojiSize = 'sm' | 'md' | 'lg' | 'xl';
 
 type EmojiData = {
@@ -96,53 +97,6 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
 
-function resolveLocale(raw: unknown): Locale {
-  const v = String(raw ?? '').trim();
-  if (v === 'en' || v === 'zh-CN') return v;
-  const lower = v.toLowerCase();
-  if (lower.startsWith('zh')) return 'zh-CN';
-  return 'en';
-}
-
-const uiMessages: Record<Locale, Record<string, string>> = {
-  en: {
-    title: 'Emoji Search',
-    subtitle: 'Filter by category, search by tags/name/shortcodes, click to copy',
-    allGroups: 'All categories',
-    allSubgroups: 'All subcategories',
-    searchPlaceholder: 'Search tags / name / shortcodes (fuzzy)',
-    loading: 'Loading…',
-    shown: 'Shown',
-    loadMore: 'Load more',
-    copied: 'Copied',
-    copyFailed: 'Copy failed',
-    sizeSm: 'S',
-    sizeMd: 'M',
-    sizeLg: 'L',
-    sizeXl: 'XL',
-  },
-  'zh-CN': {
-    title: 'Emoji 图标查询',
-    subtitle: '按分类筛选，支持标签/名称/短码搜索（空格分词），点击 Emoji 复制',
-    allGroups: '全部分类',
-    allSubgroups: '全部子分类',
-    searchPlaceholder: '搜索标签 / 名称 / shortcodes（支持模糊）',
-    loading: '加载中…',
-    shown: '已显示',
-    loadMore: '加载更多',
-    copied: '已复制',
-    copyFailed: '复制失败',
-    sizeSm: '小',
-    sizeMd: '中',
-    sizeLg: '大',
-    sizeXl: '超大',
-  },
-};
-
-function t(locale: Locale, key: string): string {
-  return uiMessages[locale]?.[key] ?? uiMessages.en[key] ?? key;
-}
-
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -166,9 +120,7 @@ async function copyText(text: string) {
 }
 
 export default function App() {
-  const [locale, setLocale] = useState<Locale>(() =>
-    resolveLocale(new URLSearchParams(window.location.search).get('locale') ?? navigator.language),
-  );
+  const locale = usePluginLocale();
   const [emojiSize, setEmojiSize] = useState<EmojiSize>('md');
   const [dataset, setDataset] = useState<EmojiDataset | null>(null);
   const [group, setGroup] = useState<string>('all');
@@ -179,19 +131,6 @@ export default function App() {
   const toastTimerRef = useRef<number | null>(null);
   const gridWrapRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
-
-  useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      const d = e.data;
-      if (!d || typeof d !== 'object') return;
-      const type = (d as { type?: unknown }).type;
-      if (type !== 'devtoolbox:locale') return;
-      const next = resolveLocale((d as { locale?: unknown }).locale);
-      setLocale(next);
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, []);
 
   useEffect(() => {
     void (async () => {

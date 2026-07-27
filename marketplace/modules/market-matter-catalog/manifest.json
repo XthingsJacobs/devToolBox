@@ -2,6 +2,16 @@
   "id": "market-matter-catalog",
   "name": "Matter Catalog",
   "description": "Query Matter Device Library by spec version, device type, and required clusters",
+  "i18n": {
+    "en": {
+      "name": "Matter Catalog",
+      "description": "Query Matter Device Library by spec version, device type, and required clusters"
+    },
+    "zh-CN": {
+      "name": "Matter 设备目录",
+      "description": "按规范版本、设备类型和必需集群查询 Matter 设备库"
+    }
+  },
   "version": "0.1.2",
   "sdkVersion": "1.0",
   "entry": "package/index.html",
@@ -10,6 +20,12 @@
   "license": "Apache-2.0",
   "homepage": "https://github.com/XthingsJacobs/devToolBox",
   "repository": "https://github.com/XthingsJacobs/devToolBox",
-  "permissions": ["storage:kv", "http:proxy", "http:external"],
-  "httpDomains": ["leconiot.com"]
+  "permissions": [
+    "storage:kv",
+    "http:proxy",
+    "http:external"
+  ],
+  "httpDomains": [
+    "leconiot.com"
+  ]
 }
