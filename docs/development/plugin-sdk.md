@@ -287,7 +287,12 @@ Notes:
 Import the React helper when building a React plugin:
 
 ```ts
-import { mountPlugin } from '@devtoolbox/plugin-sdk/react';
+import { mountPlugin, usePluginLocale } from '@devtoolbox/plugin-sdk/react';
+
+function App() {
+  const locale = usePluginLocale();
+  return <div>{locale}</div>;
+}
 
 mountPlugin(<App />, { locale: true });
 ```
@@ -298,7 +303,7 @@ mountPlugin(<App />, { locale: true });
 | -------------------- | ---------------------------------------------------------------------- |
 | React mount          | Renders into `#root` and returns an unmount function.                  |
 | Theme sync           | Applies `document.documentElement.dataset.theme = 'dark' \| 'light'`.  |
-| Optional locale sync | With `{ locale: true }`, applies `dataset.locale` and `document.lang`. |
+| Optional locale sync | With `{ locale: true }`, applies `dataset.locale` and `document.lang`, then exposes updates through `usePluginLocale()`. |
 | Readiness handshake  | Sends `devtoolbox:plugin:ready` after the React tree commits.          |
 
 Do not implement a second readiness loop in `index.html`; use this helper or reproduce the same behavior exactly for non-React plugins.

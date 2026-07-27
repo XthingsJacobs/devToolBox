@@ -9,7 +9,12 @@ import { sdk } from '@devtoolbox/plugin-sdk';
 React plugins can mount their application with the host theme and optional locale bridge:
 
 ```tsx
-import { mountPlugin } from '@devtoolbox/plugin-sdk/react';
+import { mountPlugin, usePluginLocale } from '@devtoolbox/plugin-sdk/react';
+
+function App() {
+  const locale = usePluginLocale();
+  return <div>{locale}</div>;
+}
 
 mountPlugin(<App />, { locale: true });
 ```
