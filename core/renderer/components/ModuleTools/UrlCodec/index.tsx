@@ -16,9 +16,8 @@ import {
   VscTrash,
 } from 'react-icons/vsc';
 
-import helpEn from './locales/help-en.md?raw';
-
-const HELP_TITLE = 'URL Encode/Decode Help';
+import helpEn from './i18n/help-en.md?raw';
+import helpZhCN from './i18n/help-zh-CN.md?raw';
 
 export default function UrlCodec() {
   const { locale } = useI18n();
@@ -26,8 +25,8 @@ export default function UrlCodec() {
   const mt = (key: string) => localeData?.[key] ?? key;
 
   const helpHtml = useMemo(() => {
-    return marked.parse(helpEn, { breaks: true, gfm: true }) as string;
-  }, []);
+    return marked.parse(locale === 'zh-CN' ? helpZhCN : helpEn, { breaks: true, gfm: true }) as string;
+  }, [locale]);
 
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
@@ -123,7 +122,7 @@ export default function UrlCodec() {
       </div>
 
       {showHelp && (
-        <HelpModal title={HELP_TITLE} onClose={() => setShowHelp(false)}>
+        <HelpModal title={mt('helpTitle')} onClose={() => setShowHelp(false)}>
           <SafeHtml className="url-help" html={helpHtml} profile="rich-text" />
         </HelpModal>
       )}

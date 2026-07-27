@@ -1,0 +1,15 @@
+export default {
+  name: '路由追踪',
+  description: '追踪数据包到目标主机经过的路径',
+  host: '目标主机',
+  placeholder: '输入域名或 IP，例如 google.com',
+  maxHops: '最大跳数',
+  trace: '追踪',
+  tracing: '追踪中…',
+  stop: '停止',
+  clear: '清空',
+  copy: '复制',
+  emptyHint: '输入目标主机并点击追踪开始',
+  hostRequired: '请输入目标主机',
+  failed: '路由追踪失败',
+};

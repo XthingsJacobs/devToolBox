@@ -104,7 +104,8 @@ import { useSplitPane, HelpModal, ToolSection } from '@@components';
 import { useI18n, getModuleLocale } from '../../../i18n';
 import SafeHtml from '../../SafeHtml';
 
-import helpEn from './locales/help-en.md?raw';
+import helpEn from './i18n/help-en.md?raw';
+import helpZhCN from './i18n/help-zh-CN.md?raw';
 
 export default function ${componentName}() {
   const { locale } = useI18n();
@@ -112,7 +113,7 @@ export default function ${componentName}() {
   const mt = (key: string) => localeData?.[key] ?? key;
 
   const helpHtml = useMemo(() => {
-    return marked.parse(helpEn, { breaks: true, gfm: true }) as string;
+    return marked.parse(locale === 'zh-CN' ? helpZhCN : helpEn, { breaks: true, gfm: true }) as string;
   }, [locale]);
 
   const [input, setInput] = useState('');
@@ -358,19 +359,29 @@ async function main() {
       return;
     }
 
-    await mkdir(path.join(moduleDir, 'locales'), { recursive: true });
+    await mkdir(path.join(moduleDir, 'i18n'), { recursive: true });
 
     if (withHelp) {
       await writeFile(
-        path.join(moduleDir, 'locales/help-en.md'),
+        path.join(moduleDir, 'i18n/help-en.md'),
         `# ${name}\n\n- Description\n- Examples\n`,
+        'utf8',
+      );
+      await writeFile(
+        path.join(moduleDir, 'i18n/help-zh-CN.md'),
+        `# ${name}\n\n- 中文说明\n- 示例\n`,
         'utf8',
       );
     }
 
     await writeFile(
-      path.join(moduleDir, 'locales/en.ts'),
+      path.join(moduleDir, 'i18n/en.ts'),
       `export default {\n  name: '${name}',\n  description: '${description}',\n  input: 'Input',\n  run: 'Run',\n  clear: 'Clear',\n  help: 'Help',\n  placeholder: 'Enter text...',\n  result: 'Result',\n  copy: 'Copy',\n  copied: 'Copied',\n  helpTitle: '${name}',\n};\n`,
+      'utf8',
+    );
+    await writeFile(
+      path.join(moduleDir, 'i18n/zh-CN.ts'),
+      `export default {\n  name: '${name}',\n  description: '${description}',\n  input: '输入',\n  run: '执行',\n  clear: '清空',\n  help: '帮助',\n  placeholder: '输入文本…',\n  result: '结果',\n  copy: '复制',\n  copied: '已复制',\n  helpTitle: '${name}',\n};\n`,
       'utf8',
     );
 

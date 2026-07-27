@@ -5,8 +5,8 @@ import { HelpModal } from '@@components';
 import styles from './UnicodeTool.module.css';
 import SafeHtml from '../../SafeHtml';
 
-import helpEn from './locales/help-en.md?raw';
-const HELP_TITLE = 'Unicode Help';
+import helpEn from './i18n/help-en.md?raw';
+import helpZhCN from './i18n/help-zh-CN.md?raw';
 
 type Format = 'uEscape' | 'uPlus' | 'htmlDec' | 'htmlHex' | 'utf8Hex' | 'codePoints';
 
@@ -95,8 +95,8 @@ export default function UnicodeTool() {
   const [error, setError] = useState('');
   const [showHelp, setShowHelp] = useState(false);
   const helpHtml = useMemo(() => {
-    return marked.parse(helpEn, { breaks: true, gfm: true }) as string;
-  }, []);
+    return marked.parse(locale === 'zh-CN' ? helpZhCN : helpEn, { breaks: true, gfm: true }) as string;
+  }, [locale]);
   const cp = useCallback((t: string) => {
     void navigator.clipboard.writeText(t);
   }, []);
@@ -160,7 +160,7 @@ export default function UnicodeTool() {
         </button>
         <div style={{ flex: 1 }} />
         <button className={styles.btnSec} onClick={() => setShowHelp(true)}>
-          ❓ Help
+          ❓ {mt('help')}
         </button>
       </div>
       {error && <div className={styles.err}>{error}</div>}
@@ -201,7 +201,7 @@ export default function UnicodeTool() {
         </div>
       </div>
       {showHelp && (
-        <HelpModal title={HELP_TITLE} onClose={() => setShowHelp(false)}>
+        <HelpModal title={mt('helpTitle')} onClose={() => setShowHelp(false)}>
           <SafeHtml html={helpHtml} profile="rich-text" />
         </HelpModal>
       )}

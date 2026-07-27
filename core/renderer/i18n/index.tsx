@@ -6,10 +6,10 @@ import { appService } from '../services';
 
 /**
  * Auto-scan module locales under ModuleTools:
- *   ../components/ModuleTools/{Name}/locales/en.ts
+ *   ../components/ModuleTools/{Name}/i18n/en.ts
  */
 const moduleLocaleFiles = import.meta.glob<{ default: Record<string, string> }>(
-  ['../components/ModuleTools/*/locales/*.ts'],
+  ['../components/ModuleTools/*/i18n/*.ts'],
   { eager: true },
 );
 
@@ -17,7 +17,7 @@ const moduleLocaleFiles = import.meta.glob<{ default: Record<string, string> }>(
 function buildModuleMessages(): Record<Locale, Record<string, Record<string, string>>> {
   const result: Record<Locale, Record<string, Record<string, string>>> = { en: {}, 'zh-CN': {} };
   for (const [filePath, mod] of Object.entries(moduleLocaleFiles)) {
-    // Example path: ../components/ModuleTools/Base64Codec/locales/en.ts
+    // Example path: ../components/ModuleTools/Base64Codec/i18n/en.ts
     const parts = filePath.split('/');
     const locale = parts[parts.length - 1].replace('.ts', '') as Locale;
     const folderName = parts[parts.length - 3]; // e.g. "Base64Codec"

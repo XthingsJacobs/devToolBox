@@ -12,12 +12,15 @@ import {
   uuidV4,
 } from './UuidGenerator.model';
 import type { LocaleText, NamespacePreset, SaveTextFile, UuidVersion, V1State } from './UuidGenerator.types';
-import helpEn from './locales/help-en.md?raw';
+import helpEn from './i18n/help-en.md?raw';
+import helpZhCN from './i18n/help-zh-CN.md?raw';
 
 export function useUuidGeneratorController({
+  locale,
   mt,
   saveTextFile,
 }: {
+  locale: 'en' | 'zh-CN';
   mt: LocaleText;
   saveTextFile: SaveTextFile;
 }) {
@@ -37,7 +40,10 @@ export function useUuidGeneratorController({
   const effectiveQuantity = useMemo(() => clampQuantity(quantity), [quantity]);
   const outputText = useMemo(() => outputList.join('\n'), [outputList]);
   const showNameBased = isNameBasedVersion(version);
-  const helpHtml = useMemo(() => marked.parse(helpEn, { breaks: true, gfm: true }) as string, []);
+  const helpHtml = useMemo(
+    () => marked.parse(locale === 'zh-CN' ? helpZhCN : helpEn, { breaks: true, gfm: true }) as string,
+    [locale],
+  );
 
   const handleNamespacePresetChange = useCallback((next: NamespacePreset) => {
     setNamespacePreset(next);

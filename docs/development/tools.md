@@ -41,12 +41,14 @@ The generated module lives at `core/renderer/components/ModuleTools/<ToolName>/`
 ├── manifest.json
 ├── index.tsx
 ├── <ToolName>.module.css
-└── locales/
+└── i18n/
     ├── en.ts
-    └── help-en.md             optional
+    ├── zh-CN.ts
+    ├── help-en.md             optional
+    └── help-zh-CN.md          required when help-en.md exists
 ```
 
-Only three items are required: a valid manifest, its declared entry, and `locales/en.ts`. CSS Modules and help content are optional.
+Four items are required: a valid manifest, its declared entry, `i18n/en.ts`, and `i18n/zh-CN.ts`. CSS Modules and help content are optional.
 
 ## Manifest
 
@@ -79,7 +81,7 @@ The runtime interface is `CoreToolManifest` in `core/renderer/data/placeholder.t
 | `iconKey`     | Optional registered icon key, normally from the `vsc:` set                            |
 | `permissions` | Array reserved for declared capabilities; use an empty array when none are needed     |
 
-The validator rejects entries that escape the module directory, unknown categories, missing English locale files, and duplicate IDs.
+The validator rejects entries that escape the module directory, unknown categories, missing locale files, mismatched English/Chinese locale keys, and duplicate IDs.
 
 ## Entry types
 
@@ -99,9 +101,9 @@ A manifest may point to an `.html` file for a web-style isolated entry. Use this
 
 ## Localization and help
 
-Every module needs `locales/en.ts`. Put visible labels, actions, placeholders, fallback name, and fallback description there instead of hardcoding them in JSX.
+Every module needs `i18n/en.ts` and `i18n/zh-CN.ts`. Put visible labels, actions, placeholders, fallback name, and fallback description there instead of hardcoding them in JSX.
 
-Add other supported locales beside the English file, following existing modules. When `--with-help` is used, the generator also creates `locales/help-en.md`; keep long instructions and examples there instead of crowding the tool UI.
+Add future supported language files beside the English file, following existing modules. When `--with-help` is used, the generator creates both `i18n/help-en.md` and `i18n/help-zh-CN.md`; keep long instructions and examples there instead of crowding the tool UI.
 
 The manifest's English `name` and `description` remain required because they are stable fallback metadata outside the React translation lifecycle.
 

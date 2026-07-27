@@ -15,6 +15,7 @@ export default function UuidGenerator() {
     [],
   );
   const { configPaneProps, outputPaneProps, helpDialogProps } = useUuidGeneratorController({
+    locale,
     mt,
     saveTextFile,
   });

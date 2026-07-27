@@ -84,7 +84,7 @@ The manifest selects one of two entry models:
 - A `.tsx` entry is loaded lazily as a React component.
 - An `.html` entry is served as an isolated built-in web entry.
 
-English locale files are discovered separately by the renderer i18n layer. Categories are fixed by `categoryDefs` in `core/renderer/data/placeholder.ts`; manifests assign tools to those categories.
+English and Simplified Chinese locale files are discovered separately by the renderer i18n layer. Categories are fixed by `categoryDefs` in `core/renderer/data/placeholder.ts`; manifests assign tools to those categories.
 
 See [Built-in Tool Development](tools.md) for the manifest and authoring workflow.
 

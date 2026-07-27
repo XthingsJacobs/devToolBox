@@ -84,7 +84,7 @@ cli.sh / cli.ps1                 统一贡献者 CLI 入口
 - `.tsx` 入口作为 React 组件延迟加载。
 - `.html` 入口作为隔离的内置 Web 页面提供。
 
-英文语言文件由渲染进程国际化层单独发现。分类由 `core/renderer/data/placeholder.ts` 中的 `categoryDefs` 固定定义，清单负责把工具分配到这些分类。
+英文和简体中文语言文件由渲染进程国际化层单独发现。分类由 `core/renderer/data/placeholder.ts` 中的 `categoryDefs` 固定定义，清单负责把工具分配到这些分类。
 
 清单格式和开发流程请参阅[内置工具开发](tools.md)。
 

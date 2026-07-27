@@ -41,12 +41,14 @@ pnpm new:tool TimestampConverter --category dev-tools
 ├── manifest.json
 ├── index.tsx
 ├── <ToolName>.module.css
-└── locales/
+└── i18n/
     ├── en.ts
-    └── help-en.md             可选
+    ├── zh-CN.ts
+    ├── help-en.md             可选
+    └── help-zh-CN.md          存在 help-en.md 时必需
 ```
 
-只有三个项目是必需的：有效的清单、清单声明的入口文件，以及 `locales/en.ts`。CSS Modules 和帮助内容均为可选项。
+有四个项目是必需的：有效的清单、清单声明的入口文件、`i18n/en.ts` 和 `i18n/zh-CN.ts`。CSS Modules 和帮助内容均为可选项。
 
 ## 清单
 
@@ -79,7 +81,7 @@ pnpm new:tool TimestampConverter --category dev-tools
 | `iconKey`     | 可选的已注册图标键，通常来自 `vsc:` 图标集。                                         |
 | `permissions` | 为声明能力预留的数组；不需要能力时使用空数组。                                       |
 
-校验器会拒绝越出模块目录的入口、未知分类、缺失的英文语言文件和重复 ID。
+校验器会拒绝越出模块目录的入口、未知分类、缺失的语言文件、英文/中文语言键不一致和重复 ID。
 
 ## 入口类型
 
@@ -99,9 +101,9 @@ pnpm new:tool TimestampConverter --category dev-tools
 
 ## 本地化和帮助
 
-每个模块都必须包含 `locales/en.ts`。将可见标签、操作、占位符、回退名称和回退描述放在语言文件中，不要直接写死在 JSX 中。
+每个模块都必须包含 `i18n/en.ts` 和 `i18n/zh-CN.ts`。将可见标签、操作、占位符、回退名称和回退描述放在语言文件中，不要直接写死在 JSX 中。
 
-按照现有模块的方式，在英文文件旁添加其他受支持语言。使用 `--with-help` 时，生成器还会创建 `locales/help-en.md`；较长的说明和示例应放在这里，不要挤占工具界面。
+按照现有模块的方式，在英文文件旁添加后续受支持语言文件。使用 `--with-help` 时，生成器会同时创建 `i18n/help-en.md` 和 `i18n/help-zh-CN.md`；较长的说明和示例应放在这里，不要挤占工具界面。
 
 清单中的英文 `name` 和 `description` 仍然是必需项，因为它们是在 React 翻译生命周期之外使用的稳定回退元数据。
 

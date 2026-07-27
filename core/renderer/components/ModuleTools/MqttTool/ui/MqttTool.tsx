@@ -4,10 +4,13 @@ import MqttConnectionDeleteDialog from './MqttConnectionDeleteDialog';
 import MqttGroupDialog from './MqttGroupDialog';
 import MqttToolSidebar from './MqttToolSidebar';
 import MqttWorkspace from './MqttWorkspace';
-import { t } from './i18n';
+import { setMqttLocale, t } from './i18n';
 import { useMqttToolController } from './useMqttToolController';
+import { useI18n } from '../../../../i18n';
 
 export default function MqttTool() {
+  const { locale } = useI18n();
+  setMqttLocale(locale);
   const controller = useMqttToolController();
 
   return (

@@ -30,6 +30,25 @@ async function getCategoryIds() {
   return new Set(Array.from(raw.matchAll(/\{\s*id:\s*'([^']+)'\s*,\s*icon:/g), (m) => m[1]));
 }
 
+async function localeKeys(filePath) {
+  const raw = await readFile(filePath, 'utf8');
+  return Array.from(raw.matchAll(/^\s*(?:'([^']+)'|([A-Za-z0-9_]+)):/gm), (match) => match[1] ?? match[2]);
+}
+
+async function checkLocalePair(enPath, zhPath, label) {
+  const errors = [];
+  if (!(await exists(enPath))) errors.push(`${label}: missing English locale`);
+  if (!(await exists(zhPath))) errors.push(`${label}: missing Chinese locale`);
+  if (errors.length) return errors;
+  const enKeys = await localeKeys(enPath);
+  const zhKeys = await localeKeys(zhPath);
+  const missing = enKeys.filter((key) => !zhKeys.includes(key));
+  const extra = zhKeys.filter((key) => !enKeys.includes(key));
+  if (missing.length) errors.push(`${label}: zh-CN locale is missing keys: ${missing.join(', ')}`);
+  if (extra.length) errors.push(`${label}: zh-CN locale has extra keys: ${extra.join(', ')}`);
+  return errors;
+}
+
 async function checkModule(moduleDir, folderName, categoryIds) {
   const errors = [];
   const manifestPath = path.join(moduleDir, 'manifest.json');
@@ -68,8 +87,15 @@ async function checkModule(moduleDir, folderName, categoryIds) {
     else if (!(await exists(entryPath))) errors.push(`entry does not exist: ${entry}`);
   }
 
-  const localePath = path.join(moduleDir, 'locales/en.ts');
-  if (!(await exists(localePath))) errors.push('Missing locales/en.ts');
+  const localePath = path.join(moduleDir, 'i18n/en.ts');
+  const zhLocalePath = path.join(moduleDir, 'i18n/zh-CN.ts');
+  errors.push(...(await checkLocalePair(localePath, zhLocalePath, 'i18n')));
+
+  const helpEnPath = path.join(moduleDir, 'i18n/help-en.md');
+  const helpZhPath = path.join(moduleDir, 'i18n/help-zh-CN.md');
+  if ((await exists(helpEnPath)) && !(await exists(helpZhPath))) {
+    errors.push('Missing i18n/help-zh-CN.md');
+  }
 
   return { folderName, id, errors };
 }
@@ -83,6 +109,12 @@ async function main() {
   const categoryIds = await getCategoryIds();
   const idMap = new Map();
   const allErrors = [];
+  const systemLocaleErrors = await checkLocalePair(
+    path.join(rootDir, 'core/renderer/i18n/locales/en/common.ts'),
+    path.join(rootDir, 'core/renderer/i18n/locales/zh-CN/common.ts'),
+    'core i18n/common',
+  );
+  allErrors.push(...systemLocaleErrors);
 
   for (const folderName of folders) {
     const result = await checkModule(path.join(toolBase, folderName), folderName, categoryIds);
