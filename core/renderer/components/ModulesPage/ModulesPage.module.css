@@ -143,6 +143,26 @@
   gap: 12px;
 }
 
+.localToggle {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--border-default);
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.localToggle:hover,
+.localToggle[data-active='1'] {
+  border-color: color-mix(in oklab, var(--accent-primary) 32%, transparent);
+  background: var(--state-selected-bg);
+  color: var(--state-selected-text);
+}
+
 .selectWrap {
   position: relative;
   display: inline-flex;
@@ -350,6 +370,17 @@
   padding: 2px 7px;
 }
 
+.localBadge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid color-mix(in oklab, var(--accent-primary) 24%, transparent);
+  border-radius: 8px;
+  padding: 2px 7px;
+  background: var(--state-selected-bg);
+  color: var(--state-selected-text);
+  font-size: 10px;
+}
+
 .pillMuted {
   font-size: 10px;
   color: var(--text-disabled);
@@ -406,6 +437,25 @@
   color: var(--text-tertiary);
   line-height: 1.5;
   margin-bottom: 6px;
+}
+
+.metadataGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 7px;
+}
+
+.metadataItem {
+  max-width: 100%;
+  padding: 2px 7px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--bg-primary) 70%, transparent);
+  color: var(--text-quaternary);
+  font-size: 10px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .cardMeta {

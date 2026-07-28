@@ -23,6 +23,7 @@ import {
   VscCheck,
   VscChevronDown,
   VscExtensions,
+  VscFolderOpened,
   VscRefresh,
   VscSearch,
   VscTrash,
@@ -34,6 +35,14 @@ import { useI18n } from '../../i18n';
 import { getMarketplaceManifestText } from '../../marketplace/i18n';
 
 type TabId = 'installed' | 'marketplace';
+
+function isLocalMarketplaceEntry(entry: MarketplaceRegistryEntry): boolean {
+  return typeof entry.downloadUrl === 'string' && entry.downloadUrl.startsWith('file:');
+}
+
+function metadataList(values?: string[]): string {
+  return values?.length ? values.join(', ') : 'none';
+}
 
 function categoryColor(categoryId: string) {
   switch (categoryId) {
@@ -62,6 +71,7 @@ export default function ModulesPage({
   const [activeTab, setActiveTab] = useState<TabId>('installed');
   const [query, setQuery] = useState('');
   const [filterCat, setFilterCat] = useState('All');
+  const [localOnly, setLocalOnly] = useState(false);
   const [registry, setRegistry] = useState<MarketplaceRegistry>(bundledRegistry);
   const [installed, setInstalled] = useState<InstalledMarketplacePlugin[]>([]);
   const [error, setError] = useState('');
@@ -163,9 +173,10 @@ export default function ModulesPage({
       const text = getMarketplaceManifestText(e.manifest, locale);
       const matchQ = !q || text.name.toLowerCase().includes(q) || text.description.toLowerCase().includes(q);
       const matchC = filterCat === 'All' || e.manifest.categoryId === filterCat;
-      return matchQ && matchC;
+      const matchLocal = !localOnly || isLocalMarketplaceEntry(e);
+      return matchQ && matchC && matchLocal;
     });
-  }, [filterCat, locale, marketplaceLatest, q]);
+  }, [filterCat, localOnly, locale, marketplaceLatest, q]);
 
   const handleInstall = useCallback(
     async (entry: MarketplaceRegistryEntry) => {
@@ -270,6 +281,18 @@ export default function ModulesPage({
         <div className={styles.spacer} />
 
         <div className={styles.filters}>
+          {activeTab === 'marketplace' ? (
+            <button
+              type="button"
+              className={styles.localToggle}
+              data-active={localOnly ? '1' : '0'}
+              onClick={() => setLocalOnly((value) => !value)}
+            >
+              <VscFolderOpened />
+              Local
+            </button>
+          ) : null}
+
           <div className={styles.selectWrap}>
             <select
               className={styles.select}
@@ -372,6 +395,15 @@ export default function ModulesPage({
                     <div className={styles.cardDesc}>
                       {getMarketplaceManifestText(p.manifest, locale).description}
                     </div>
+                    <div className={styles.metadataGrid}>
+                      <span className={styles.metadataItem}>ID {p.manifest.id}</span>
+                      <span className={styles.metadataItem}>
+                        Permissions {metadataList(p.manifest.permissions)}
+                      </span>
+                      <span className={styles.metadataItem}>
+                        Domains {metadataList(p.manifest.httpDomains)}
+                      </span>
+                    </div>
                     {p.manifest.author ? <div className={styles.cardMeta}>by {p.manifest.author}</div> : null}
                   </div>
 
@@ -439,6 +471,7 @@ export default function ModulesPage({
                       {entry.manifest.version ? (
                         <span className={styles.pill}>v{entry.manifest.version}</span>
                       ) : null}
+                      {isLocalMarketplaceEntry(entry) ? <span className={styles.localBadge}>Local</span> : null}
                       <span className={styles.pillCat} style={{ color, background: `${color}12` }}>
                         {entry.manifest.categoryId}
                       </span>
@@ -450,6 +483,18 @@ export default function ModulesPage({
                     </div>
                     <div className={styles.cardDesc}>
                       {getMarketplaceManifestText(entry.manifest, locale).description}
+                    </div>
+                    <div className={styles.metadataGrid}>
+                      <span className={styles.metadataItem}>ID {entry.manifest.id}</span>
+                      <span className={styles.metadataItem}>
+                        Permissions {metadataList(entry.manifest.permissions)}
+                      </span>
+                      <span className={styles.metadataItem}>
+                        Domains {metadataList(entry.manifest.httpDomains)}
+                      </span>
+                      <span className={styles.metadataItem}>
+                        Source {isLocalMarketplaceEntry(entry) ? 'local ZIP' : 'registry package'}
+                      </span>
                     </div>
                     {entry.manifest.author ? (
                       <div className={styles.cardMeta}>by {entry.manifest.author}</div>
