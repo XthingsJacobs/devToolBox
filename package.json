@@ -24,6 +24,7 @@
     "test:electron": "electron scripts/electron-smoke.mjs",
     "test:renderer": "electron scripts/renderer-smoke.mjs",
     "new:tool": "node scripts/new-tool.mjs",
+    "marketplace:doctor": "node scripts/marketplace-doctor.mjs all",
     "lint:modules": "node scripts/lint-modules.mjs && node scripts/lint-marketplace.mjs",
     "lint:boundaries": "node scripts/lint-boundaries.mjs",
     "lint:docs": "node scripts/lint-docs.mjs",

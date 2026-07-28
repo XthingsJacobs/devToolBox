@@ -41,9 +41,13 @@ function isHttpDomain(domain) {
   return host.includes('.') && !host.includes('*') && /^[a-z0-9.-]+$/i.test(host);
 }
 
+function addError(errors, prefix, message, fix) {
+  errors.push(`${prefix}: ${message}. Fix: ${fix}`);
+}
+
 function requireString(manifest, field, errors, prefix) {
   if (typeof manifest[field] !== 'string' || !manifest[field].trim())
-    errors.push(`${prefix}: missing ${field}`);
+    addError(errors, prefix, `missing ${field}`, `add a non-empty string field named ${field}`);
 }
 
 async function exists(filePath) {
@@ -62,20 +66,20 @@ async function localeKeys(filePath) {
 
 function checkLocalizedManifest(manifest, errors, prefix) {
   if (!isRecord(manifest.i18n)) {
-    errors.push(`${prefix}: manifest.i18n is required`);
+    addError(errors, prefix, 'manifest.i18n is required', 'add i18n.en and i18n.zh-CN metadata blocks');
     return;
   }
   for (const locale of ['en', 'zh-CN']) {
     const block = manifest.i18n[locale];
     if (!isRecord(block)) {
-      errors.push(`${prefix}: manifest.i18n.${locale} is required`);
+      addError(errors, prefix, `manifest.i18n.${locale} is required`, `add manifest.i18n.${locale}.name and description`);
       continue;
     }
     if (typeof block.name !== 'string' || !block.name.trim()) {
-      errors.push(`${prefix}: manifest.i18n.${locale}.name is missing`);
+      addError(errors, prefix, `manifest.i18n.${locale}.name is missing`, 'add a localized Marketplace display name');
     }
     if (typeof block.description !== 'string' || !block.description.trim()) {
-      errors.push(`${prefix}: manifest.i18n.${locale}.description is missing`);
+      addError(errors, prefix, `manifest.i18n.${locale}.description is missing`, 'add a localized Marketplace description');
     }
   }
 }
@@ -83,23 +87,25 @@ function checkLocalizedManifest(manifest, errors, prefix) {
 async function checkPluginI18nFiles(moduleDir, errors, prefix) {
   const legacySingleFile = path.join(moduleDir, 'src/i18n.ts');
   if (await exists(legacySingleFile)) {
-    errors.push(`${prefix}: use src/i18n/en.ts and src/i18n/zh-CN.ts instead of src/i18n.ts`);
+    addError(errors, prefix, 'legacy src/i18n.ts is not supported', 'split plugin UI strings into src/i18n/en.ts and src/i18n/zh-CN.ts');
   }
 
   const enPath = path.join(moduleDir, 'src/i18n/en.ts');
   const zhPath = path.join(moduleDir, 'src/i18n/zh-CN.ts');
   const enExists = await exists(enPath);
   const zhExists = await exists(zhPath);
-  if (!enExists) errors.push(`${prefix}: missing src/i18n/en.ts`);
-  if (!zhExists) errors.push(`${prefix}: missing src/i18n/zh-CN.ts`);
+  if (!enExists) addError(errors, prefix, 'missing src/i18n/en.ts', 'add English plugin UI strings');
+  if (!zhExists) addError(errors, prefix, 'missing src/i18n/zh-CN.ts', 'add Simplified Chinese plugin UI strings');
   if (!enExists || !zhExists) return;
 
   const enKeys = await localeKeys(enPath);
   const zhKeys = await localeKeys(zhPath);
   const missing = enKeys.filter((key) => !zhKeys.includes(key));
   const extra = zhKeys.filter((key) => !enKeys.includes(key));
-  if (missing.length) errors.push(`${prefix}: src/i18n/zh-CN.ts is missing keys: ${missing.join(', ')}`);
-  if (extra.length) errors.push(`${prefix}: src/i18n/zh-CN.ts has extra keys: ${extra.join(', ')}`);
+  if (missing.length)
+    addError(errors, prefix, `src/i18n/zh-CN.ts is missing keys: ${missing.join(', ')}`, 'keep locale keys in sync with en.ts');
+  if (extra.length)
+    addError(errors, prefix, `src/i18n/zh-CN.ts has extra keys: ${extra.join(', ')}`, 'remove unused keys or add them to en.ts');
 }
 
 async function main() {
@@ -118,21 +124,21 @@ async function main() {
     try {
       manifest = JSON.parse(await readFile(path.join(moduleDir, 'manifest.json'), 'utf8'));
     } catch {
-      errors.push(`${prefix}: missing or invalid manifest.json`);
+      addError(errors, prefix, 'missing or invalid manifest.json', 'create valid JSON with the required Marketplace manifest fields');
       continue;
     }
     if (!isRecord(manifest)) {
-      errors.push(`${prefix}: manifest.json must contain an object`);
+      addError(errors, prefix, 'manifest.json must contain an object', 'make the JSON root an object');
       continue;
     }
 
     const id = typeof manifest.id === 'string' ? manifest.id.trim() : '';
-    if (!id) errors.push(`${prefix}: manifest.id is missing`);
+    if (!id) addError(errors, prefix, 'manifest.id is missing', 'set it to the market-* folder name');
     else {
-      if (!isKebabCaseId(id)) errors.push(`${prefix}: manifest.id must be kebab-case: ${id}`);
-      if (!id.startsWith('market-')) errors.push(`${prefix}: manifest.id must start with "market-": ${id}`);
-      if (id !== folder) errors.push(`${prefix}: folder name must match manifest.id`);
-      if (ids.has(id)) errors.push(`${prefix}: duplicate manifest.id: ${id}`);
+      if (!isKebabCaseId(id)) addError(errors, prefix, `manifest.id must be kebab-case: ${id}`, 'use lowercase letters, numbers, and single hyphens');
+      if (!id.startsWith('market-')) addError(errors, prefix, `manifest.id must start with "market-": ${id}`, 'prefix Marketplace plugin IDs with market-');
+      if (id !== folder) addError(errors, prefix, 'folder name must match manifest.id', 'rename the folder or update manifest.id');
+      if (ids.has(id)) addError(errors, prefix, `duplicate manifest.id: ${id}`, 'choose a unique plugin ID');
       ids.add(id);
     }
 
@@ -152,22 +158,22 @@ async function main() {
     }
     checkLocalizedManifest(manifest, errors, prefix);
     if (manifest.sdkVersion !== '1.0') {
-      errors.push(`${prefix}: unsupported sdkVersion: ${String(manifest.sdkVersion)}`);
+      addError(errors, prefix, `unsupported sdkVersion: ${String(manifest.sdkVersion)}`, 'use sdkVersion "1.0" until a newer SDK is supported');
     }
 
     const permissions = Array.isArray(manifest.permissions) ? manifest.permissions : [];
-    if (!permissions.length) errors.push(`${prefix}: permissions must be a non-empty array`);
+    if (!permissions.length) addError(errors, prefix, 'permissions must be a non-empty array', 'declare only the SDK capabilities the plugin uses');
     for (const permission of permissions) {
       if (typeof permission !== 'string' || !PERMISSIONS.has(permission)) {
-        errors.push(`${prefix}: unsupported permission: ${String(permission)}`);
+        addError(errors, prefix, `unsupported permission: ${String(permission)}`, 'use a supported PluginPermission from core/packages/core/src/index.ts');
       }
     }
 
     const needsDomains = permissions.includes('http:external') || permissions.includes('http:proxy');
     const domains = Array.isArray(manifest.httpDomains) ? manifest.httpDomains : [];
-    if (needsDomains && !domains.length) errors.push(`${prefix}: httpDomains is required for network access`);
+    if (needsDomains && !domains.length) addError(errors, prefix, 'httpDomains is required for network access', 'add each allowed host, for example api.example.com');
     for (const domain of domains) {
-      if (!isHttpDomain(domain)) errors.push(`${prefix}: invalid httpDomain: ${String(domain)}`);
+      if (!isHttpDomain(domain)) addError(errors, prefix, `invalid httpDomain: ${String(domain)}`, 'use hostnames only; do not include protocol, path, or broad wildcards');
     }
 
     await checkPluginI18nFiles(moduleDir, errors, prefix);

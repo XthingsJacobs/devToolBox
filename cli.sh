@@ -87,7 +87,11 @@ Commands:
   build                         Build renderer + main/preload
   clear                         Clear local user data / marketplace artifacts (interactive)
   plugin create                  Create a marketplace plugin template (interactive)
+  plugin doctor <market-id|all>   Diagnose marketplace plugin setup and package readiness
+  plugin dev <market-id>          Run a marketplace plugin Vite dev server
+  plugin init-local               Reset the local Marketplace registry preview
   plugin <market-id>             Build + pack a marketplace plugin into a local registry zip (interactive)
+  plugin all                     Build + pack all marketplace plugins into a local registry zip
   package <macos|windows|all> [arch]   Package installers (.dmg/.exe)
   check                          Run local quality/security checks (lint + typecheck + test)
   tool new                       Create a new built-in tool template (delegates to pnpm new:tool)
@@ -101,6 +105,27 @@ ensure_cmd() {
     print_error "Missing command: $1"
     exit 1
   fi
+}
+
+local_registry_url() {
+  node -e "const { pathToFileURL } = require('node:url'); const path = require('node:path'); console.log(pathToFileURL(path.resolve('marketplace/registry.local.json')).toString());"
+}
+
+print_local_marketplace_preview_steps() {
+  local url
+  url="$(local_registry_url)"
+  print_info "Local Marketplace preview:"
+  print_info "  Registry URL: $url"
+  print_info "  Open DevToolBox Settings -> Marketplace Registry URL and paste this URL."
+  print_info "  Open Modules -> Marketplace, refresh, then install the plugin."
+}
+
+init_local_marketplace_registry() {
+  mkdir -p "$ROOT_DIR/marketplace/.local-dist"
+  rm -rf "$ROOT_DIR/marketplace/.local-dist"/* 2>/dev/null || true
+  printf '{\n  "schemaVersion": 1,\n  "plugins": []\n}\n' >"$ROOT_DIR/marketplace/registry.local.json"
+  print_ok "Local Marketplace registry reset"
+  print_local_marketplace_preview_steps
 }
 
 required_node_major() {
@@ -879,8 +904,57 @@ EOF
     print_ok "Created marketplace plugin template: $module_dir"
     print_info "Next:"
     print_info "  pnpm install"
-    print_info "  pnpm --filter @devtoolbox/plugin-$plugin_id dev"
+    print_info "  ./cli.sh plugin doctor $plugin_id"
+    print_info "  ./cli.sh plugin dev $plugin_id"
     print_info "  ./cli.sh plugin $plugin_id"
+    return
+  fi
+
+  if [[ "$action" == "init-local" ]]; then
+    init_local_marketplace_registry
+    return
+  fi
+
+  if [[ "$action" == "doctor" ]]; then
+    local target="${1:-}"
+    if [[ -z "$target" ]]; then
+      target="$(prompt 'Plugin ID or all' 'all')"
+    fi
+    target="$(echo "$target" | tr -d '[:space:]')"
+    if [[ -z "$target" ]]; then
+      print_error "Plugin ID or all is required"
+      exit 1
+    fi
+    node scripts/marketplace-doctor.mjs "$target"
+    return
+  fi
+
+  if [[ "$action" == "dev" ]]; then
+    local plugin_id="${1:-}"
+    if [[ -z "$plugin_id" ]]; then
+      plugin_id="$(prompt 'Plugin ID (e.g. market-hello-tool)' '')"
+    fi
+    plugin_id="$(echo "$plugin_id" | tr -d '[:space:]')"
+    if [[ -z "$plugin_id" ]]; then
+      print_error "Plugin ID is required"
+      exit 1
+    fi
+    if [[ ! "$plugin_id" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+      print_error "Invalid plugin id: $plugin_id (expected kebab-case)"
+      exit 1
+    fi
+    if [[ ! "$plugin_id" =~ ^market- ]]; then
+      print_error "Invalid plugin id: $plugin_id (must start with market-)"
+      exit 1
+    fi
+    if [[ ! -d "marketplace/modules/$plugin_id" ]]; then
+      print_error "Plugin not found: marketplace/modules/$plugin_id"
+      exit 1
+    fi
+    print_info "Starting plugin dev server: $plugin_id"
+    print_info "For app install testing, stop this server and run: ./cli.sh plugin $plugin_id"
+    print_info "Then set Settings -> Marketplace Registry URL to the local registry URL printed by the package command."
+    pnpm --filter "@devtoolbox/plugin-$plugin_id" dev
     return
   fi
 
@@ -912,6 +986,7 @@ EOF
     print_info "Packing plugins into local registry zip (merge)"
     node marketplace/scripts/pack-local.mjs --merge "${ids[@]}"
     print_ok "Plugin pack completed"
+    print_local_marketplace_preview_steps
     return
   fi
   if [[ -z "$plugin_id" ]]; then
@@ -945,6 +1020,7 @@ EOF
   print_info "Packing plugin into local registry zip (merge): $plugin_id"
   node marketplace/scripts/pack-local.mjs --merge "$plugin_id"
   print_ok "Plugin pack completed"
+  print_local_marketplace_preview_steps
 }
 
 cmd_package() {

@@ -6,6 +6,7 @@ These scripts support development and contributor workflows for DevToolBox.
 
 - `lint-modules.mjs`: Validates each tool's runtime `manifest.json`, entry, category, English/Chinese locales, and help mirrors.
 - `lint-marketplace.mjs`: Validates Marketplace manifests, localized metadata, permissions, SDK compatibility, and network domains.
+- `marketplace-doctor.mjs`: Diagnoses one Marketplace plugin or all plugins with actionable setup, manifest, i18n, build-output, and local-package hints.
 - `lint-boundaries.mjs`: Prevents renderer privileged imports, unsafe HTML render paths, new direct IPC growth, and oversized tool entries.
 - `lint-docs.mjs`: Keeps translated page trees, language switches, links, structure, and MkDocs navigation in sync.
 - `new-tool.mjs`: Generates a manifest-based tool module scaffold under `core/renderer/components/ModuleTools/`.
@@ -22,6 +23,9 @@ These scripts support development and contributor workflows for DevToolBox.
 
 - `./cli.sh doctor` / `.\cli.ps1 doctor` prints Node, pnpm, Git, OS, memory, disk, and the default dev port status.
 - `./cli.sh dev` / `.\cli.ps1 dev` checks the default Vite port (`5173`) before launch and automatically selects the next free port when it is occupied.
+- `./cli.sh plugin doctor <market-id|all>` / `.\cli.ps1 plugin doctor <market-id|all>` diagnoses Marketplace plugin setup before a full build or local package run.
+- `./cli.sh plugin dev <market-id>` / `.\cli.ps1 plugin dev <market-id>` starts a plugin Vite dev server and prints the local packaging/install follow-up.
+- `./cli.sh plugin init-local` / `.\cli.ps1 plugin init-local` resets the local Marketplace registry and clears local package ZIPs.
 - `./cli.sh package` / `.\cli.ps1 package` validates Node/pnpm versions, memory, disk space, platform packaging prerequisites, and writes `.devtoolbox-diagnostics/package-preflight.txt`.
 - `.\cli.ps1 package` switches the PowerShell session to UTF-8 and prepares electron-builder's Windows resource tools before packaging.
 - Packaging also runs build, bundle budget, supply-chain generation, and an esbuild binary sanity check before `electron-builder`.
@@ -58,17 +62,24 @@ pnpm lint:docs
 pnpm build
 pnpm bundle:check
 pnpm bundle:marketplace
+pnpm marketplace:doctor
 pnpm supply-chain:generate
 pnpm test:renderer
 
 # Inspect local development/package environment
 ./cli.sh doctor
 ./cli.sh dev
+./cli.sh plugin doctor all
+./cli.sh plugin dev market-ip-lookup
+./cli.sh plugin init-local
 ./cli.sh package macos arm64
 
 # Windows PowerShell equivalents
 .\cli.ps1 doctor
 .\cli.ps1 dev
+.\cli.ps1 plugin doctor all
+.\cli.ps1 plugin dev market-ip-lookup
+.\cli.ps1 plugin init-local
 .\cli.ps1 package windows
 
 # Create a new tool module (interactive)

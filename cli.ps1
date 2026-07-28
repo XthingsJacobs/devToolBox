@@ -66,6 +66,26 @@ function Invoke-Checked([string]$File, [string[]]$Arguments = @()) {
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
+function Get-LocalRegistryUrl {
+  return ([System.Uri](Join-Path $RootDir 'marketplace\registry.local.json')).AbsoluteUri
+}
+
+function Write-LocalMarketplacePreviewSteps {
+  Write-Info 'Local Marketplace preview:'
+  Write-Info "  Registry URL: $(Get-LocalRegistryUrl)"
+  Write-Info '  Open DevToolBox Settings -> Marketplace Registry URL and paste this URL.'
+  Write-Info '  Open Modules -> Marketplace, refresh, then install the plugin.'
+}
+
+function Initialize-LocalMarketplaceRegistry {
+  $distDir = Join-Path $RootDir 'marketplace\.local-dist'
+  New-Item -ItemType Directory -Force -Path $distDir | Out-Null
+  Get-ChildItem -LiteralPath $distDir -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+  "{`n  `"schemaVersion`": 1,`n  `"plugins`": []`n}`n" | Set-Content -LiteralPath (Join-Path $RootDir 'marketplace\registry.local.json') -Encoding UTF8
+  Write-Ok 'Local Marketplace registry reset'
+  Write-LocalMarketplacePreviewSteps
+}
+
 function Show-Usage {
   @'
 Usage:
@@ -76,6 +96,9 @@ Commands:
   build                                Build renderer + main/preload
   clear                                Clear local user data / marketplace artifacts (interactive)
   plugin create                        Create a marketplace plugin template (interactive)
+  plugin doctor <market-id|all>         Diagnose marketplace plugin setup and package readiness
+  plugin dev <market-id>                Run a marketplace plugin Vite dev server
+  plugin init-local                     Reset the local Marketplace registry preview
   plugin <market-id>                   Build + pack a marketplace plugin into a local registry zip
   plugin all                           Build + pack all marketplace plugins into a local registry zip
   package <windows|all> [x64]          Package Windows installer (.exe)
@@ -757,8 +780,23 @@ button:hover {
   Write-Ok "Created marketplace plugin template: marketplace\modules\$pluginId"
   Write-Info 'Next:'
   Write-Info '  pnpm install'
-  Write-Info "  pnpm --filter @devtoolbox/plugin-$pluginId dev"
+  Write-Info "  .\cli.ps1 plugin doctor $pluginId"
+  Write-Info "  .\cli.ps1 plugin dev $pluginId"
   Write-Info "  .\cli.ps1 plugin $pluginId"
+}
+
+function Resolve-PluginId([string]$PluginId, [string]$PromptLabel = 'Plugin ID (e.g. market-hello-tool)') {
+  $value = $PluginId
+  if (-not $value) { $value = Prompt $PromptLabel '' }
+  $value = $value.Trim()
+  if (-not $value) { Write-Err 'Plugin ID is required'; exit 1 }
+  if ($value -notmatch '^[a-z0-9]+(-[a-z0-9]+)*$') { Write-Err "Invalid plugin id: $value (expected kebab-case)"; exit 1 }
+  if ($value -notmatch '^market-') { Write-Err "Invalid plugin id: $value (must start with market-)"; exit 1 }
+  if (-not (Test-Path -LiteralPath (Join-Path $RootDir "marketplace\modules\$value") -PathType Container)) {
+    Write-Err "Plugin not found: marketplace/modules/$value"
+    exit 1
+  }
+  return $value
 }
 
 function Invoke-Plugin([string[]]$PluginArgs) {
@@ -766,6 +804,26 @@ function Invoke-Plugin([string[]]$PluginArgs) {
   $action = if ($PluginArgs.Count -gt 0) { $PluginArgs[0] } else { '' }
 
   if ($action -eq 'create') { New-MarketplacePlugin; return }
+
+  if ($action -eq 'init-local') { Initialize-LocalMarketplaceRegistry; return }
+
+  if ($action -eq 'doctor') {
+    $target = if ($PluginArgs.Count -gt 1) { $PluginArgs[1] } else { '' }
+    if (-not $target) { $target = Prompt 'Plugin ID or all' 'all' }
+    $target = $target.Trim()
+    if (-not $target) { Write-Err 'Plugin ID or all is required'; exit 1 }
+    Invoke-Checked 'node' @('scripts/marketplace-doctor.mjs', $target)
+    return
+  }
+
+  if ($action -eq 'dev') {
+    $pluginId = Resolve-PluginId $(if ($PluginArgs.Count -gt 1) { $PluginArgs[1] } else { '' })
+    Write-Info "Starting plugin dev server: $pluginId"
+    Write-Info "For app install testing, stop this server and run: .\cli.ps1 plugin $pluginId"
+    Write-Info 'Then set Settings -> Marketplace Registry URL to the local registry URL printed by the package command.'
+    Invoke-Checked 'pnpm' @('--filter', "@devtoolbox/plugin-$pluginId", 'dev')
+    return
+  }
 
   if ($action -eq 'all') {
     $ids = Get-ChildItem -LiteralPath (Join-Path $RootDir 'marketplace\modules') -Directory -Filter 'market-*' | ForEach-Object { $_.Name }
@@ -785,19 +843,11 @@ function Invoke-Plugin([string[]]$PluginArgs) {
     Write-Info 'Packing plugins into local registry zip (merge)'
     Invoke-Checked 'node' (@('marketplace/scripts/pack-local.mjs', '--merge') + $ids)
     Write-Ok 'Plugin pack completed'
+    Write-LocalMarketplacePreviewSteps
     return
   }
 
-  $pluginId = $action
-  if (-not $pluginId) { $pluginId = Prompt 'Plugin ID (e.g. market-hello-tool)' '' }
-  $pluginId = $pluginId.Trim()
-  if (-not $pluginId) { Write-Err 'Plugin ID is required'; exit 1 }
-  if ($pluginId -notmatch '^[a-z0-9]+(-[a-z0-9]+)*$') { Write-Err "Invalid plugin id: $pluginId (expected kebab-case)"; exit 1 }
-  if ($pluginId -notmatch '^market-') { Write-Err "Invalid plugin id: $pluginId (must start with market-)"; exit 1 }
-  if (-not (Test-Path -LiteralPath (Join-Path $RootDir "marketplace\modules\$pluginId") -PathType Container)) {
-    Write-Err "Plugin not found: marketplace/modules/$pluginId"
-    exit 1
-  }
+  $pluginId = Resolve-PluginId $action
 
   Write-Info 'Building Plugin SDK release output'
   Invoke-Checked 'pnpm' @('--filter', '@devtoolbox/plugin-sdk', 'build')
@@ -810,6 +860,7 @@ function Invoke-Plugin([string[]]$PluginArgs) {
   Write-Info "Packing plugin into local registry zip (merge): $pluginId"
   Invoke-Checked 'node' @('marketplace/scripts/pack-local.mjs', '--merge', $pluginId)
   Write-Ok 'Plugin pack completed'
+  Write-LocalMarketplacePreviewSteps
 }
 
 function Invoke-Package([string[]]$PackageArgs) {
