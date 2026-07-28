@@ -21,6 +21,19 @@ function dispatchReady(frame: HTMLIFrameElement) {
   });
 }
 
+async function dispatchSdkRequest(frame: HTMLIFrameElement, method: string, params?: unknown) {
+  await act(async () => {
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: { type: 'devtoolbox:sdk:request', requestId: `req:${method}`, method, params },
+        source: frame.contentWindow,
+        origin: 'devtoolbox-plugin://market-sample',
+      }),
+    );
+    await Promise.resolve();
+  });
+}
+
 beforeEach(() => {
   vi.useFakeTimers();
 });
@@ -73,5 +86,21 @@ describe('PluginHost lifecycle', () => {
     fireEvent.error(pluginFrame());
     expect(screen.getByRole('alert')).toHaveTextContent('Plugin failed to load');
     expect(screen.getByRole('button', { name: 'Reload plugin' })).toBeEnabled();
+  });
+
+  it('records plugin logs and SDK calls in the runtime console', async () => {
+    render(<PluginHost pluginId="market-sample" entryUrl="devtoolbox-plugin://market-sample/index.html" />);
+    const frame = pluginFrame();
+    vi.spyOn(frame.contentWindow as Window, 'postMessage').mockImplementation(() => undefined);
+
+    fireEvent.load(frame);
+    dispatchReady(frame);
+    await dispatchSdkRequest(frame, 'log.info', { message: 'hello from plugin', data: { count: 1 } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Console/ }));
+
+    expect(screen.getByRole('region', { name: 'Console' })).toHaveTextContent('hello from plugin');
+    expect(screen.getByRole('region', { name: 'Console' })).toHaveTextContent('log.info ok');
+    expect(screen.getByRole('region', { name: 'Console' })).toHaveTextContent('{"count":1}');
   });
 });

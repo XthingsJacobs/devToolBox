@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { VscChromeClose, VscTerminal, VscTrash } from 'react-icons/vsc';
 import styles from './PluginHost.module.css';
 import { useTheme } from '../../theme';
 import { useI18n } from '../../i18n';
@@ -6,6 +7,16 @@ import { pluginService } from '../../services';
 import type { PluginSdkError, PluginSdkRequest, PluginSdkResponse, PluginSdkResult } from '@devtoolbox/core';
 
 type HostSdkResult = PluginSdkResult | { ok: boolean; data?: unknown; error?: PluginSdkError };
+type ConsoleEntry = {
+  id: number;
+  time: string;
+  level: 'debug' | 'info' | 'warn' | 'error';
+  kind: 'host' | 'sdk' | 'log';
+  text: string;
+  detail?: string;
+};
+
+const MAX_CONSOLE_ENTRIES = 80;
 
 function unsupportedServiceResult(): HostSdkResult {
   return { ok: false, error: { code: 'not_supported', message: 'electronAPI not available' } };
@@ -36,6 +47,28 @@ function asRequestMessage(v: unknown): PluginSdkRequest | null {
 
 function logToMain(pluginId: string, level: string, message: string, data?: unknown) {
   void pluginService.log(pluginId, { level, message, data });
+}
+
+function formatDetail(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function parsePluginLog(method: string, params: unknown): { level: ConsoleEntry['level']; text: string; detail?: string } | undefined {
+  if (!method.startsWith('log.')) return undefined;
+  const values = isRecord(params) ? params : {};
+  const rawLevel = method.slice(4);
+  const level: ConsoleEntry['level'] =
+    rawLevel === 'debug' || rawLevel === 'info' || rawLevel === 'warn' || rawLevel === 'error'
+      ? rawLevel
+      : 'info';
+  const text = typeof values.message === 'string' ? values.message : typeof params === 'string' ? params : '';
+  return { level, text: text || '(empty log message)', detail: formatDetail(values.data) };
 }
 
 async function callSdk(pluginId: string, method: string, params: unknown): Promise<HostSdkResult> {
@@ -152,6 +185,9 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [reloadKey, setReloadKey] = useState(0);
+  const [consoleOpen, setConsoleOpen] = useState(false);
+  const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
+  const consoleIdRef = useRef(0);
   const { theme } = useTheme();
   const { locale } = useI18n();
   const readySignalReceivedRef = useRef(false);
@@ -190,6 +226,24 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
           reload: 'Reload plugin',
           unavailable: 'Plugin not available.',
         };
+  const consoleCopy =
+    locale === 'zh-CN'
+      ? { console: '控制台', clear: '清空', close: '关闭', empty: '暂无运行事件' }
+      : { console: 'Console', clear: 'Clear', close: 'Close', empty: 'No runtime events yet' };
+
+  const appendConsole = useCallback((entry: Omit<ConsoleEntry, 'id' | 'time'>) => {
+    const next: ConsoleEntry = {
+      ...entry,
+      id: consoleIdRef.current++,
+      time: new Date().toLocaleTimeString([], {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }),
+    };
+    setConsoleEntries((entries) => [...entries.slice(-(MAX_CONSOLE_ENTRIES - 1)), next]);
+  }, []);
 
   const postToPlugin = useCallback(
     (message: unknown) => {
@@ -200,8 +254,9 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
 
   const handleFrameError = useCallback(() => {
     logToMain(pluginId, 'error', 'iframe failed to load', { src });
+    appendConsole({ kind: 'host', level: 'error', text: 'iframe failed to load', detail: src });
     setLoadState('error');
-  }, [pluginId, src]);
+  }, [appendConsole, pluginId, src]);
 
   useEffect(() => {
     readySignalReceivedRef.current = false;
@@ -219,10 +274,11 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
     if (loadState !== 'loading') return;
     const timer = window.setTimeout(() => {
       logToMain(pluginId, 'warn', 'plugin startup timed out', { src });
+      appendConsole({ kind: 'host', level: 'warn', text: 'plugin startup timed out', detail: src });
       setLoadState('timeout');
     }, 8000);
     return () => window.clearTimeout(timer);
-  }, [loadState, pluginId, reloadKey, src]);
+  }, [appendConsole, loadState, pluginId, reloadKey, src]);
 
   useEffect(() => {
     const handler = async (event: MessageEvent) => {
@@ -235,6 +291,7 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
         if (readySignalReceivedRef.current) return;
         readySignalReceivedRef.current = true;
         logToMain(pluginId, 'info', 'ready signal received');
+        appendConsole({ kind: 'host', level: 'info', text: 'ready signal received' });
         setLoadState('ready');
         return;
       }
@@ -243,7 +300,21 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
       if (!req) return;
       if (req.pluginId && req.pluginId !== pluginId) return;
 
+      const pluginLog = parsePluginLog(req.method, req.params);
+      if (pluginLog) appendConsole({ kind: 'log', ...pluginLog });
+      else appendConsole({ kind: 'sdk', level: 'debug', text: `${req.method} requested` });
+
       const result = await callSdk(pluginId, req.method, req.params);
+      appendConsole(
+        result.ok
+          ? { kind: 'sdk', level: 'info', text: `${req.method} ok` }
+          : {
+              kind: 'sdk',
+              level: 'error',
+              text: `${req.method} failed: ${result.error?.code ?? 'unknown'}`,
+              detail: formatDetail(result.error?.details ?? result.error?.message),
+            },
+      );
       const res: PluginSdkResponse = result.ok
         ? { type: 'devtoolbox:sdk:response', requestId: req.requestId, ok: true, data: result.data }
         : {
@@ -256,7 +327,7 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [messageOrigin, pluginId, postToPlugin]);
+  }, [appendConsole, messageOrigin, pluginId, postToPlugin]);
 
   useEffect(() => {
     if (loadState !== 'ready') return;
@@ -270,6 +341,7 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
 
   const reload = () => {
     readySignalReceivedRef.current = false;
+    appendConsole({ kind: 'host', level: 'info', text: 'reload requested' });
     setLoadState('loading');
     setReloadKey((value) => value + 1);
   };
@@ -286,6 +358,7 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
         title={pluginId}
         onLoad={() => {
           logToMain(pluginId, 'info', 'iframe loaded');
+          appendConsole({ kind: 'host', level: 'info', text: 'iframe loaded', detail: src });
           if (!requiresReadySignal) setLoadState('ready');
         }}
         sandbox="allow-scripts allow-forms allow-modals allow-same-origin"
@@ -315,6 +388,59 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
             </div>
           )}
         </div>
+      )}
+      <button
+        type="button"
+        className={styles.consoleToggle}
+        onClick={() => setConsoleOpen((value) => !value)}
+        aria-expanded={consoleOpen}
+        title={consoleCopy.console}
+      >
+        <VscTerminal aria-hidden="true" />
+        <span>{consoleCopy.console}</span>
+        {consoleEntries.length ? <span className={styles.consoleCount}>{consoleEntries.length}</span> : null}
+      </button>
+      {consoleOpen && (
+        <section className={styles.consolePanel} aria-label={consoleCopy.console}>
+          <div className={styles.consoleHeader}>
+            <div className={styles.consoleTitle}>
+              <VscTerminal aria-hidden="true" />
+              <span>{consoleCopy.console}</span>
+            </div>
+            <div className={styles.consoleActions}>
+              <button
+                type="button"
+                onClick={() => setConsoleEntries([])}
+                title={consoleCopy.clear}
+                aria-label={consoleCopy.clear}
+              >
+                <VscTrash aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setConsoleOpen(false)}
+                title={consoleCopy.close}
+                aria-label={consoleCopy.close}
+              >
+                <VscChromeClose aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+          <div className={styles.consoleList}>
+            {consoleEntries.length ? (
+              consoleEntries.map((entry) => (
+                <div key={entry.id} className={`${styles.consoleEntry} ${styles[`console_${entry.level}`]}`}>
+                  <span className={styles.consoleTime}>{entry.time}</span>
+                  <span className={styles.consoleKind}>{entry.kind}</span>
+                  <span className={styles.consoleText}>{entry.text}</span>
+                  {entry.detail ? <span className={styles.consoleDetail}>{entry.detail}</span> : null}
+                </div>
+              ))
+            ) : (
+              <div className={styles.consoleEmpty}>{consoleCopy.empty}</div>
+            )}
+          </div>
+        </section>
       )}
     </div>
   );

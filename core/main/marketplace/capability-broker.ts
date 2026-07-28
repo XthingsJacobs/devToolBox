@@ -117,7 +117,7 @@ export class PluginCapabilityBroker {
   }
 
   async httpRequest(pluginId: unknown, params: unknown): Promise<PluginSdkResult> {
-    const plugin = this.authorize(pluginId, 'http:proxy');
+    const plugin = this.authorize(pluginId, 'http:proxy', 'http.request');
     if ('ok' in plugin) return plugin;
     const validated = validateHttpRequestParams(params);
     if (!validated.ok) return err('invalid_params', validated.error);
@@ -140,7 +140,7 @@ export class PluginCapabilityBroker {
   }
 
   storageGet(pluginId: unknown, key: unknown): PluginSdkResult {
-    const plugin = this.authorize(pluginId, 'storage:kv');
+    const plugin = this.authorize(pluginId, 'storage:kv', 'storage.get');
     if ('ok' in plugin) return plugin;
     if (!validStorageKey(key)) return err('invalid_params', 'Invalid storage key');
     try {
@@ -152,7 +152,7 @@ export class PluginCapabilityBroker {
   }
 
   storageSet(pluginId: unknown, key: unknown, value: unknown): PluginSdkResult {
-    const plugin = this.authorize(pluginId, 'storage:kv');
+    const plugin = this.authorize(pluginId, 'storage:kv', 'storage.set');
     if ('ok' in plugin) return plugin;
     if (!validStorageKey(key)) return err('invalid_params', 'Invalid storage key');
     try {
@@ -177,7 +177,7 @@ export class PluginCapabilityBroker {
   }
 
   storageDelete(pluginId: unknown, key: unknown): PluginSdkResult {
-    const plugin = this.authorize(pluginId, 'storage:kv');
+    const plugin = this.authorize(pluginId, 'storage:kv', 'storage.delete');
     if ('ok' in plugin) return plugin;
     if (!validStorageKey(key)) return err('invalid_params', 'Invalid storage key');
     try {
@@ -194,7 +194,7 @@ export class PluginCapabilityBroker {
   }
 
   storageList(pluginId: unknown, prefix: unknown): PluginSdkResult {
-    const plugin = this.authorize(pluginId, 'storage:kv');
+    const plugin = this.authorize(pluginId, 'storage:kv', 'storage.list');
     if ('ok' in plugin) return plugin;
     if (prefix !== undefined && (typeof prefix !== 'string' || prefix.length > 256)) {
       return err('invalid_params', 'Invalid storage prefix');
@@ -208,7 +208,7 @@ export class PluginCapabilityBroker {
   }
 
   storageClear(pluginId: unknown): PluginSdkResult {
-    const plugin = this.authorize(pluginId, 'storage:kv');
+    const plugin = this.authorize(pluginId, 'storage:kv', 'storage.clear');
     if ('ok' in plugin) return plugin;
     try {
       const kv = this.options.kvStore.read();
@@ -221,7 +221,7 @@ export class PluginCapabilityBroker {
   }
 
   async fsOpenFileDialog(owner: unknown, pluginId: unknown, params: unknown): Promise<PluginSdkResult> {
-    const plugin = this.authorize(pluginId, 'fs:dialog');
+    const plugin = this.authorize(pluginId, 'fs:dialog', 'fs.openFileDialog');
     if ('ok' in plugin) return plugin;
     if (params !== undefined && !isRecord(params)) return err('invalid_params', 'Invalid dialog parameters');
     const values = isRecord(params) ? params : {};
@@ -248,7 +248,7 @@ export class PluginCapabilityBroker {
   }
 
   async fsSaveFileDialog(owner: unknown, pluginId: unknown, params: unknown): Promise<PluginSdkResult> {
-    const plugin = this.authorize(pluginId, 'fs:dialog');
+    const plugin = this.authorize(pluginId, 'fs:dialog', 'fs.saveFileDialog');
     if ('ok' in plugin) return plugin;
     if (params !== undefined && !isRecord(params)) return err('invalid_params', 'Invalid dialog parameters');
     const values = isRecord(params) ? params : {};
@@ -275,7 +275,7 @@ export class PluginCapabilityBroker {
   }
 
   fsReadFile(pluginId: unknown, fileToken: unknown, encoding: unknown): PluginSdkResult {
-    const plugin = this.authorize(pluginId, 'fs:read');
+    const plugin = this.authorize(pluginId, 'fs:read', 'fs.readFile');
     if ('ok' in plugin) return plugin;
     if (typeof fileToken !== 'string' || !fileToken) return err('invalid_params', 'Invalid fileToken');
     const normalizedEncoding = normalizeEncoding(encoding);
@@ -297,7 +297,7 @@ export class PluginCapabilityBroker {
   }
 
   fsWriteFile(pluginId: unknown, fileToken: unknown, content: unknown, encoding: unknown): PluginSdkResult {
-    const plugin = this.authorize(pluginId, 'fs:write');
+    const plugin = this.authorize(pluginId, 'fs:write', 'fs.writeFile');
     if ('ok' in plugin) return plugin;
     if (typeof fileToken !== 'string' || !fileToken) return err('invalid_params', 'Invalid fileToken');
     if (typeof content !== 'string') return err('invalid_params', 'File content must be a string');
@@ -317,7 +317,7 @@ export class PluginCapabilityBroker {
   }
 
   async systemOpenExternal(pluginId: unknown, inputUrl: unknown): Promise<PluginSdkResult> {
-    const plugin = this.authorize(pluginId, 'system:openExternal');
+    const plugin = this.authorize(pluginId, 'system:openExternal', 'system.openExternal');
     if ('ok' in plugin) return plugin;
     if (typeof inputUrl !== 'string' || !inputUrl || inputUrl.length > 8192) {
       return err('invalid_params', 'Invalid URL');
@@ -340,7 +340,7 @@ export class PluginCapabilityBroker {
   }
 
   systemRevealPath(pluginId: unknown, pathToken: unknown): PluginSdkResult {
-    const plugin = this.authorize(pluginId, 'system:revealPath');
+    const plugin = this.authorize(pluginId, 'system:revealPath', 'system.revealPath');
     if ('ok' in plugin) return plugin;
     const filePath = this.resolvePathToken(plugin.id, pathToken);
     if (!filePath) return err('invalid_params', 'Invalid pathToken');
@@ -353,7 +353,7 @@ export class PluginCapabilityBroker {
   }
 
   async systemOpenPath(pluginId: unknown, pathToken: unknown): Promise<PluginSdkResult> {
-    const plugin = this.authorize(pluginId, 'system:openPath');
+    const plugin = this.authorize(pluginId, 'system:openPath', 'system.openPath');
     if ('ok' in plugin) return plugin;
     const filePath = this.resolvePathToken(plugin.id, pathToken);
     if (!filePath) return err('invalid_params', 'Invalid pathToken');
@@ -366,7 +366,7 @@ export class PluginCapabilityBroker {
   }
 
   systemNotify(pluginId: unknown, params: unknown): PluginSdkResult {
-    const plugin = this.authorize(pluginId, 'system:notifications');
+    const plugin = this.authorize(pluginId, 'system:notifications', 'system.notify');
     if ('ok' in plugin) return plugin;
     if (params !== undefined && !isRecord(params))
       return err('invalid_params', 'Invalid notification parameters');
@@ -390,7 +390,7 @@ export class PluginCapabilityBroker {
   }
 
   systemGetInfo(pluginId: unknown): PluginSdkResult {
-    const plugin = this.authorize(pluginId, 'system:getInfo');
+    const plugin = this.authorize(pluginId, 'system:getInfo', 'system.getInfo');
     if ('ok' in plugin) return plugin;
     return ok({
       platform: process.platform,
@@ -403,7 +403,7 @@ export class PluginCapabilityBroker {
   }
 
   systemGetEnv(pluginId: unknown, keys: unknown): PluginSdkResult {
-    const plugin = this.authorize(pluginId, 'system:env:read');
+    const plugin = this.authorize(pluginId, 'system:env:read', 'system.getEnv');
     if ('ok' in plugin) return plugin;
     if (!Array.isArray(keys) || keys.length > 100 || keys.some((key) => typeof key !== 'string')) {
       return err('invalid_params', 'Invalid environment keys');
@@ -419,6 +419,7 @@ export class PluginCapabilityBroker {
   private authorize(
     pluginId: unknown,
     permission?: PluginPermission,
+    method?: string,
   ): InstalledPluginRecord | PluginSdkResult<never> {
     if (this.options.runtimeEnabled && !this.options.runtimeEnabled()) {
       return err('safe_mode', 'Plugin capabilities are unavailable in safe mode');
@@ -427,7 +428,17 @@ export class PluginCapabilityBroker {
     if (!plugin) return err('not_installed', 'Plugin not installed');
     if (!plugin.enabled) return err('plugin_disabled', 'Plugin is disabled');
     if (permission && !plugin.manifest.permissions.includes(permission)) {
-      return err('permission_denied', `Missing permission: ${permission}`);
+      return err(
+        'permission_denied',
+        method ? `Missing permission "${permission}" for ${method}` : `Missing permission: ${permission}`,
+        {
+          pluginId: plugin.id,
+          method,
+          permission,
+          manifestField: 'permissions',
+          suggestedFix: `Add "${permission}" to manifest.permissions for ${plugin.id}.`,
+        },
+      );
     }
     return plugin;
   }

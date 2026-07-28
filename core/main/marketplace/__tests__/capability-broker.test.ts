@@ -112,6 +112,25 @@ describe('PluginCapabilityBroker', () => {
     });
   });
 
+  it('returns actionable details for missing plugin permissions', () => {
+    const { broker, manifest } = createBroker();
+
+    expect(broker.systemNotify(manifest.id, { title: 'Hello' })).toEqual({
+      ok: false,
+      error: {
+        code: 'permission_denied',
+        message: 'Missing permission "system:notifications" for system.notify',
+        details: {
+          pluginId: manifest.id,
+          method: 'system.notify',
+          permission: 'system:notifications',
+          manifestField: 'permissions',
+          suggestedFix: `Add "system:notifications" to manifest.permissions for ${manifest.id}.`,
+        },
+      },
+    });
+  });
+
   it('validates storage keys and enforces a per-plugin quota', () => {
     const { broker, manifest } = createBroker();
     expect(broker.storageSet(manifest.id, '__proto__', true)).toMatchObject({
