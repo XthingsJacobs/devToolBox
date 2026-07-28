@@ -156,7 +156,7 @@ function decodeBackupBinary(buf: Buffer): { layers: BackupLayer[]; ciphertext: A
   o += 4;
   if (o + len > buf.length) return null;
   const ciphertext = buf.subarray(o, o + len);
-  return { layers, ciphertext: Buffer.from(ciphertext) as AnyBuffer };
+  return { layers, ciphertext: Buffer.from(ciphertext) };
 }
 
 function getDeviceId(): string {
@@ -215,7 +215,7 @@ async function encryptBytes(
       iv: iv.toString('base64'),
       tag: tag.toString('base64'),
     },
-    ciphertext: ciphertext as AnyBuffer,
+    ciphertext: ciphertext,
   };
 }
 
@@ -226,7 +226,7 @@ async function decryptBytes(material: string, layer: BackupLayer, ciphertext: An
   const key = await deriveKey(material, salt);
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
   decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(ciphertext), decipher.final()]) as AnyBuffer;
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 }
 
 function collectPluginKvFallback(): PluginKvFile {
@@ -408,7 +408,7 @@ export function register(): void {
         if (!isRecord(inner) || inner.schemaVersion !== 2 || !isRecord(inner.payload)) {
           return { success: false, error: 'decrypt_failed' as const };
         }
-        p = inner.payload as BackupPayloadV2;
+        p = inner.payload;
       } catch {
         return { success: false, error: 'decrypt_failed' as const };
       }
@@ -463,11 +463,11 @@ export function register(): void {
           const buf = await decryptBytes(
             material,
             layer,
-            Buffer.from((file.payload as { ciphertext: string }).ciphertext, 'base64') as AnyBuffer,
+            Buffer.from((file.payload as { ciphertext: string }).ciphertext, 'base64'),
           );
           const parsedPayload = JSON.parse(buf.toString('utf-8')) as unknown;
           if (!isRecord(parsedPayload)) return { success: false, error: 'decrypt_failed' as const };
-          payload = parsedPayload as BackupPayloadV1;
+          payload = parsedPayload;
         }
       } catch {
         return { success: false, error: 'decrypt_failed' as const };
@@ -505,7 +505,7 @@ export function register(): void {
       }
       const payload = JSON.parse(buf.toString('utf-8')) as unknown;
       if (!isRecord(payload)) return { success: false, error: 'decrypt_failed' as const };
-      p = payload as BackupPayloadV2;
+      p = payload;
     } catch {
       return { success: false, error: 'decrypt_failed' as const };
     }

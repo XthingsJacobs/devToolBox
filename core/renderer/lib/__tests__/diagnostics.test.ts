@@ -1,4 +1,3 @@
-import type { ElectronAPI } from '@devtoolbox/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { installRendererDiagnostics, recordDiagnostic } from '../diagnostics';
 
@@ -12,7 +11,7 @@ describe('renderer diagnostics', () => {
     const diagnosticsRecord = vi.fn().mockResolvedValue(true);
     Object.defineProperty(window, 'electronAPI', {
       configurable: true,
-      value: { diagnosticsRecord } as unknown as ElectronAPI,
+      value: { diagnosticsRecord },
     });
     const cleanup = installRendererDiagnostics();
 
@@ -52,7 +51,7 @@ describe('renderer diagnostics', () => {
 
     Object.defineProperty(window, 'electronAPI', {
       configurable: true,
-      value: { diagnosticsRecord: vi.fn().mockRejectedValue(new Error('offline')) } as unknown as ElectronAPI,
+      value: { diagnosticsRecord: vi.fn().mockRejectedValue(new Error('offline')) },
     });
     expect(() => recordDiagnostic({ level: 'warn', source: 'renderer', message: 'rejected' })).not.toThrow();
   });

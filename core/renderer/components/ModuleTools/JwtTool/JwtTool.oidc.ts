@@ -89,7 +89,7 @@ export async function verifyOidcSignatureWithJwks({
 }: OidcSignatureVerifierParams): Promise<{ ok: boolean; matchedKey: Record<string, unknown> | null }> {
   for (const candidate of candidates) {
     try {
-      const key = await importVerifyKeyFromJwk(alg, candidate as unknown as JsonWebKey);
+      const key = await importVerifyKeyFromJwk(alg, candidate);
       const ok = await verifyWithKey(alg, key, data, signature);
       if (ok) return { ok: true, matchedKey: candidate };
     } catch {
@@ -185,7 +185,7 @@ export async function verifyOidcJwt({
     return withDecoded([...result, { type: 'error', msg: labels.verifyInvalid }], {
       info,
       jwksKid: kid,
-      jwksKey: JSON.stringify(byKid[0] as unknown, null, 2),
+      jwksKey: JSON.stringify(byKid[0], null, 2),
     });
   }
 
@@ -197,7 +197,7 @@ export async function verifyOidcJwt({
   }
 
   const selectedKey = signatureResult.matchedKey ?? byKid[0];
-  const jwksKey = JSON.stringify(selectedKey as unknown, null, 2);
+  const jwksKey = JSON.stringify(selectedKey, null, 2);
   result.push({
     type: signatureResult.ok ? 'success' : 'error',
     msg: signatureResult.ok ? labels.verifyValid : labels.verifyInvalid,

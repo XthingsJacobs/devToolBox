@@ -25,9 +25,7 @@ export function register(): void {
       let publicKeyInfo: Record<string, string> = {};
       try {
         const pk = x509.publicKey;
-        const details = pk.asymmetricKeyDetails as
-          | { modulusLength?: number; namedCurve?: string }
-          | undefined;
+        const details = pk.asymmetricKeyDetails;
         publicKeyInfo = {
           algorithm: (pk.asymmetricKeyType ?? 'unknown').toUpperCase(),
           size:

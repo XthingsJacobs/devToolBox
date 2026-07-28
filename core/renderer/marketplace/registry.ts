@@ -3,7 +3,7 @@ import registryData from './registry.json';
 import { marketplaceService } from '../services';
 
 export function getBundledRegistry(): MarketplaceRegistry {
-  return registryData as MarketplaceRegistry;
+  return registryData;
 }
 
 export const DEFAULT_MARKETPLACE_REGISTRY_URL =

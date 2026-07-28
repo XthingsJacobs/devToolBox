@@ -174,7 +174,7 @@ export default function DashboardPage({
 
   useEffect(() => {
     const refresh = () => {
-      void networkService.getNetworkInfo()?.then((v) => setNetworkInfo(v as NetworkInfo));
+      void networkService.getNetworkInfo()?.then((v) => setNetworkInfo(v));
     };
     refresh();
     const timer = window.setInterval(refresh, 30_000);

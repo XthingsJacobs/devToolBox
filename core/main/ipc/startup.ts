@@ -1,5 +1,4 @@
 import { app, ipcMain } from 'electron';
-import type { StartupRestartMode } from '@devtoolbox/core';
 import type { StartupHealthTracker } from '../startup-health';
 
 export function register(tracker: StartupHealthTracker): void {
@@ -14,7 +13,7 @@ export function register(tracker: StartupHealthTracker): void {
     if (mode !== 'normal' && mode !== 'safe') return false;
     if (restarting) return true;
     restarting = true;
-    tracker.prepareRestart(mode as StartupRestartMode);
+    tracker.prepareRestart(mode);
     setTimeout(() => {
       app.relaunch();
       app.quit();

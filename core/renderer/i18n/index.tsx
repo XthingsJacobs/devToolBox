@@ -31,8 +31,8 @@ const moduleMessages = buildModuleMessages();
 type MessageTree = Record<string, unknown>;
 
 const messages: Record<Locale, MessageTree> = {
-  en: enCommon as MessageTree,
-  'zh-CN': zhCNCommon as MessageTree,
+  en: enCommon,
+  'zh-CN': zhCNCommon,
 };
 
 type LocaleSetting = 'auto' | Locale;

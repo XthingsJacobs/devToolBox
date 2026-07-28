@@ -315,7 +315,7 @@ function buildMenu(): void {
             { role: 'selectAll' as const },
           ],
         }
-      : ({ role: 'editMenu' as const } as Electron.MenuItemConstructorOptions),
+      : ({ role: 'editMenu' as const }),
     {
       label: txt.view,
       submenu: [
@@ -446,8 +446,8 @@ registerBackupIpc();
 const registeredIpc = new Set<() => void>();
 for (const [, mod] of Object.entries(moduleIpcFiles)) {
   const registerFn = mod.register;
-  if (typeof registerFn === 'function' && !registeredIpc.has(registerFn as () => void)) {
-    const fn = registerFn as () => void;
+  if (typeof registerFn === 'function' && !registeredIpc.has(registerFn)) {
+    const fn = registerFn;
     registeredIpc.add(fn);
     fn();
   }

@@ -70,7 +70,7 @@ describe('Settings diagnostics', () => {
   it('requires confirmation before clearing the local event log', async () => {
     const emptyLog: DiagnosticLog = { ...diagnosticLog, events: [], droppedCount: 0 };
     const diagnosticsList = vi.fn().mockResolvedValueOnce(diagnosticLog).mockResolvedValue(emptyLog);
-    const api = installApi({ diagnosticsList } as Partial<ElectronAPI>);
+    const api = installApi({ diagnosticsList });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<SettingsPage />);
 

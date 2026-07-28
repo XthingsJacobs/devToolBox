@@ -17,7 +17,7 @@ export default function AboutDialog({ isOpen, onClose }: { isOpen: boolean; onCl
 
   useEffect(() => {
     if (!isOpen) return;
-    void appService.getInfo()?.then((v) => setInfo(v as AppInfo));
+    void appService.getInfo()?.then((v) => setInfo(v));
   }, [isOpen]);
 
   useEffect(() => {

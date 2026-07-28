@@ -38,7 +38,7 @@ function parseHeader(content: string): BackupHeader | null {
   try {
     const parsed = JSON.parse(content) as unknown;
     if (typeof parsed !== 'object' || parsed === null) return null;
-    return parsed as BackupHeader;
+    return parsed;
   } catch {
     return null;
   }
