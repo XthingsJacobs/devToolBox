@@ -331,6 +331,26 @@ Common error codes:
 
 A permission in the manifest is necessary but not sufficient. The host still validates parameters, token ownership, enabled state, safe mode, target domains, and size limits on every call.
 
+When the host returns `permission_denied`, `error.details` includes the plugin ID, SDK method, required permission, manifest field, and suggested manifest fix. Plugin UIs can surface that detail during development, but production UI should still use user-friendly text.
+
+## SDK changelog
+
+The manifest `sdkVersion` declares host compatibility. Current plugins should use `sdkVersion: "1.0"`.
+
+### 1.0
+
+- Provides `sdk.http.request`, isolated `sdk.storage`, basic `sdk.system`, and `sdk.log`.
+- Provides `callSdk` for approved lower-level file-token and system methods.
+- Provides React helpers through `@devtoolbox/plugin-sdk/react`, including `mountPlugin` and `usePluginLocale`.
+- Uses `SdkResult<T>` for all host-mediated calls instead of throwing host-side errors.
+- Enforces per-call permission checks, safe-mode checks, network allowlists, timeouts, and payload limits in the host.
+
+Compatibility policy:
+
+- Adding optional fields, new error codes, or new SDK methods under existing permissions is a minor-compatible change when existing behavior is preserved.
+- Requiring a new manifest field, changing a return shape, tightening a previously accepted parameter, or removing a method requires a new `sdkVersion`.
+- Deprecated methods should stay documented until the oldest supported host version no longer accepts them.
+
 ## Reserved capabilities
 
 The current manifest permission list includes `serial`, `usb`, and `bluetooth` as reserved hardware permissions. They are not usable through the current SDK because no stable `sdk.serial`, `sdk.usb`, or `sdk.bluetooth` method exists yet.

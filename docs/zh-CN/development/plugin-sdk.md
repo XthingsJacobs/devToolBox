@@ -331,6 +331,26 @@ mountPlugin(<App />, { locale: true });
 
 清单中的权限只是必要条件，不是充分条件。宿主仍会在每次调用时校验参数、令牌归属、启用状态、安全模式、目标域名和大小限制。
 
+当宿主返回 `permission_denied` 时，`error.details` 会包含插件 ID、SDK 方法、所需权限、清单字段和建议的清单修复方式。插件 UI 可以在开发期展示这些细节，但生产界面仍应使用对用户友好的文案。
+
+## SDK 更新记录
+
+清单中的 `sdkVersion` 用于声明宿主兼容性。当前插件应使用 `sdkVersion: "1.0"`。
+
+### 1.0
+
+- 提供 `sdk.http.request`、隔离的 `sdk.storage`、基础 `sdk.system` 和 `sdk.log`。
+- 提供 `callSdk`，用于已批准的较底层文件令牌和系统方法。
+- 通过 `@devtoolbox/plugin-sdk/react` 提供 React 辅助能力，包括 `mountPlugin` 和 `usePluginLocale`。
+- 所有宿主代理调用都使用 `SdkResult<T>`，而不是把宿主侧错误作为异常抛出。
+- 在宿主侧执行每次调用的权限检查、安全模式检查、网络白名单、超时和载荷限制。
+
+兼容策略：
+
+- 在保持既有行为的前提下，新增可选字段、新错误码或既有权限下的新 SDK 方法属于小版本兼容变更。
+- 要求新的清单字段、改变返回结构、收紧此前接受的参数或移除方法时，需要新的 `sdkVersion`。
+- 已废弃方法应继续保留文档，直到最旧的受支持宿主版本不再接受它们。
+
 ## 保留能力
 
 当前清单权限列表包含 `serial`、`usb` 和 `bluetooth` 作为保留硬件权限。当前 SDK 还没有稳定的 `sdk.serial`、`sdk.usb` 或 `sdk.bluetooth` 方法，因此这些权限目前不可用。

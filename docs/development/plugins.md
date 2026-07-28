@@ -19,6 +19,10 @@ The host passes the active theme and locale to the iframe. `mountPlugin` from `@
 
 When the application is in safe mode, Marketplace iframe assets and all SDK capabilities are unavailable for that session. The plugin remains installed and its persistent enabled setting is unchanged. Use **Settings → Diagnostics** to return to normal mode after reviewing or removing the suspected plugin.
 
+During development, use **Reload plugin** after rebuilding or when an iframe enters the timeout/error state. Reloading recreates the iframe document, replays the theme/locale query parameters, and starts a new SDK readiness handshake without reinstalling the package.
+
+Use the plugin **Console** control to inspect recent iframe load events, ready handshakes, plugin `sdk.log.*` messages, SDK calls, permission denials, and load errors while iterating locally.
+
 ## Create a plugin
 
 Run the interactive generator from the repository root:
@@ -63,6 +67,27 @@ Workspace development resolves the SDK source directly. `pnpm -C marketplace bui
 If a plugin creates Workers, subscriptions, observers, or timers, release them from the owning React effect. Async actions should ignore stale responses after a newer request starts; iframe reload destroys the document but should not be the normal cleanup mechanism.
 
 Plugin UI translations live under `src/i18n/`. Keep one language per file, for example `src/i18n/en.ts` and `src/i18n/zh-CN.ts`; `src/i18n/index.ts` should only select the active language and expose helpers.
+
+### 10-minute first plugin workflow
+
+Use this path when you want to confirm that a new plugin can run, build, package, and appear in DevToolBox before adding real functionality:
+
+1. Run `./cli.sh plugin create` and choose an ID such as `market-json-query`.
+2. Run `pnpm install` if the new workspace package is not in the lockfile yet.
+3. Run `./cli.sh plugin doctor market-json-query` to catch manifest, permission, i18n, and entry-point issues early.
+4. Run `./cli.sh plugin dev market-json-query` for fast UI iteration in the browser.
+5. Run `./cli.sh plugin market-json-query` to build, package, and merge the plugin into the local registry.
+6. Copy the generated `file:///.../marketplace/registry.local.json` URL from the CLI output into **Settings -> Marketplace Registry URL**.
+7. Open **Modules -> Marketplace**, refresh, install the plugin, and test each declared permission from visible UI.
+
+On Windows PowerShell, use `.\cli.ps1` for the CLI steps:
+
+```powershell
+.\cli.ps1 plugin create
+.\cli.ps1 plugin doctor market-json-query
+.\cli.ps1 plugin dev market-json-query
+.\cli.ps1 plugin market-json-query
+```
 
 ### Build and release the Plugin SDK
 
@@ -161,6 +186,38 @@ Rejected forms include `*`, multi-level wildcards, schemes, paths, raw IP addres
 
 The main process allows HTTPS targets only, rechecks the allowlist after redirects, and rejects DNS results that resolve to private or local addresses. It also enforces a timeout, redirect limit, and response-size limit. Local development registries may use `file://`, but packaged registry and plugin downloads require HTTPS; this does not weaken plugin HTTP target validation.
 
+Safe network plugin pattern:
+
+```ts
+const result = await sdk.http.request<{ value: string }>({
+  url: 'https://api.example.com/value',
+  responseType: 'json',
+  timeoutMs: 10_000,
+});
+
+if (!result.ok) {
+  await sdk.log.warn('Request failed', result.error);
+  return;
+}
+```
+
+Safe file plugin pattern:
+
+```ts
+const selected = await callSdk<{ items: Array<{ fileToken: string; name: string }> }>('fs.openFileDialog', {
+  filters: [{ name: 'JSON', extensions: ['json'] }],
+});
+
+if (!selected.ok || !selected.data?.items.length) return;
+
+const file = await callSdk<{ content: string }>('fs.readFile', {
+  fileToken: selected.data.items[0].fileToken,
+  encoding: 'utf8',
+});
+```
+
+File paths should stay inside host-issued tokens. Do not ask users to paste absolute paths into plugin UI; use dialogs and pass only returned tokens back to file SDK methods.
+
 ## Plugin SDK reference
 
 This page intentionally keeps SDK details short. The full reference is [Plugin SDK Reference](plugin-sdk.md), which documents every SDK namespace, method name, permission, parameter, return value, timeout, limit, and error code.
@@ -188,7 +245,13 @@ Every SDK call resolves to `SdkResult<T>` and should branch on `ok` before readi
 Run one plugin in Vite development mode:
 
 ```bash
-pnpm --filter @devtoolbox/plugin-market-json-query dev
+./cli.sh plugin dev market-json-query
+```
+
+On Windows PowerShell:
+
+```powershell
+.\cli.ps1 plugin dev market-json-query
 ```
 
 Build it:
@@ -200,6 +263,18 @@ pnpm --filter @devtoolbox/plugin-market-json-query build
 The manifest entry expects output in `package/`. Treat that directory as generated content.
 
 ## Pack and install locally
+
+To reset the local preview registry and clear previously packed local ZIPs:
+
+```bash
+./cli.sh plugin init-local
+```
+
+On Windows PowerShell:
+
+```powershell
+.\cli.ps1 plugin init-local
+```
 
 The shortest workflow builds the plugin, creates a ZIP, and updates the local registry:
 
@@ -231,9 +306,27 @@ In DevToolBox:
 1. Open **Settings**.
 2. Set **Marketplace Registry URL** to the generated `file:///.../marketplace/registry.local.json` URL.
 3. Open **Modules -> Marketplace** and refresh.
-4. Install the plugin and test its declared capabilities.
+4. Use the **Local** filter to inspect only local registry packages when the registry contains local ZIPs.
+5. Check the plugin card metadata preview for ID, permissions, domains, source, version, category, and localized description.
+6. Install the plugin and test its declared capabilities.
 
 ## Validate a plugin
+
+Run the Marketplace doctor first when a scaffold, manifest, locale split, build output, or local ZIP does not look right:
+
+```bash
+./cli.sh plugin doctor market-json-query
+./cli.sh plugin doctor all
+```
+
+On Windows PowerShell:
+
+```powershell
+.\cli.ps1 plugin doctor market-json-query
+.\cli.ps1 plugin doctor all
+```
+
+The doctor command prints actionable errors and warnings for the plugin folder, `manifest.json`, `package.json`, required source entry points, permission/domain declarations, `src/i18n/en.ts` and `src/i18n/zh-CN.ts` key parity, `package/index.html`, and the local ZIP under `marketplace/.local-dist/`.
 
 Run the focused checks while iterating:
 
@@ -246,6 +339,41 @@ pnpm -C marketplace build
 The root `pnpm lint:modules` command also validates Marketplace IDs, required manifest fields, permissions, domain rules, and duplicate IDs.
 
 Before publishing, confirm that the ZIP contains only the required manifest and web assets, the manifest version matches the package, and every requested permission is exercised by visible plugin behavior.
+
+## Submit a plugin for review
+
+Marketplace submissions should be easy to review without running the plugin first. Include the following in the pull request:
+
+- A short user-facing description of what the plugin does and why it belongs in Marketplace.
+- The plugin source under `marketplace/modules/<market-id>/`, with an ID that starts with `market-`.
+- English and Simplified Chinese metadata in `manifest.json` and UI strings under `src/i18n/`.
+- A permission note that maps every requested permission to visible plugin behavior.
+- Network domain justification for each `httpDomains` entry, including whether the plugin uses direct browser traffic or `sdk.http.request`.
+- Screenshots or a short recording for the main workflow when the UI is non-trivial.
+- Validation output for `./cli.sh plugin doctor <market-id>`, `pnpm -C marketplace lint`, and `pnpm -C marketplace build`.
+
+Reviewers should check the plugin against this checklist:
+
+- The manifest ID, package name, version, entry, category, author, license, homepage, repository, permissions, and localized metadata are complete.
+- The plugin uses `@devtoolbox/plugin-sdk` instead of copying host or SDK shims.
+- Requested permissions are minimal and user-visible.
+- HTTP targets are HTTPS-only public hostnames and do not include broad wildcards.
+- Plugin UI handles host theme and locale changes.
+- Long-running work, timers, workers, subscriptions, and observers are cleaned up from React effects.
+- The package output contains only the manifest and web assets needed at runtime.
+
+Good first plugin submissions are usually documentation-backed examples, small API viewers with one narrow domain, format converters that need only `storage:kv`, or UI polish for existing local plugins.
+
+## Release verification
+
+Before a Marketplace package is published or attached to a release, verify the exact artifact that will be distributed:
+
+```bash
+pnpm -C marketplace run pack -- --all
+node marketplace/scripts/verify-release.mjs
+```
+
+For local unsigned packages, run `./cli.sh plugin doctor <market-id>` after packing and confirm that the generated registry URL installs the expected ZIP. For signed packages, also confirm that the provenance statement binds the plugin ID, version, ZIP SHA-256, size, source repository, source revision, publisher, and key ID. Never regenerate or modify the ZIP after verification; build a new artifact instead.
 
 ## Sign and trust release packages
 

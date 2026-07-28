@@ -55,6 +55,14 @@ DevToolBox is evolving as a plugin-first, all-in-one desktop toolbox for general
 - Propose a plugin idea through a feature request.
 - Build a plugin and submit it for inclusion in the gallery.
 
+Good first Marketplace issues should be narrow, reproducible, and reviewable without private services. Useful examples:
+
+- Add screenshots, localized descriptions, or clearer permission notes for an existing plugin.
+- Convert a small public API into a read-only plugin with one documented `httpDomains` entry.
+- Add missing `plugin doctor` guidance to an example or troubleshooting page.
+- Improve a plugin's empty, loading, error, and permission-denied states.
+- Add tests or fixture manifests that cover one validation edge case.
+
 ## Releases and legal
 
 - [Changelog](changelog.md)
