@@ -6,7 +6,7 @@
 
 ## 安装发布版本
 
-从 [GitHub Releases](https://github.com/XthingsJacobs/devToolBox/releases) 下载已打包的版本。通过 **模块 → Marketplace → 刷新 → 安装** 安装 Marketplace 插件。
+从 [GitHub Releases](https://github.com/jacobs-256/devToolBox/releases) 下载已打包的版本。通过 **模块 → Marketplace → 刷新 → 安装** 安装 Marketplace 插件。
 
 后续章节面向需要在仓库中工作的贡献者和插件开发者。
 

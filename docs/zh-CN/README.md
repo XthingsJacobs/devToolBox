@@ -2,8 +2,8 @@
 
 [English](../../README.md) | [简体中文](README.md)
 
-[![CI](https://github.com/XthingsJacobs/devToolBox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/XthingsJacobs/devToolBox/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/XthingsJacobs/devToolBox/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/XthingsJacobs/devToolBox/actions/workflows/codeql.yml)
+[![CI](https://github.com/jacobs-256/devToolBox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jacobs-256/devToolBox/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/jacobs-256/devToolBox/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/jacobs-256/devToolBox/actions/workflows/codeql.yml)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 
 DevToolBox 是一款使用 Electron、React、TypeScript 和 Vite 构建的跨平台桌面开发工具箱。
@@ -39,7 +39,7 @@ DevToolBox 是一款使用 Electron、React、TypeScript 和 Vite 构建的跨�
 | 开发 Marketplace 插件 | [Marketplace 插件开发](development/plugins.md) |
 | 遵循界面和组件规范    | [设计系统](development/design-system.md)       |
 
-可从 [GitHub Releases](https://github.com/XthingsJacobs/devToolBox/releases) 下载已打包的版本。在应用中通过 **模块 → Marketplace → 刷新 → 安装** 安装插件。
+可从 [GitHub Releases](https://github.com/jacobs-256/devToolBox/releases) 下载已打包的版本。在应用中通过 **模块 → Marketplace → 刷新 → 安装** 安装插件。
 
 ## 项目信息
 

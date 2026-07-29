@@ -386,7 +386,7 @@ DevToolBox 使用 Ed25519 包来源验证。签名声明把插件包 SHA-256 和
 ```bash
 pnpm -C marketplace run signing:keygen -- \
   --publisher devtoolbox-official \
-  --repository https://github.com/XthingsJacobs/devToolBox
+  --repository https://github.com/jacobs-256/devToolBox
 ```
 
 该命令会创建被忽略的 `marketplace/.signing/` 目录，并为私钥设置仅所有者可访问的权限。绝不能提交 `private-key.pk8.base64`，也不能把它作为构建产物上传。请通过项目密钥管理流程备份。
@@ -406,7 +406,7 @@ pnpm -C marketplace run signing:keygen -- \
 ```bash
 export MARKETPLACE_SIGNING_PRIVATE_KEY_BASE64="$(tr -d '\n' < marketplace/.signing/private-key.pk8.base64)"
 export MARKETPLACE_SIGNING_PUBLISHER=devtoolbox-official
-export MARKETPLACE_SOURCE_REPOSITORY=https://github.com/XthingsJacobs/devToolBox
+export MARKETPLACE_SOURCE_REPOSITORY=https://github.com/jacobs-256/devToolBox
 export MARKETPLACE_SOURCE_REVISION="$(git rev-parse HEAD)"
 pnpm -C marketplace run pack -- --all
 ```

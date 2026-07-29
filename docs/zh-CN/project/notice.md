@@ -14,4 +14,4 @@ Copyright 2026 Jacobs
 
 从源码构建时，请在安装依赖后运行 `pnpm supply-chain:generate`。生成的文件会写入 `dist/supply-chain/`。
 
-DevToolBox 自身以 [Apache License 2.0](https://github.com/XthingsJacobs/devToolBox/blob/main/LICENSE) 发布。
+DevToolBox 自身以 [Apache License 2.0](https://github.com/jacobs-256/devToolBox/blob/main/LICENSE) 发布。

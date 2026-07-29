@@ -386,7 +386,7 @@ For a new publisher or a planned key rotation, generate a key once in a secure l
 ```bash
 pnpm -C marketplace run signing:keygen -- \
   --publisher devtoolbox-official \
-  --repository https://github.com/XthingsJacobs/devToolBox
+  --repository https://github.com/jacobs-256/devToolBox
 ```
 
 The command writes an ignored `marketplace/.signing/` directory with owner-only permissions for the private key. Never commit or upload `private-key.pk8.base64` as a build artifact. Back it up using the project's secret-management process.
@@ -406,7 +406,7 @@ The release workflow derives source repository, commit, and workflow URL from Gi
 ```bash
 export MARKETPLACE_SIGNING_PRIVATE_KEY_BASE64="$(tr -d '\n' < marketplace/.signing/private-key.pk8.base64)"
 export MARKETPLACE_SIGNING_PUBLISHER=devtoolbox-official
-export MARKETPLACE_SOURCE_REPOSITORY=https://github.com/XthingsJacobs/devToolBox
+export MARKETPLACE_SOURCE_REPOSITORY=https://github.com/jacobs-256/devToolBox
 export MARKETPLACE_SOURCE_REVISION="$(git rev-parse HEAD)"
 pnpm -C marketplace run pack -- --all
 ```

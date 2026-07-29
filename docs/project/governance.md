@@ -6,7 +6,7 @@ GitHub-discovered community policies live at the repository root. Those root fil
 
 ## Contribute
 
-Read the [Contributing Guide](https://github.com/XthingsJacobs/devToolBox/blob/main/CONTRIBUTING.md) for environment requirements, quality gates, pull-request expectations, and extension workflows.
+Read the [Contributing Guide](https://github.com/jacobs-256/devToolBox/blob/main/CONTRIBUTING.md) for environment requirements, quality gates, pull-request expectations, and extension workflows.
 
 Technical starting points:
 
@@ -18,9 +18,9 @@ Technical starting points:
 
 ## Community standards
 
-- [Code of Conduct](https://github.com/XthingsJacobs/devToolBox/blob/main/CODE_OF_CONDUCT.md): expected contributor behavior and private reporting guidance.
-- [Support](https://github.com/XthingsJacobs/devToolBox/blob/main/SUPPORT.md): where to ask questions and what to include in a bug report.
-- [Security Policy](https://github.com/XthingsJacobs/devToolBox/blob/main/SECURITY.md): supported versions, private vulnerability reporting, and security boundaries.
+- [Code of Conduct](https://github.com/jacobs-256/devToolBox/blob/main/CODE_OF_CONDUCT.md): expected contributor behavior and private reporting guidance.
+- [Support](https://github.com/jacobs-256/devToolBox/blob/main/SUPPORT.md): where to ask questions and what to include in a bug report.
+- [Security Policy](https://github.com/jacobs-256/devToolBox/blob/main/SECURITY.md): supported versions, private vulnerability reporting, and security boundaries.
 
 Do not open a public issue for a suspected security vulnerability.
 
@@ -66,9 +66,9 @@ Good first Marketplace issues should be narrow, reproducible, and reviewable wit
 ## Releases and legal
 
 - [Changelog](changelog.md)
-- [GitHub Releases](https://github.com/XthingsJacobs/devToolBox/releases)
+- [GitHub Releases](https://github.com/jacobs-256/devToolBox/releases)
 - [Notice](notice.md)
-- [Apache-2.0 License](https://github.com/XthingsJacobs/devToolBox/blob/main/LICENSE)
+- [Apache-2.0 License](https://github.com/jacobs-256/devToolBox/blob/main/LICENSE)
 
 ## Documentation ownership
 

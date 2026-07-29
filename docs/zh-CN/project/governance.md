@@ -6,7 +6,7 @@ GitHub 可自动发现的社区规范保留在仓库根目录，并作为权威�
 
 ## 参与贡献
 
-请阅读[贡献指南](https://github.com/XthingsJacobs/devToolBox/blob/main/CONTRIBUTING.md)，了解环境要求、质量检查、拉取请求要求和扩展开发流程。
+请阅读[贡献指南](https://github.com/jacobs-256/devToolBox/blob/main/CONTRIBUTING.md)，了解环境要求、质量检查、拉取请求要求和扩展开发流程。
 
 技术入口：
 
@@ -18,9 +18,9 @@ GitHub 可自动发现的社区规范保留在仓库根目录，并作为权威�
 
 ## 社区规范
 
-- [社区行为准则](https://github.com/XthingsJacobs/devToolBox/blob/main/CODE_OF_CONDUCT.md)：贡献者行为要求和私密举报方式。
-- [支持](https://github.com/XthingsJacobs/devToolBox/blob/main/SUPPORT.md)：提问渠道和错误报告应包含的信息。
-- [安全策略](https://github.com/XthingsJacobs/devToolBox/blob/main/SECURITY.md)：受支持版本、私密漏洞报告和安全边界。
+- [社区行为准则](https://github.com/jacobs-256/devToolBox/blob/main/CODE_OF_CONDUCT.md)：贡献者行为要求和私密举报方式。
+- [支持](https://github.com/jacobs-256/devToolBox/blob/main/SUPPORT.md)：提问渠道和错误报告应包含的信息。
+- [安全策略](https://github.com/jacobs-256/devToolBox/blob/main/SECURITY.md)：受支持版本、私密漏洞报告和安全边界。
 
 请勿为疑似安全漏洞创建公开 Issue。
 
@@ -66,9 +66,9 @@ DevToolBox 正在向面向通用开发者、插件优先的一体化桌面工具
 ## 发布与法律信息
 
 - [更新记录](changelog.md)
-- [GitHub Releases](https://github.com/XthingsJacobs/devToolBox/releases)
+- [GitHub Releases](https://github.com/jacobs-256/devToolBox/releases)
 - [声明](notice.md)
-- [Apache-2.0 许可证](https://github.com/XthingsJacobs/devToolBox/blob/main/LICENSE)
+- [Apache-2.0 许可证](https://github.com/jacobs-256/devToolBox/blob/main/LICENSE)
 
 ## 文档维护职责
 

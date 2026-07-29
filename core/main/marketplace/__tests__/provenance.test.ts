@@ -145,7 +145,7 @@ describe('Marketplace package provenance', () => {
             'market-ip-lookup',
             'market-matter-catalog',
           ],
-          sourceRepositories: ['https://github.com/XthingsJacobs/devToolBox'],
+          sourceRepositories: ['https://github.com/jacobs-256/devToolBox'],
         },
       ],
     });

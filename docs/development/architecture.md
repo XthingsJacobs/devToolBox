@@ -189,7 +189,7 @@ The built-in MQTT tool is an example of a stateful IPC service. Its main-process
 - Development and packaged builds keep Chromium web security enabled; local registries are handled by explicit main-process exceptions.
 - Keep the preload surface minimal; do not expose raw `ipcRenderer`.
 
-Security-sensitive changes should also follow the repository [Security Policy](https://github.com/XthingsJacobs/devToolBox/blob/main/SECURITY.md).
+Security-sensitive changes should also follow the repository [Security Policy](https://github.com/jacobs-256/devToolBox/blob/main/SECURITY.md).
 
 ## Where to make a change
 

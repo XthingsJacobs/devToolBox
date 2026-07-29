@@ -7,7 +7,7 @@ export function getBundledRegistry(): MarketplaceRegistry {
 }
 
 export const DEFAULT_MARKETPLACE_REGISTRY_URL =
-  'https://github.com/XthingsJacobs/devToolBox/releases/download/marketplace/registry.json';
+  'https://github.com/jacobs-256/devToolBox/releases/download/marketplace/registry.json';
 
 const REGISTRY_URL_KEY = 'devtoolbox_marketplace_registry_url';
 

@@ -14,4 +14,4 @@ This product includes software developed by third parties. Every packaged releas
 
 For source builds, run `pnpm supply-chain:generate` after installing dependencies. The generated files are written to `dist/supply-chain/`.
 
-DevToolBox itself is distributed under the [Apache License 2.0](https://github.com/XthingsJacobs/devToolBox/blob/main/LICENSE).
+DevToolBox itself is distributed under the [Apache License 2.0](https://github.com/jacobs-256/devToolBox/blob/main/LICENSE).

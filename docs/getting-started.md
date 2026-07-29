@@ -6,7 +6,7 @@ This guide covers installing DevToolBox, running it from source, using the repos
 
 ## Install a release
 
-Download a packaged release from the [GitHub Releases page](https://github.com/XthingsJacobs/devToolBox/releases). Install Marketplace plugins from **Modules -> Marketplace -> Refresh -> Install**.
+Download a packaged release from the [GitHub Releases page](https://github.com/jacobs-256/devToolBox/releases). Install Marketplace plugins from **Modules -> Marketplace -> Refresh -> Install**.
 
 The remaining sections are for contributors and plugin authors working from the repository.
 

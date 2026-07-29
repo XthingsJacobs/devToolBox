@@ -189,7 +189,7 @@ Marketplace 模块遵循相同规则。共享 Vite 配置会在每个插件的 `
 - 开发和打包版本都保持 Chromium Web 安全启用；本地注册表通过明确的主进程例外处理。
 - 保持预加载接口最小化，不要暴露原始 `ipcRenderer`。
 
-安全敏感变更还应遵循仓库[安全策略](https://github.com/XthingsJacobs/devToolBox/blob/main/SECURITY.md)。
+安全敏感变更还应遵循仓库[安全策略](https://github.com/jacobs-256/devToolBox/blob/main/SECURITY.md)。
 
 ## 修改位置
 

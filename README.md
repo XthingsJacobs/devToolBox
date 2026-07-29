@@ -2,8 +2,8 @@
 
 [English](./README.md) | [简体中文](./docs/zh-CN/README.md)
 
-[![CI](https://github.com/XthingsJacobs/devToolBox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/XthingsJacobs/devToolBox/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/XthingsJacobs/devToolBox/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/XthingsJacobs/devToolBox/actions/workflows/codeql.yml)
+[![CI](https://github.com/jacobs-256/devToolBox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jacobs-256/devToolBox/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/jacobs-256/devToolBox/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/jacobs-256/devToolBox/actions/workflows/codeql.yml)
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 
 DevToolBox is a cross-platform desktop toolbox built with Electron + React + TypeScript + Vite.
@@ -39,7 +39,7 @@ Marketplace plugins in this repo (examples):
 | Build a Marketplace plugin       | [Marketplace Plugin Development](./docs/development/plugins.md) |
 | Follow the interface conventions | [Design System](./docs/development/design-system.md)            |
 
-Download packaged releases from [GitHub Releases](https://github.com/XthingsJacobs/devToolBox/releases). In the application, install plugins from **Modules → Marketplace → Refresh → Install**.
+Download packaged releases from [GitHub Releases](https://github.com/jacobs-256/devToolBox/releases). In the application, install plugins from **Modules → Marketplace → Refresh → Install**.
 
 ## Project
 

@@ -38,3 +38,5 @@ nsis:
   allowToChangeInstallationDirectory: true
 publish:
   provider: github
+  owner: jacobs-256
+  repo: devToolBox

@@ -10,14 +10,14 @@
     "sdk",
     "marketplace"
   ],
-  "homepage": "https://github.com/XthingsJacobs/devToolBox#readme",
+  "homepage": "https://github.com/jacobs-256/devToolBox#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/XthingsJacobs/devToolBox.git",
+    "url": "git+https://github.com/jacobs-256/devToolBox.git",
     "directory": "core/packages/plugin-sdk"
   },
   "bugs": {
-    "url": "https://github.com/XthingsJacobs/devToolBox/issues"
+    "url": "https://github.com/jacobs-256/devToolBox/issues"
   },
   "type": "module",
   "main": "./src/index.ts",
