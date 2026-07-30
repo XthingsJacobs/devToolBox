@@ -314,6 +314,35 @@ function Invoke-PackageStep([string]$Label, [string]$File, [string[]]$Arguments)
   Write-Ok "$Label completed"
 }
 
+function Repair-PnpmBrokenHoistLinks {
+  $hoistRoot = Join-Path $RootDir 'node_modules\.pnpm\node_modules'
+  if (-not (Test-Path -LiteralPath $hoistRoot -PathType Container)) { return }
+
+  $hoistRootFull = [System.IO.Path]::GetFullPath($hoistRoot).TrimEnd('\')
+  $brokenLinks = @(
+    Get-ChildItem -LiteralPath $hoistRootFull -Recurse -Attributes ReparsePoint -ErrorAction SilentlyContinue |
+      Where-Object {
+        $linkFull = [System.IO.Path]::GetFullPath($_.FullName)
+        if (-not $linkFull.StartsWith("$hoistRootFull\", [System.StringComparison]::OrdinalIgnoreCase)) { return $false }
+        $target = if ($_.Target -and $_.Target.Count -gt 0) { $_.Target[0] } else { '' }
+        return $target -and -not (Test-Path -LiteralPath $target)
+      }
+  )
+
+  if (-not $brokenLinks.Count) { return }
+
+  Write-WarnLine "Removing $($brokenLinks.Count) stale pnpm hoist link(s) left from an older install."
+  foreach ($link in $brokenLinks) {
+    $linkFull = [System.IO.Path]::GetFullPath($link.FullName)
+    if (-not $linkFull.StartsWith("$hoistRootFull\", [System.StringComparison]::OrdinalIgnoreCase)) {
+      Write-Err "Refusing to remove path outside pnpm hoist root: $linkFull"
+      exit 1
+    }
+    Remove-Item -LiteralPath $linkFull -Force -ErrorAction Stop
+  }
+  Write-Ok 'Stale pnpm hoist links removed'
+}
+
 function Get-AppBuilderExecutable {
   $pnpmDir = Join-Path $RootDir 'node_modules\.pnpm'
   if (-not (Test-Path -LiteralPath $pnpmDir -PathType Container)) { return $null }
@@ -877,6 +906,7 @@ function Invoke-Package([string[]]$PackageArgs) {
   $env:npm_config_jobs = if ($env:npm_config_jobs) { $env:npm_config_jobs } else { '1' }
 
   Invoke-PackagePreflight 'windows' $arch
+  Repair-PnpmBrokenHoistLinks
   Invoke-PackageStep 'Installing dependencies' 'pnpm' @('install', '--frozen-lockfile', '--child-concurrency=1')
   Initialize-WindowsCodeSignTools
   Invoke-PackageStep 'Building' 'pnpm' @('build')
