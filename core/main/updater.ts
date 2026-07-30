@@ -133,6 +133,7 @@ function ensureProgressWindow(): BrowserWindowType {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   });
   progressWin.on('closed', () => {
@@ -161,12 +162,19 @@ function updateProgressUi(stage: string, percent?: number): void {
   if (typeof percent === 'number') progressPercent = Math.max(0, Math.min(100, percent));
   const p = progressPercent;
   setWindowProgress(p <= 0 ? 0.01 : p / 100);
-  const safeStage = stage.replace(/`/g, '').slice(0, 200);
+  const safeStage = JSON.stringify(stage.slice(0, 200));
+  const safePercentText = JSON.stringify(`${Math.round(p)}%`);
+  const safePercentValue = JSON.stringify(Math.round(p));
   void win.webContents
     .executeJavaScript(
-      `document.getElementById("stage").textContent=\`${safeStage}\`;document.getElementById("pct").textContent="${Math.round(
-        p,
-      )}%";document.getElementById("bar").value=${Math.round(p)};`,
+      `{
+        const stage = document.getElementById("stage");
+        const pct = document.getElementById("pct");
+        const bar = document.getElementById("bar");
+        if (stage) stage.textContent = ${safeStage};
+        if (pct) pct.textContent = ${safePercentText};
+        if (bar) bar.value = ${safePercentValue};
+      }`,
       true,
     )
     .catch(() => undefined);

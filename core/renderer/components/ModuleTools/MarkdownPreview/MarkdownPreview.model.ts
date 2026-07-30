@@ -107,7 +107,7 @@ export function createMarkdownPreviewHtml(
       : { comment: '#6e7781', keyword: '#cf222e', string: '#0a3069', number: '#0550ae', title: '#8250df' };
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: https: http:; style-src 'unsafe-inline'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: https:; style-src 'unsafe-inline'">
 <style>
 body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; padding: 16px 24px; color: ${palette.text}; background: ${palette.bg}; line-height: 1.6; }
 h1,h2,h3,h4,h5,h6 { border-bottom: 1px solid ${palette.border}; padding-bottom: 0.3em; margin-top: 1.5em; }

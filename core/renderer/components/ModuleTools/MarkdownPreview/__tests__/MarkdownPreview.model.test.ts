@@ -22,6 +22,8 @@ describe('MarkdownPreview model', () => {
     );
 
     expect(html).toContain('<meta http-equiv="Content-Security-Policy"');
+    expect(html).toContain('img-src data: https:');
+    expect(html).not.toContain('img-src data: https: http:');
     expect(html).toContain('<h2>Title</h2>');
     expect(html).toContain('language-js');
     expect(html).toContain('const');
