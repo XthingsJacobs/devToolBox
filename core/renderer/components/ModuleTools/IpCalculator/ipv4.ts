@@ -97,7 +97,10 @@ export function prefixFromMask(mask: number): number | null {
   return prefix;
 }
 
-export function minimalCoverCidr(start: number, end: number): { prefix: number; network: number; broadcast: number } {
+export function minimalCoverCidr(
+  start: number,
+  end: number,
+): { prefix: number; network: number; broadcast: number } {
   const s = start >>> 0;
   const e = end >>> 0;
   const x = (s ^ e) >>> 0;
