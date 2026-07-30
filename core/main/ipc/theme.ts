@@ -62,7 +62,8 @@ export function register(onThemeChanged: (theme: Theme) => void): void {
   currentTheme = resolveTheme(currentSetting);
 
   ipcMain.handle('app:setTheme', (_event, setting: string) => {
-    const next: ThemeSetting = setting === 'auto' || setting === 'dark' || setting === 'light' ? setting : 'auto';
+    const next: ThemeSetting =
+      setting === 'auto' || setting === 'dark' || setting === 'light' ? setting : 'auto';
     setCurrentThemeSetting(next);
     onThemeChanged(currentTheme);
   });

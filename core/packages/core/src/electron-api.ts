@@ -93,8 +93,7 @@ export interface DiagnosticLog {
 }
 
 export type DiagnosticExportResult =
-  | { success: true; filePath: string }
-  | { success: false; error: 'canceled' | 'write_failed' };
+  { success: true; filePath: string } | { success: false; error: 'canceled' | 'write_failed' };
 
 export type StartupModeReason = 'crash-loop' | 'manual' | null;
 
@@ -168,11 +167,9 @@ export type WebSocketServerEvent =
   | { type: 'status'; status: WebSocketServerStatus };
 
 export type MarketplaceOperationResult =
-  | { success: true; provenance?: MarketplaceInstalledProvenance }
-  | { success: false; error: string };
+  { success: true; provenance?: MarketplaceInstalledProvenance } | { success: false; error: string };
 export type MarketplaceRegistryResult =
-  | { success: true; registry: MarketplaceRegistry }
-  | { success: false; error: string };
+  { success: true; registry: MarketplaceRegistry } | { success: false; error: string };
 
 export interface CertificateSubjectParams {
   commonName?: string;

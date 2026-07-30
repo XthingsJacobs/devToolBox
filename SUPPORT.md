@@ -17,4 +17,3 @@ Please include:
 ## Security Issues
 
 Do not file public issues for security reports. Follow [SECURITY.md](./SECURITY.md).
-

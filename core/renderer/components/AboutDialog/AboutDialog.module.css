@@ -79,7 +79,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
 }
 
 .closeBtn:hover {
@@ -199,7 +202,9 @@
   color: var(--text-primary);
   font-size: 13px;
   text-decoration: none;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .linkBtn:hover {

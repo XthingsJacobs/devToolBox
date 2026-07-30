@@ -8,4 +8,3 @@ export function BackupExportPanel() {
 export function BackupImportPanel() {
   return <ImportBackup />;
 }
-

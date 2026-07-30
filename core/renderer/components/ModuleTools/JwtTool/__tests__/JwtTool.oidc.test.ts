@@ -34,7 +34,12 @@ describe('JwtTool OIDC model', () => {
         }
         return Promise.resolve({
           ok: true,
-          data: { keys: [{ kid: 'other', kty: 'RSA', use: 'sig' }, { kid: 'key-1', kty: 'RSA', use: 'sig' }] },
+          data: {
+            keys: [
+              { kid: 'other', kty: 'RSA', use: 'sig' },
+              { kid: 'key-1', kty: 'RSA', use: 'sig' },
+            ],
+          },
         });
       },
       signatureVerifier: ({ candidates, data, signature }) => {
@@ -50,7 +55,10 @@ describe('JwtTool OIDC model', () => {
       'https://issuer.example.com/.well-known/openid-configuration',
       'https://issuer.example.com/jwks',
     ]);
-    expect(result.info).toEqual({ issuer: 'https://issuer.example.com', jwksUri: 'https://issuer.example.com/jwks' });
+    expect(result.info).toEqual({
+      issuer: 'https://issuer.example.com',
+      jwksUri: 'https://issuer.example.com/jwks',
+    });
     expect(JSON.parse(result.jwksKey ?? '{}')).toMatchObject({ kid: 'key-1' });
     expect(result.result).toEqual([
       { type: 'success', msg: 'oidc start' },
@@ -91,7 +99,10 @@ describe('JwtTool OIDC model', () => {
       fetchJson: (url) =>
         Promise.resolve(
           url.endsWith('/.well-known/openid-configuration')
-            ? { ok: true, data: { issuer: 'https://issuer.example.com', jwks_uri: 'https://issuer.example.com/jwks' } }
+            ? {
+                ok: true,
+                data: { issuer: 'https://issuer.example.com', jwks_uri: 'https://issuer.example.com/jwks' },
+              }
             : { ok: true, data: { keys: [{ kid: 'key-1', kty: 'RSA', use: 'sig' }] } },
         ),
     });
@@ -111,7 +122,10 @@ describe('JwtTool OIDC model', () => {
       fetchJson: (url) =>
         Promise.resolve(
           url.endsWith('/.well-known/openid-configuration')
-            ? { ok: true, data: { issuer: 'https://issuer.example.com', jwks_uri: 'https://issuer.example.com/jwks' } }
+            ? {
+                ok: true,
+                data: { issuer: 'https://issuer.example.com', jwks_uri: 'https://issuer.example.com/jwks' },
+              }
             : { ok: true, data: { keys: [{ kid: 'key-1', kty: 'RSA', use: 'sig' }] } },
         ),
       signatureVerifier: ({ candidates }) => Promise.resolve({ ok: true, matchedKey: candidates[0] }),

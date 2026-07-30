@@ -47,7 +47,9 @@
   margin-right: 10px;
   opacity: 0.5;
   color: var(--text-disabled);
-  transition: color 0.12s ease, opacity 0.12s ease;
+  transition:
+    color 0.12s ease,
+    opacity 0.12s ease;
 }
 
 .inputWrap:focus-within .icon {

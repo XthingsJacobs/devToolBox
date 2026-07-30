@@ -3,8 +3,7 @@ import { base64UrlToBytes, decodeJwtParts, isRecord } from './JwtTool.codec';
 import { importVerifyKeyFromJwk, verifyWithKey } from './JwtTool.crypto';
 
 export type JwtJsonFetchResult =
-  | { ok: true; data: unknown }
-  | { ok: false; error?: { code: string; message: string } };
+  { ok: true; data: unknown } | { ok: false; error?: { code: string; message: string } };
 
 export type JwtJsonFetcher = (url: string) => Promise<JwtJsonFetchResult>;
 

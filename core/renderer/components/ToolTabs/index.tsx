@@ -55,7 +55,11 @@ export default function ToolTabs({
     const el = tabRefs.current[activeToolId];
     if (!el) return;
     requestAnimationFrame(() => {
-      tabRefs.current[activeToolId]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      tabRefs.current[activeToolId]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
     });
   }, [activeToolId, opened.length]);
 
@@ -108,12 +112,22 @@ export default function ToolTabs({
       </div>
 
       <div className={styles.menuWrap}>
-        <button type="button" className={styles.menuBtn} data-active={showMenu ? '1' : '0'} onClick={() => setShowMenu((v) => !v)}>
+        <button
+          type="button"
+          className={styles.menuBtn}
+          data-active={showMenu ? '1' : '0'}
+          onClick={() => setShowMenu((v) => !v)}
+        >
           <VscEllipsis />
         </button>
         {showMenu && (
           <>
-            <button type="button" className={styles.backdrop} onClick={() => setShowMenu(false)} aria-label="Close menu" />
+            <button
+              type="button"
+              className={styles.backdrop}
+              onClick={() => setShowMenu(false)}
+              aria-label="Close menu"
+            />
             <div className={styles.menu}>
               <div className={styles.menuTitle}>Opened Tools ({opened.length})</div>
               {onCloseAll && opened.length > 0 && (
@@ -143,7 +157,11 @@ export default function ToolTabs({
                       onClick={() => {
                         onActivate(t.module.id);
                         setShowMenu(false);
-                        tabRefs.current[t.module.id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                        tabRefs.current[t.module.id]?.scrollIntoView({
+                          behavior: 'smooth',
+                          block: 'nearest',
+                          inline: 'center',
+                        });
                       }}
                     >
                       <span className={styles.menuIcon} style={{ background: `${color}15`, color }}>

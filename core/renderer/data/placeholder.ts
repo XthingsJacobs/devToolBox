@@ -40,7 +40,8 @@ interface CoreToolWithFolder extends CoreToolManifest {
 const CORE_TOOL_ASSET_PREFIX = '__core_tools__';
 
 function normalizeEntryPath(folderName: string, entry: string | undefined): string | undefined {
-  const cleaned = typeof entry === 'string' && entry.trim() ? entry.trim().replace(/^\.\/+/, '') : 'index.tsx';
+  const cleaned =
+    typeof entry === 'string' && entry.trim() ? entry.trim().replace(/^\.\/+/, '') : 'index.tsx';
   if (cleaned.toLowerCase().endsWith('.html')) return undefined;
   const candidate = `../components/ModuleTools/${folderName}/${cleaned}`;
   if (candidate in entryModules) return candidate;
@@ -54,7 +55,8 @@ function normalizeEntryPath(folderName: string, entry: string | undefined): stri
 const coreToolsWithFolder: CoreToolWithFolder[] = Object.entries(manifestModules).map(([filePath, m]) => {
   const parts = filePath.split('/');
   const folderName = parts[parts.length - 2];
-  const entryCleaned = typeof m.default.entry === 'string' ? m.default.entry.trim().replace(/^\.\/+/, '') : '';
+  const entryCleaned =
+    typeof m.default.entry === 'string' ? m.default.entry.trim().replace(/^\.\/+/, '') : '';
   const isPlugin = entryCleaned.toLowerCase().endsWith('.html');
   return {
     ...m.default,

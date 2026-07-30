@@ -64,7 +64,8 @@ export function register(onLocaleChanged: (locale: Locale) => void): void {
   currentLocale = resolveLocale(currentSetting);
 
   ipcMain.handle('app:setLocale', (_event, setting: string) => {
-    const next: LocaleSetting = setting === 'auto' || setting === 'zh-CN' || setting === 'en' ? setting : 'auto';
+    const next: LocaleSetting =
+      setting === 'auto' || setting === 'zh-CN' || setting === 'en' ? setting : 'auto';
     setCurrentLocaleSetting(next);
     onLocaleChanged(currentLocale);
   });

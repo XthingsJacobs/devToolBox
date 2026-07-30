@@ -11,5 +11,4 @@ export interface TextStats {
 }
 
 export type ConversionResult =
-  | { ok: true; output: string }
-  | { ok: false; errorKind: 'json' | 'xml'; message: string };
+  { ok: true; output: string } | { ok: false; errorKind: 'json' | 'xml'; message: string };

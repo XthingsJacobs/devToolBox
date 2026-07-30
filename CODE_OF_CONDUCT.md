@@ -31,4 +31,3 @@ Project maintainers are responsible for clarifying and enforcing our standards o
 ## Reporting
 
 If you experience or witness unacceptable behavior, please report it to the maintainers privately.
-

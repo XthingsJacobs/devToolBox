@@ -21,11 +21,17 @@ export function getMarketplaceManifestText(
   if (i18n && isRecord(i18n)) {
     const localized = readManifestText(i18n[locale]);
     if (localized) {
-      return { name: localized.name ?? manifest.name, description: localized.description ?? manifest.description };
+      return {
+        name: localized.name ?? manifest.name,
+        description: localized.description ?? manifest.description,
+      };
     }
     const english = readManifestText(i18n.en);
     if (english) {
-      return { name: english.name ?? manifest.name, description: english.description ?? manifest.description };
+      return {
+        name: english.name ?? manifest.name,
+        description: english.description ?? manifest.description,
+      };
     }
   }
   return { name: manifest.name, description: manifest.description };

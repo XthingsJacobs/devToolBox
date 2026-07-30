@@ -61,4 +61,3 @@ export function compareVersions(a: string, b: string): number {
 export function isNewerVersion(remoteVersion: string, localVersion: string): boolean {
   return compareVersions(remoteVersion, localVersion) > 0;
 }
-

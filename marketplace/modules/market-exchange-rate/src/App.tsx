@@ -505,9 +505,7 @@ export default function App() {
               </tbody>
             </table>
           </div>
-          <div className="foot">
-            {t(locale, 'note')}
-          </div>
+          <div className="foot">{t(locale, 'note')}</div>
         </div>
       </div>
     </div>

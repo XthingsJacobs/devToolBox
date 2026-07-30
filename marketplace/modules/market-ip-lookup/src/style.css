@@ -168,7 +168,14 @@ tbody td {
 }
 
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    Liberation Mono,
+    monospace;
 }
 
 .raw {
@@ -179,7 +186,14 @@ tbody td {
   background: color-mix(in oklab, var(--bg-tertiary) 82%, transparent);
   overflow: auto;
   max-height: 340px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    Liberation Mono,
+    monospace;
   font-size: 12px;
   line-height: 1.4;
   color: var(--text-secondary);

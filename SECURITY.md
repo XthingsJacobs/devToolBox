@@ -22,4 +22,3 @@ We will acknowledge receipt and work on a fix as soon as possible.
 - The renderer process must not execute arbitrary commands.
 - File read/write operations must be user-initiated via explicit UI flows.
 - IPC surface area should remain minimal and whitelisted via preload.
-

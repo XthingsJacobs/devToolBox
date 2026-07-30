@@ -254,8 +254,8 @@ export default function App() {
         <div>
           <div className="title">{t(locale, 'title')}</div>
           <div className="sub">
-            {t(locale, 'source')}: leconiot.com · {t(locale, 'document')}: {docTitle} ·{' '}
-            {t(locale, 'version')}: {settings.version} · {t(locale, 'parsed')}: {parsedCount}
+            {t(locale, 'source')}: leconiot.com · {t(locale, 'document')}: {docTitle} · {t(locale, 'version')}
+            : {settings.version} · {t(locale, 'parsed')}: {parsedCount}
             {lastUpdated ? ` · ${t(locale, 'updated')}: ${lastUpdated}` : ''}
           </div>
         </div>
@@ -316,7 +316,9 @@ export default function App() {
           </div>
 
           <div className="meta">
-            <div className="muted">{t(locale, 'matched')}: {visibleDeviceTypes.length}</div>
+            <div className="muted">
+              {t(locale, 'matched')}: {visibleDeviceTypes.length}
+            </div>
             {settings.deviceAnchorId ? (
               <a
                 className="link"
@@ -358,9 +360,7 @@ export default function App() {
               </table>
             </div>
           )}
-          <div className="foot">
-            {t(locale, 'note')}
-          </div>
+          <div className="foot">{t(locale, 'note')}</div>
         </div>
       </div>
     </div>

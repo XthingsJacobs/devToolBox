@@ -59,7 +59,10 @@ function formatDetail(value: unknown): string | undefined {
   }
 }
 
-function parsePluginLog(method: string, params: unknown): { level: ConsoleEntry['level']; text: string; detail?: string } | undefined {
+function parsePluginLog(
+  method: string,
+  params: unknown,
+): { level: ConsoleEntry['level']; text: string; detail?: string } | undefined {
   if (!method.startsWith('log.')) return undefined;
   const values = isRecord(params) ? params : {};
   const rawLevel = method.slice(4);

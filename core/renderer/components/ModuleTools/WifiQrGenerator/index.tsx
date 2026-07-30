@@ -7,11 +7,7 @@ import { getModuleLocale, useI18n } from '../../../i18n';
 type Security = 'WPA' | 'WEP' | 'nopass';
 
 function escapeWifiField(input: string): string {
-  return String(input)
-    .replace(/\\/g, '\\\\')
-    .replace(/;/g, '\\;')
-    .replace(/,/g, '\\,')
-    .replace(/:/g, '\\:');
+  return String(input).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/:/g, '\\:');
 }
 
 function buildWifiPayload({
@@ -91,7 +87,9 @@ export default function WifiQrGenerator() {
   const handleCopy = async () => {
     if (!canvasRef.current) return;
     try {
-      const blob = await new Promise<Blob | null>((resolve) => canvasRef.current!.toBlob(resolve, 'image/png'));
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvasRef.current!.toBlob(resolve, 'image/png'),
+      );
       if (blob) {
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
         setCopied(true);
@@ -122,7 +120,11 @@ export default function WifiQrGenerator() {
 
           <div className={styles.field}>
             <label className={styles.label}>{mt('security')}</label>
-            <select className={styles.select} value={security} onChange={(e) => setSecurity(e.target.value as Security)}>
+            <select
+              className={styles.select}
+              value={security}
+              onChange={(e) => setSecurity(e.target.value as Security)}
+            >
               <option value="WPA">{mt('securityWpa')}</option>
               <option value="WEP">{mt('securityWep')}</option>
               <option value="nopass">{mt('securityOpen')}</option>
@@ -215,10 +217,13 @@ export default function WifiQrGenerator() {
         </div>
         <div className={styles.previewBody}>
           <canvas ref={canvasRef} style={{ display: 'none' }} />
-          {qrDataUrl ? <img className={styles.qrImage} src={qrDataUrl} alt="WiFi QR" /> : <p className={styles.placeholder}>{mt('placeholder')}</p>}
+          {qrDataUrl ? (
+            <img className={styles.qrImage} src={qrDataUrl} alt="WiFi QR" />
+          ) : (
+            <p className={styles.placeholder}>{mt('placeholder')}</p>
+          )}
         </div>
       </div>
     </div>
   );
 }
-

@@ -81,7 +81,9 @@ export default function AppShell({
                     {active && <span className={styles.navIndicator} />}
                     {item.icon && <span className={styles.navIcon}>{item.icon}</span>}
                     {!collapsed && <span className={styles.navLabel}>{item.label}</span>}
-                    {!collapsed && typeof item.badge === 'number' && item.badge > 0 && <span className={styles.badge}>{item.badge}</span>}
+                    {!collapsed && typeof item.badge === 'number' && item.badge > 0 && (
+                      <span className={styles.badge}>{item.badge}</span>
+                    )}
                   </button>
                 );
               })}
@@ -95,10 +97,12 @@ export default function AppShell({
                 <div className={styles.categorySection}>
                   {toolCategories.map((c) => {
                     const active = c.id === activeCategoryId;
-                  const isAll = c.id === 'all';
-                  const color = isAll ? 'var(--text-primary)' : (categoryColorMap[c.id as keyof typeof categoryColorMap] ?? 'var(--text-tertiary)');
-                  const activeBg = isAll ? 'var(--bg-elevated)' : `${color}12`;
-                  const activeBorder = isAll ? 'var(--border-subtle)' : `${color}28`;
+                    const isAll = c.id === 'all';
+                    const color = isAll
+                      ? 'var(--text-primary)'
+                      : (categoryColorMap[c.id as keyof typeof categoryColorMap] ?? 'var(--text-tertiary)');
+                    const activeBg = isAll ? 'var(--bg-elevated)' : `${color}12`;
+                    const activeBorder = isAll ? 'var(--border-subtle)' : `${color}28`;
                     return (
                       <button
                         key={c.id}
@@ -111,22 +115,28 @@ export default function AppShell({
                           justifyContent: collapsed ? 'center' : undefined,
                           paddingLeft: collapsed ? 0 : undefined,
                           paddingRight: collapsed ? 0 : undefined,
-                        color: active ? color : collapsed ? 'var(--text-disabled)' : 'var(--text-quaternary)',
-                        background: active ? activeBg : 'transparent',
-                        borderColor: active ? activeBorder : 'transparent',
-                        boxShadow: active ? '0 8px 24px #00000055' : 'none',
+                          color: active
+                            ? color
+                            : collapsed
+                              ? 'var(--text-disabled)'
+                              : 'var(--text-quaternary)',
+                          background: active ? activeBg : 'transparent',
+                          borderColor: active ? activeBorder : 'transparent',
+                          boxShadow: active ? '0 8px 24px #00000055' : 'none',
                         }}
                         onMouseEnter={(e) => {
                           if (active) return;
                           e.currentTarget.style.background = 'var(--border-default)';
-                        e.currentTarget.style.color = isAll ? 'var(--text-primary)' : color;
-                        e.currentTarget.style.borderColor = isAll ? 'var(--border-subtle)' : `${color}22`;
+                          e.currentTarget.style.color = isAll ? 'var(--text-primary)' : color;
+                          e.currentTarget.style.borderColor = isAll ? 'var(--border-subtle)' : `${color}22`;
                         }}
                         onMouseLeave={(e) => {
                           if (active) return;
                           e.currentTarget.style.background = 'transparent';
-                          e.currentTarget.style.color = collapsed ? 'var(--text-disabled)' : 'var(--text-quaternary)';
-                        e.currentTarget.style.borderColor = 'transparent';
+                          e.currentTarget.style.color = collapsed
+                            ? 'var(--text-disabled)'
+                            : 'var(--text-quaternary)';
+                          e.currentTarget.style.borderColor = 'transparent';
                         }}
                       >
                         <span className={styles.categoryIcon} style={{ color }}>
@@ -135,7 +145,10 @@ export default function AppShell({
                         {!collapsed && (
                           <>
                             <span className={styles.categoryLabel}>{c.name}</span>
-                            <span className={styles.categoryCount} style={{ color: active ? color : 'var(--border-subtle)' }}>
+                            <span
+                              className={styles.categoryCount}
+                              style={{ color: active ? color : 'var(--border-subtle)' }}
+                            >
                               {c.modules.length}
                             </span>
                           </>

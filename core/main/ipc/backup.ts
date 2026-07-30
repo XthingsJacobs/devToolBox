@@ -69,9 +69,7 @@ type BackupFileV2 = {
 
 type AnyBuffer = Buffer<ArrayBufferLike>;
 type FileSnapshot =
-  | { exists: false }
-  | { exists: true; kind: 'file'; content: Buffer }
-  | { exists: true; kind: 'other' };
+  { exists: false } | { exists: true; kind: 'file'; content: Buffer } | { exists: true; kind: 'other' };
 
 const DTBX_MAGIC = Buffer.from('DTBX', 'ascii');
 const DTBX_VERSION = 3;

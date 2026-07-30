@@ -9,7 +9,11 @@ export function marketplacePluginIcon(id: string): ReactNode {
   return <VscExtensions />;
 }
 
-export function marketplacePluginIconFromManifest(manifest: { id: string; icon?: unknown; iconKey?: unknown }): ReactNode {
+export function marketplacePluginIconFromManifest(manifest: {
+  id: string;
+  icon?: unknown;
+  iconKey?: unknown;
+}): ReactNode {
   const iconKey = typeof manifest.iconKey === 'string' ? manifest.iconKey.trim() : '';
   const keyIcon = resolveIconKey(iconKey);
   if (keyIcon) return keyIcon;

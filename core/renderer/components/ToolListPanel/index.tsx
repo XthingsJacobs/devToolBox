@@ -77,7 +77,10 @@ export default function ToolListPanel({
             borderColor: search ? 'var(--accent-primary)' : 'var(--border-subtle)',
           }}
         >
-          <VscSearch className={styles.searchIcon} style={{ color: search ? 'var(--accent-secondary)' : 'var(--text-disabled)' }} />
+          <VscSearch
+            className={styles.searchIcon}
+            style={{ color: search ? 'var(--accent-secondary)' : 'var(--text-disabled)' }}
+          />
           <input
             ref={inputRef}
             className={styles.searchInput}
@@ -126,13 +129,19 @@ export default function ToolListPanel({
                       borderLeftColor: active ? color : 'transparent',
                     }}
                   >
-                    <div className={styles.toolIconWrap} style={{ background: `${color}15`, borderColor: `${color}25` }}>
+                    <div
+                      className={styles.toolIconWrap}
+                      style={{ background: `${color}15`, borderColor: `${color}25` }}
+                    >
                       <span className={styles.toolIcon} style={{ color }}>
                         {module.icon}
                       </span>
                     </div>
                     <div className={styles.toolText}>
-                      <div className={styles.toolName} style={{ color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                      <div
+                        className={styles.toolName}
+                        style={{ color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+                      >
                         {module.name}
                       </div>
                       <div className={styles.toolDesc}>{module.description}</div>
@@ -150,7 +159,8 @@ export default function ToolListPanel({
               <VscSearch />
             </div>
             <div className={styles.emptyTitle}>
-              No tools found{search ? (
+              No tools found
+              {search ? (
                 <>
                   {' '}
                   for <span className={styles.emptyQuery}>"{search}"</span>

@@ -107,14 +107,22 @@ async function diagnosePlugin(pluginId) {
 
   const moduleDir = path.join(modulesDir, pluginId);
   if (!(await exists(moduleDir))) {
-    addError(result, `Plugin folder not found: marketplace/modules/${pluginId}`, 'Run plugin create first or check the plugin ID.');
+    addError(
+      result,
+      `Plugin folder not found: marketplace/modules/${pluginId}`,
+      'Run plugin create first or check the plugin ID.',
+    );
     return result;
   }
 
   const manifestPath = path.join(moduleDir, 'manifest.json');
   const manifestJson = await readJson(manifestPath);
   if (!manifestJson.ok || !isRecord(manifestJson.data)) {
-    addError(result, 'Missing or invalid manifest.json', 'Fix JSON syntax and make sure the manifest root is an object.');
+    addError(
+      result,
+      'Missing or invalid manifest.json',
+      'Fix JSON syntax and make sure the manifest root is an object.',
+    );
     return result;
   }
 
@@ -126,28 +134,56 @@ async function diagnosePlugin(pluginId) {
   }
 
   if (manifest.id !== pluginId) {
-    addError(result, `manifest.id (${String(manifest.id)}) does not match folder name (${pluginId})`, 'Rename the folder or update manifest.id.');
+    addError(
+      result,
+      `manifest.id (${String(manifest.id)}) does not match folder name (${pluginId})`,
+      'Rename the folder or update manifest.id.',
+    );
   }
   if (manifest.sdkVersion !== '1.0') {
-    addError(result, `Unsupported manifest.sdkVersion: ${String(manifest.sdkVersion)}`, 'Use sdkVersion "1.0" until a newer SDK is supported.');
+    addError(
+      result,
+      `Unsupported manifest.sdkVersion: ${String(manifest.sdkVersion)}`,
+      'Use sdkVersion "1.0" until a newer SDK is supported.',
+    );
   }
   if (manifest.entry !== 'package/index.html') {
-    addWarn(result, `Unexpected manifest.entry: ${String(manifest.entry)}`, 'Use package/index.html unless this plugin has a custom package layout.');
+    addWarn(
+      result,
+      `Unexpected manifest.entry: ${String(manifest.entry)}`,
+      'Use package/index.html unless this plugin has a custom package layout.',
+    );
   }
 
   if (!isRecord(manifest.i18n)) {
-    addError(result, 'manifest.i18n is missing', 'Add i18n.en and i18n.zh-CN blocks with name and description.');
+    addError(
+      result,
+      'manifest.i18n is missing',
+      'Add i18n.en and i18n.zh-CN blocks with name and description.',
+    );
   } else {
     for (const locale of ['en', 'zh-CN']) {
       const block = manifest.i18n[locale];
       if (!isRecord(block)) {
-        addError(result, `manifest.i18n.${locale} is missing`, `Add manifest.i18n.${locale}.name and manifest.i18n.${locale}.description.`);
+        addError(
+          result,
+          `manifest.i18n.${locale} is missing`,
+          `Add manifest.i18n.${locale}.name and manifest.i18n.${locale}.description.`,
+        );
       } else {
         if (typeof block.name !== 'string' || !block.name.trim()) {
-          addError(result, `manifest.i18n.${locale}.name is missing`, 'Add a localized Marketplace display name.');
+          addError(
+            result,
+            `manifest.i18n.${locale}.name is missing`,
+            'Add a localized Marketplace display name.',
+          );
         }
         if (typeof block.description !== 'string' || !block.description.trim()) {
-          addError(result, `manifest.i18n.${locale}.description is missing`, 'Add a localized Marketplace description.');
+          addError(
+            result,
+            `manifest.i18n.${locale}.description is missing`,
+            'Add a localized Marketplace description.',
+          );
         }
       }
     }
@@ -155,29 +191,55 @@ async function diagnosePlugin(pluginId) {
 
   const declaredPermissions = Array.isArray(manifest.permissions) ? manifest.permissions : [];
   if (!declaredPermissions.length) {
-    addError(result, 'manifest.permissions must be a non-empty array', 'Declare only the SDK capabilities the plugin actually uses.');
+    addError(
+      result,
+      'manifest.permissions must be a non-empty array',
+      'Declare only the SDK capabilities the plugin actually uses.',
+    );
   }
   for (const permission of declaredPermissions) {
     if (typeof permission !== 'string' || !permissions.has(permission)) {
-      addError(result, `Unsupported permission: ${String(permission)}`, 'Use one of the supported PluginPermission values.');
+      addError(
+        result,
+        `Unsupported permission: ${String(permission)}`,
+        'Use one of the supported PluginPermission values.',
+      );
     }
   }
 
-  const needsDomains = declaredPermissions.includes('http:external') || declaredPermissions.includes('http:proxy');
+  const needsDomains =
+    declaredPermissions.includes('http:external') || declaredPermissions.includes('http:proxy');
   const domains = Array.isArray(manifest.httpDomains) ? manifest.httpDomains : [];
   if (needsDomains && !domains.length) {
-    addError(result, 'manifest.httpDomains is required for network permissions', 'Add each allowed host, for example api.example.com.');
+    addError(
+      result,
+      'manifest.httpDomains is required for network permissions',
+      'Add each allowed host, for example api.example.com.',
+    );
   }
   if (!needsDomains && domains.length) {
-    addWarn(result, 'manifest.httpDomains is set but no network permission is declared', 'Remove httpDomains or add http:external/http:proxy.');
+    addWarn(
+      result,
+      'manifest.httpDomains is set but no network permission is declared',
+      'Remove httpDomains or add http:external/http:proxy.',
+    );
   }
   for (const domain of domains) {
     if (!isHttpDomain(domain)) {
-      addError(result, `Invalid httpDomain: ${String(domain)}`, 'Use hostnames only. Do not include protocol, path, or broad wildcards.');
+      addError(
+        result,
+        `Invalid httpDomain: ${String(domain)}`,
+        'Use hostnames only. Do not include protocol, path, or broad wildcards.',
+      );
     }
   }
 
-  await checkRequiredFile(result, moduleDir, 'package.json', 'Create the plugin package.json or rerun plugin create.');
+  await checkRequiredFile(
+    result,
+    moduleDir,
+    'package.json',
+    'Create the plugin package.json or rerun plugin create.',
+  );
   await checkRequiredFile(result, moduleDir, 'index.html', 'Create the Vite HTML entry file.');
   await checkRequiredFile(result, moduleDir, 'src/main.tsx', 'Create the React entry and call mountPlugin.');
   await checkRequiredFile(result, moduleDir, 'src/App.tsx', 'Create the main React component.');
@@ -186,11 +248,19 @@ async function diagnosePlugin(pluginId) {
   if (packageJson.ok && isRecord(packageJson.data)) {
     const expectedName = `@devtoolbox/plugin-${pluginId}`;
     if (packageJson.data.name !== expectedName) {
-      addWarn(result, `package.json name is ${String(packageJson.data.name)}`, `Use ${expectedName} for workspace filters.`);
+      addWarn(
+        result,
+        `package.json name is ${String(packageJson.data.name)}`,
+        `Use ${expectedName} for workspace filters.`,
+      );
     }
     const scripts = isRecord(packageJson.data.scripts) ? packageJson.data.scripts : {};
     if (typeof scripts.build !== 'string') {
-      addError(result, 'package.json scripts.build is missing', 'Add a build script that typechecks and runs Vite.');
+      addError(
+        result,
+        'package.json scripts.build is missing',
+        'Add a build script that typechecks and runs Vite.',
+      );
     }
     if (typeof scripts.dev !== 'string') {
       addWarn(result, 'package.json scripts.dev is missing', 'Add a dev script for local Vite iteration.');
@@ -213,25 +283,45 @@ async function diagnosePlugin(pluginId) {
     const zhKeys = await localeKeys(zhPath);
     const missing = enKeys.filter((key) => !zhKeys.includes(key));
     const extra = zhKeys.filter((key) => !enKeys.includes(key));
-    if (missing.length) addError(result, `src/i18n/zh-CN.ts is missing keys: ${missing.join(', ')}`, 'Keep locale keys in sync.');
-    if (extra.length) addWarn(result, `src/i18n/zh-CN.ts has extra keys: ${extra.join(', ')}`, 'Remove unused keys or add them to en.ts.');
+    if (missing.length)
+      addError(
+        result,
+        `src/i18n/zh-CN.ts is missing keys: ${missing.join(', ')}`,
+        'Keep locale keys in sync.',
+      );
+    if (extra.length)
+      addWarn(
+        result,
+        `src/i18n/zh-CN.ts has extra keys: ${extra.join(', ')}`,
+        'Remove unused keys or add them to en.ts.',
+      );
   }
 
   const packageEntry = path.join(moduleDir, 'package', 'index.html');
   if (await exists(packageEntry)) {
     result.notes.push('Package output exists: package/index.html');
   } else {
-    addWarn(result, 'Package output is missing: package/index.html', `Run pnpm --filter @devtoolbox/plugin-${pluginId} build before packing.`);
+    addWarn(
+      result,
+      'Package output is missing: package/index.html',
+      `Run pnpm --filter @devtoolbox/plugin-${pluginId} build before packing.`,
+    );
   }
 
   const localZipDir = path.join(rootDir, 'marketplace', '.local-dist');
   const hasLocalZip =
     (await exists(localZipDir)) &&
-    (await readdir(localZipDir)).some((fileName) => fileName.startsWith(`${pluginId}-`) && fileName.endsWith('.zip'));
+    (await readdir(localZipDir)).some(
+      (fileName) => fileName.startsWith(`${pluginId}-`) && fileName.endsWith('.zip'),
+    );
   if (hasLocalZip) {
     result.notes.push('Local package ZIP exists in marketplace/.local-dist.');
   } else {
-    addWarn(result, 'No local package ZIP found in marketplace/.local-dist', `Run ./cli.sh plugin ${pluginId} or .\\cli.ps1 plugin ${pluginId}.`);
+    addWarn(
+      result,
+      'No local package ZIP found in marketplace/.local-dist',
+      `Run ./cli.sh plugin ${pluginId} or .\\cli.ps1 plugin ${pluginId}.`,
+    );
   }
 
   return result;
@@ -280,7 +370,9 @@ async function main() {
 
   const errorCount = results.reduce((total, result) => total + result.errors.length, 0);
   const warningCount = results.reduce((total, result) => total + result.warnings.length, 0);
-  process.stdout.write(`\nMarketplace doctor complete: ${errorCount} error(s), ${warningCount} warning(s).\n`);
+  process.stdout.write(
+    `\nMarketplace doctor complete: ${errorCount} error(s), ${warningCount} warning(s).\n`,
+  );
   if (errorCount > 0) process.exitCode = 1;
 }
 

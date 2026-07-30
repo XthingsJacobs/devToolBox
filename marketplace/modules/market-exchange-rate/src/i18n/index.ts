@@ -7,11 +7,7 @@ const messages: Record<PluginLocale, Record<MessageKey, string>> = {
   'zh-CN': zhCN,
 };
 
-export function t(
-  locale: PluginLocale,
-  key: MessageKey,
-  vars?: Record<string, string | number>,
-): string {
+export function t(locale: PluginLocale, key: MessageKey, vars?: Record<string, string | number>): string {
   const raw = messages[locale]?.[key] ?? messages.en[key] ?? key;
   if (!vars) return raw;
   return Object.entries(vars).reduce((out, [name, value]) => out.split(`{${name}}`).join(String(value)), raw);

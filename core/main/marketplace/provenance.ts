@@ -21,8 +21,7 @@ export interface MarketplaceProvenancePolicy {
 }
 
 export type MarketplaceProvenanceDecision =
-  | { ok: true; provenance: MarketplaceInstalledProvenance }
-  | { ok: false; error: string };
+  { ok: true; provenance: MarketplaceInstalledProvenance } | { ok: false; error: string };
 
 type TrustConfigResult = { ok: true; policy: MarketplaceProvenancePolicy } | { ok: false; error: string };
 

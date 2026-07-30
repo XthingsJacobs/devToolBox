@@ -362,7 +362,9 @@ export default function App() {
       }
 
       if (!out) {
-        const summary = tried.map((item) => `${providerLabel(locale, item.provider)}: ${item.error}`).join(' | ');
+        const summary = tried
+          .map((item) => `${providerLabel(locale, item.provider)}: ${item.error}`)
+          .join(' | ');
         throw new Error(summary || t(locale, 'lookupFailed'));
       }
 
@@ -477,9 +479,7 @@ export default function App() {
             </div>
           )}
           {result ? <pre className="raw">{JSON.stringify(result.raw, null, 2)}</pre> : null}
-          <div className="foot">
-            {t(locale, 'note')}
-          </div>
+          <div className="foot">{t(locale, 'note')}</div>
         </div>
       </div>
     </div>

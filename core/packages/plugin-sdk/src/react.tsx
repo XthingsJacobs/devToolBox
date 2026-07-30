@@ -80,7 +80,8 @@ function PluginEnvironment({
       if (event.source !== window.parent || !isRecord(event.data)) return;
       if (hostOrigin && event.origin !== hostOrigin) return;
       if (event.data.type === 'devtoolbox:theme') applyTheme(event.data.theme);
-      if (localeEnabled && event.data.type === 'devtoolbox:locale') setLocale(resolvePluginLocale(event.data.locale));
+      if (localeEnabled && event.data.type === 'devtoolbox:locale')
+        setLocale(resolvePluginLocale(event.data.locale));
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);

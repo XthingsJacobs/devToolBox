@@ -20,7 +20,5 @@
   "license": "Apache-2.0",
   "homepage": "https://github.com/jacobs-256/devToolBox",
   "repository": "https://github.com/jacobs-256/devToolBox",
-  "permissions": [
-    "storage:kv"
-  ]
+  "permissions": ["storage:kv"]
 }

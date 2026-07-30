@@ -17,7 +17,15 @@ import {
   VscShield,
   VscSymbolString,
 } from 'react-icons/vsc';
-import { TbBrandJavascript, TbKey, TbLanguageHiragana, TbLetterU, TbQrcode, TbShieldLock, TbWifi } from 'react-icons/tb';
+import {
+  TbBrandJavascript,
+  TbKey,
+  TbLanguageHiragana,
+  TbLetterU,
+  TbQrcode,
+  TbShieldLock,
+  TbWifi,
+} from 'react-icons/tb';
 
 const vsc = {
   VscCode,

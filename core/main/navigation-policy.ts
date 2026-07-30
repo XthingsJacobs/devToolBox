@@ -1,8 +1,7 @@
 import { pathToFileURL } from 'node:url';
 
 export type RendererNavigationPolicy =
-  | { mode: 'development'; allowedOrigin: string }
-  | { mode: 'production'; entryDocumentUrl: string };
+  { mode: 'development'; allowedOrigin: string } | { mode: 'production'; entryDocumentUrl: string };
 
 export interface RendererNavigationTarget {
   entryUrl: string;
