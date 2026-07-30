@@ -2,7 +2,7 @@
   position: fixed;
   inset: 0;
   z-index: 9998;
-  background: rgba(0, 0, 0, 0.65);
+  background: var(--overlay-backdrop);
   backdrop-filter: blur(4px);
 }
 
@@ -16,7 +16,7 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-popover);
   overflow: hidden;
 }
 
@@ -232,14 +232,14 @@
   height: 28px;
   padding: 0 14px;
   border-radius: 8px;
-  background: var(--accent-primary);
-  border: 1px solid var(--accent-primary);
-  color: #ffffff;
+  background: var(--button-primary-bg);
+  border: 1px solid var(--button-primary-bg);
+  color: var(--button-primary-text);
   font-size: 12px;
   font-weight: 500;
   transition: background 0.12s ease;
 }
 
 .footerBtn:hover {
-  background: var(--accent-primary-hover);
+  background: var(--button-primary-bg-hover);
 }

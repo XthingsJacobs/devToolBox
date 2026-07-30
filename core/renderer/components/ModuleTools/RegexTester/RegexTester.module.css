@@ -159,7 +159,7 @@
   border: none;
   border-radius: 6px;
   background: var(--accent-color);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 12px;
   font-family: inherit;
   cursor: pointer;
@@ -248,14 +248,14 @@
 }
 
 .match {
-  background: rgba(0, 122, 204, 0.3);
+  background: color-mix(in oklab, var(--accent-primary) 18%, transparent);
   color: var(--text-active);
   border-radius: 2px;
   padding: 1px 2px;
 }
 
 .noMatch {
-  background: rgba(255, 100, 100, 0.15);
+  background: color-mix(in oklab, var(--accent-error) 10%, transparent);
   border-radius: 2px;
   padding: 1px 2px;
 }

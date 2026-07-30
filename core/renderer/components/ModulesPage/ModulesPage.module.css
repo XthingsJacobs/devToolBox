@@ -69,8 +69,8 @@
   align-items: center;
   gap: 8px;
   border-radius: 10px;
-  background: var(--border-default);
-  border: 1px solid var(--border-subtle);
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
   color: var(--text-tertiary);
   font-size: 12px;
   transition:
@@ -79,7 +79,7 @@
 }
 
 .refreshBtn:hover {
-  background: var(--bg-hover);
+  background: var(--control-hover-bg);
   color: var(--text-secondary);
 }
 
@@ -90,7 +90,7 @@
   align-items: center;
   padding: 0 24px;
   gap: 12px;
-  background: var(--bg-secondary);
+  background: var(--bg-topbar);
   border-bottom: 1px solid var(--border-default);
 }
 
@@ -151,7 +151,7 @@
   padding: 0 10px;
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  background: var(--border-default);
+  background: var(--control-bg);
   color: var(--text-tertiary);
   font-size: 12px;
 }
@@ -173,8 +173,8 @@
   height: 28px;
   padding: 0 24px 0 10px;
   border-radius: 10px;
-  background: var(--border-default);
-  border: 1px solid var(--border-subtle);
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
   color: var(--text-secondary);
   font-size: 12px;
   appearance: none;
@@ -196,8 +196,8 @@
   align-items: center;
   gap: 8px;
   border-radius: 10px;
-  background: var(--border-default);
-  border: 1px solid var(--border-subtle);
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
   padding: 0 10px;
 }
 
@@ -304,13 +304,14 @@
   gap: 14px;
   border-radius: 12px;
   padding: 14px;
-  background: var(--bg-secondary);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   transition: border-color 0.12s ease;
 }
 
 .card:hover {
-  border-color: var(--border-subtle);
+  border-color: color-mix(in oklab, var(--accent-primary) 24%, var(--border-default));
+  box-shadow: var(--shadow-soft);
 }
 
 .cardIcon {
@@ -351,7 +352,7 @@
 .pill {
   font-size: 10px;
   color: var(--text-quaternary);
-  background: var(--border-default);
+  background: var(--badge-bg);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 2px 7px;
@@ -384,7 +385,7 @@
 .pillMuted {
   font-size: 10px;
   color: var(--text-disabled);
-  background: var(--border-default);
+  background: var(--badge-bg);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 2px 7px;
@@ -397,7 +398,7 @@
   padding: 2px 7px;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: var(--border-default);
+  background: var(--badge-bg);
   color: var(--text-disabled);
   font-size: 10px;
 }
@@ -492,13 +493,13 @@
 }
 
 .actionBtn[data-variant='primary'] {
-  background: var(--accent-primary);
-  color: var(--text-on-accent);
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
   border-color: color-mix(in oklab, var(--accent-primary-hover) 35%, transparent);
 }
 
 .actionBtn[data-variant='primary']:hover {
-  background: var(--accent-primary-hover);
+  background: var(--button-primary-bg-hover);
 }
 
 .actionBtn[data-variant='upgrade'] {
@@ -518,13 +519,13 @@
 }
 
 .actionBtn[data-variant='disabled'] {
-  background: var(--border-default);
+  background: var(--control-bg-muted);
   color: var(--text-disabled);
   border-color: var(--border-subtle);
 }
 
 .actionBtn[data-variant='disabled']:hover {
-  background: var(--bg-hover);
+  background: var(--control-hover-bg);
   color: var(--text-secondary);
 }
 
@@ -562,8 +563,8 @@
   width: 30px;
   height: 30px;
   border-radius: 10px;
-  background: var(--border-default);
-  border: 1px solid var(--border-subtle);
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
   color: var(--text-quaternary);
   display: inline-flex;
   align-items: center;

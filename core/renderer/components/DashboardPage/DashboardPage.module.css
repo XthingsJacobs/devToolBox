@@ -83,8 +83,8 @@
   align-items: center;
   gap: 12px;
   border-radius: 12px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  border: 1px solid var(--control-border);
   padding: 0 16px;
   box-shadow: var(--shadow-soft);
   transition:
@@ -93,8 +93,8 @@
 }
 
 .searchBox[data-focused='1'] {
-  border-color: var(--border-subtle);
-  box-shadow: var(--shadow-soft);
+  border-color: color-mix(in oklab, var(--accent-primary) 42%, var(--control-border));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent-primary) 10%, transparent);
 }
 
 .searchIcon {
@@ -128,7 +128,7 @@
 .clearBtn {
   font-size: 11px;
   color: var(--text-disabled);
-  background: var(--border-subtle);
+  background: var(--badge-bg);
   border-radius: 4px;
   padding: 1px 6px;
 }
@@ -136,8 +136,8 @@
 .kbd {
   font-size: 11px;
   color: var(--text-disabled);
-  background: var(--border-default);
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--control-border);
   border-radius: 6px;
   padding: 2px 7px;
   letter-spacing: 0.02em;
@@ -176,11 +176,11 @@
 }
 
 .searchItemActive {
-  background: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .searchItem:hover {
-  background: var(--border-default);
+  background: var(--bg-hover);
 }
 
 .searchItemIcon {
@@ -378,7 +378,7 @@
 
 .widget {
   border-radius: 12px;
-  background: var(--bg-secondary);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   overflow: hidden;
   min-width: 0;
@@ -429,7 +429,7 @@
   gap: 10px;
   border-left: 3px solid var(--accent-secondary);
   cursor: grab;
-  background: var(--bg-tertiary);
+  background: color-mix(in oklab, var(--bg-secondary) 72%, var(--bg-primary));
 }
 
 .widgetHeader:active {
@@ -482,7 +482,7 @@
   height: 26px;
   border-radius: 10px;
   border: 1px solid var(--border-subtle);
-  background: var(--bg-secondary);
+  background: var(--control-bg);
   color: var(--text-quaternary);
   display: inline-flex;
   align-items: center;
@@ -493,7 +493,7 @@
 
 .widgetCtrlBtn:hover {
   border-color: color-mix(in oklab, var(--accent-primary) 45%, var(--border-subtle));
-  background: var(--bg-hover);
+  background: var(--control-hover-bg);
   color: var(--text-primary);
 }
 
@@ -602,7 +602,7 @@
 .toolCard {
   text-align: left;
   border-radius: 12px;
-  background: var(--bg-secondary);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   padding: 14px;
   min-height: 140px;
@@ -615,9 +615,9 @@
 }
 
 .toolCard:hover {
-  background: var(--bg-elevated);
+  background: color-mix(in oklab, var(--bg-elevated) 86%, var(--bg-hover));
   border-color: color-mix(in oklab, var(--accent-primary) 28%, var(--border-default));
-  box-shadow: 0 4px 16px #00000022;
+  box-shadow: var(--shadow-soft);
 }
 
 .toolCardTop {
@@ -679,7 +679,7 @@
 
 .infoCard {
   border-radius: 12px;
-  background: var(--bg-secondary);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-default);
   overflow: hidden;
 }
@@ -710,7 +710,7 @@
 
 .infoHeader h3 {
   font-size: 13px;
-  color: var(--text-tertiary);
+  color: var(--text-primary);
   font-weight: 600;
   margin: 0;
 }

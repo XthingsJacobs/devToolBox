@@ -40,8 +40,8 @@
 }
 
 .btnActive {
-  background: rgba(97, 175, 239, 0.22) !important;
-  border-color: rgba(97, 175, 239, 0.22) !important;
+  background: var(--state-selected-bg) !important;
+  border-color: var(--state-selected-border) !important;
   color: var(--text-active) !important;
 }
 
@@ -123,7 +123,7 @@
   justify-content: center;
   width: 16px;
   height: 16px;
-  color: rgba(171, 178, 191, 0.9);
+  color: var(--text-quaternary);
   flex-shrink: 0;
 }
 

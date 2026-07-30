@@ -68,7 +68,7 @@
 
 .primaryBtn {
   background: var(--accent-color);
-  color: #fff;
+  color: var(--text-on-accent);
   border-color: var(--accent-color);
 }
 
@@ -77,9 +77,9 @@
 }
 
 .stopBtn {
-  background: var(--color-error, #e74c3c);
-  color: #fff;
-  border-color: var(--color-error, #e74c3c);
+  background: var(--accent-error);
+  color: var(--text-on-accent);
+  border-color: var(--accent-error);
 }
 
 .stopBtn:hover {
@@ -102,7 +102,7 @@
 }
 
 .error {
-  color: var(--color-error, #e74c3c);
+  color: var(--accent-error);
 }
 
 .placeholder {

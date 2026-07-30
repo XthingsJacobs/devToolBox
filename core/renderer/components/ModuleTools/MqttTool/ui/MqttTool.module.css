@@ -45,7 +45,7 @@
 }
 
 .sideBtn:hover {
-  border-color: rgba(74, 163, 255, 0.45);
+  border-color: color-mix(in oklab, var(--accent-primary) 45%, var(--border-subtle));
   color: var(--text-active);
 }
 
@@ -75,7 +75,7 @@
 }
 
 .groupHeader:hover {
-  border-color: rgba(74, 163, 255, 0.35);
+  border-color: color-mix(in oklab, var(--accent-primary) 35%, var(--border-subtle));
 }
 
 .groupLeft {
@@ -124,7 +124,7 @@
 }
 
 .connRow:hover {
-  border-color: rgba(74, 163, 255, 0.35);
+  border-color: color-mix(in oklab, var(--accent-primary) 35%, var(--border-subtle));
 }
 
 .connRowActive {
@@ -140,20 +140,20 @@
 }
 
 .dot_connected {
-  background: #27ae60;
+  background: var(--accent-success);
 }
 
 .dot_connecting {
-  background: #f39c12;
+  background: var(--accent-warning);
   animation: blink 1s infinite;
 }
 
 .dot_disconnected {
-  background: #95a5a6;
+  background: var(--text-disabled);
 }
 
 .dot_error {
-  background: #e74c3c;
+  background: var(--accent-error);
 }
 
 @keyframes blink {
@@ -197,7 +197,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--overlay-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -262,13 +262,13 @@
 .dialogBtn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
-  border-color: rgba(74, 163, 255, 0.35);
+  border-color: color-mix(in oklab, var(--accent-primary) 35%, var(--border-subtle));
 }
 
 .dialogBtnPrimary {
-  background: var(--accent-color);
-  border-color: var(--accent-color);
-  color: #fff;
+  background: var(--button-primary-bg);
+  border-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
 }
 
 .dialogBtnPrimary:hover {

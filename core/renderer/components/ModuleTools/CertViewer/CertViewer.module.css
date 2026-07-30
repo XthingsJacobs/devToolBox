@@ -74,7 +74,7 @@
 }
 
 .error {
-  color: #f44336;
+  color: var(--accent-error);
   font-size: 13px;
   text-align: center;
   padding-top: 60px;
@@ -129,23 +129,23 @@
 }
 
 .badgeCA {
-  background-color: rgba(76, 175, 80, 0.15);
-  color: #4caf50;
+  background-color: color-mix(in oklab, var(--accent-success) 10%, transparent);
+  color: var(--accent-success);
 }
 
 .badgeClient {
-  background-color: rgba(33, 150, 243, 0.15);
-  color: #2196f3;
+  background-color: color-mix(in oklab, var(--accent-primary) 10%, transparent);
+  color: var(--accent-primary);
 }
 
 .badgeExpired {
-  background-color: rgba(244, 67, 54, 0.15);
-  color: #f44336;
+  background-color: color-mix(in oklab, var(--accent-error) 10%, transparent);
+  color: var(--accent-error);
 }
 
 .badgeValid {
-  background-color: rgba(76, 175, 80, 0.15);
-  color: #4caf50;
+  background-color: color-mix(in oklab, var(--accent-success) 10%, transparent);
+  color: var(--accent-success);
 }
 
 .statusRow {

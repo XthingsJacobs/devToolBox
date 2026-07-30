@@ -95,7 +95,7 @@
 
 .safeModeButton {
   border: 1px solid var(--border-emphasis);
-  background: var(--bg-tertiary);
+  background: var(--control-bg);
   color: var(--text-secondary);
 }
 
@@ -189,7 +189,7 @@
 }
 
 .groupDialog {
-  background: var(--bg-panel);
+  background: var(--bg-elevated);
   border-radius: var(--radius);
   padding: 20px 24px;
   min-width: 320px;
@@ -232,7 +232,7 @@
   padding: 6px 16px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-small);
-  background: none;
+  background: var(--control-bg);
   color: var(--text-secondary);
   font-size: 13px;
   font-family: inherit;
@@ -245,9 +245,9 @@
 }
 
 .groupDialogBtnPrimary {
-  background: var(--accent-color);
-  color: var(--text-on-accent);
-  border-color: var(--accent-color);
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
+  border-color: var(--button-primary-bg);
 }
 
 .groupDialogBtnPrimary:hover {

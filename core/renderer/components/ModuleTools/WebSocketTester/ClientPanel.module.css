@@ -60,7 +60,7 @@
 
 .primaryBtn {
   background: var(--accent-color);
-  color: #fff;
+  color: var(--text-on-accent);
   border-color: var(--accent-color);
 }
 
@@ -69,9 +69,9 @@
 }
 
 .stopBtn {
-  background: var(--color-error, #e74c3c);
-  color: #fff;
-  border-color: var(--color-error, #e74c3c);
+  background: var(--accent-error);
+  color: var(--text-on-accent);
+  border-color: var(--accent-error);
 }
 
 .stopBtn:hover {
@@ -126,22 +126,22 @@
 }
 
 .logSystem {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--control-bg-muted);
 }
 
 .logSend {
-  background: rgba(74, 163, 255, 0.12);
-  border-color: rgba(74, 163, 255, 0.35);
+  background: color-mix(in oklab, var(--accent-primary) 10%, transparent);
+  border-color: color-mix(in oklab, var(--accent-primary) 28%, transparent);
 }
 
 .logRecv {
-  background: rgba(80, 200, 120, 0.12);
-  border-color: rgba(80, 200, 120, 0.35);
+  background: color-mix(in oklab, var(--accent-success) 10%, transparent);
+  border-color: color-mix(in oklab, var(--accent-success) 28%, transparent);
 }
 
 .logError {
-  background: rgba(231, 76, 60, 0.12);
-  border-color: rgba(231, 76, 60, 0.35);
+  background: color-mix(in oklab, var(--accent-error) 10%, transparent);
+  border-color: color-mix(in oklab, var(--accent-error) 28%, transparent);
 }
 
 .row {

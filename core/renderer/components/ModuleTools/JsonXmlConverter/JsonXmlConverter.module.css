@@ -35,10 +35,10 @@
   height: 4px;
   transform: translate(-50%, -50%);
   border-radius: 2px;
-  background-color: rgba(255, 255, 255, 0.18);
+  background-color: var(--control-handle);
   box-shadow:
-    0 -8px 0 rgba(255, 255, 255, 0.18),
-    0 8px 0 rgba(255, 255, 255, 0.18);
+    0 -8px 0 var(--control-handle),
+    0 8px 0 var(--control-handle);
   transition:
     background-color 0.15s ease,
     box-shadow 0.15s ease,
@@ -47,10 +47,10 @@
 }
 
 .divider:hover::before {
-  background-color: rgba(97, 175, 239, 0.9);
+  background-color: var(--control-handle-hover);
   box-shadow:
-    0 -8px 0 rgba(97, 175, 239, 0.9),
-    0 8px 0 rgba(97, 175, 239, 0.9);
+    0 -8px 0 var(--control-handle-hover),
+    0 8px 0 var(--control-handle-hover);
   opacity: 1;
 }
 
@@ -85,7 +85,7 @@
 }
 
 .modeSelect {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--control-bg-muted);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   color: var(--text-primary);
@@ -150,7 +150,7 @@
 }
 
 .xmlTextarea::selection {
-  background: rgba(97, 175, 239, 0.25);
+  background: color-mix(in oklab, var(--accent-primary) 16%, transparent);
 }
 
 .xmlTextarea::placeholder {
@@ -186,7 +186,7 @@
 .errorBar {
   padding: 6px 12px;
   font-size: var(--font-size-small);
-  color: #f48771;
+  color: var(--accent-error);
   background-color: var(--bg-panel);
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;

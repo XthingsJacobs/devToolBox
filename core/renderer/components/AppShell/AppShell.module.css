@@ -17,7 +17,7 @@
 
 .sidebar {
   min-width: 52px;
-  background: var(--bg-secondary);
+  background: var(--bg-sidebar);
   border-right: 1px solid var(--border-default);
   display: flex;
   flex-direction: column;
@@ -66,7 +66,7 @@
 }
 
 .navItem:hover {
-  background: var(--border-default);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
@@ -125,7 +125,7 @@
 .sectionTitle {
   padding: 0 12px 6px;
   font-size: 10px;
-  color: var(--border-subtle);
+  color: var(--text-disabled);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 600;
@@ -200,8 +200,8 @@
 
 .categoryCount {
   font-size: 9px;
-  color: var(--border-subtle);
-  background: var(--border-default);
+  color: var(--text-tertiary);
+  background: var(--badge-bg);
   border-radius: 8px;
   padding: 1px 5px;
   min-width: 18px;
@@ -226,11 +226,11 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  color: var(--border-subtle);
+  color: var(--text-quaternary);
 }
 
 .collapseBtn:hover {
-  background: var(--border-default);
+  background: var(--bg-hover);
   color: var(--text-tertiary);
 }
 

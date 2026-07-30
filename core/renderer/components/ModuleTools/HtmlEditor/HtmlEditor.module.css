@@ -40,10 +40,10 @@
   height: 4px;
   transform: translate(-50%, -50%);
   border-radius: 2px;
-  background-color: color-mix(in oklab, var(--text-primary) 18%, transparent);
+  background-color: var(--control-handle);
   box-shadow:
-    0 -8px 0 color-mix(in oklab, var(--text-primary) 18%, transparent),
-    0 8px 0 color-mix(in oklab, var(--text-primary) 18%, transparent);
+    0 -8px 0 var(--control-handle),
+    0 8px 0 var(--control-handle);
   transition:
     background-color 0.15s ease,
     box-shadow 0.15s ease,
@@ -52,18 +52,18 @@
 }
 
 .divider:hover::before {
-  background-color: rgba(97, 175, 239, 0.9);
+  background-color: var(--control-handle-hover);
   box-shadow:
-    0 -8px 0 rgba(97, 175, 239, 0.9),
-    0 8px 0 rgba(97, 175, 239, 0.9);
+    0 -8px 0 var(--control-handle-hover),
+    0 8px 0 var(--control-handle-hover);
   opacity: 1;
 }
 
 .divider:active::before {
-  background-color: rgba(97, 175, 239, 0.95);
+  background-color: var(--control-handle-hover);
   box-shadow:
-    0 -8px 0 rgba(97, 175, 239, 0.95),
-    0 8px 0 rgba(97, 175, 239, 0.95);
+    0 -8px 0 var(--control-handle-hover),
+    0 8px 0 var(--control-handle-hover);
 }
 
 .editorBodyWrap {
@@ -88,7 +88,7 @@
   height: 32px;
   border: none;
   border-radius: 50%;
-  background-color: color-mix(in oklab, var(--text-primary) 7%, transparent);
+  background-color: var(--control-bg-muted);
   color: var(--text-primary);
   cursor: pointer;
   font-size: 1rem;
@@ -120,7 +120,7 @@
   flex: 1;
   overflow: hidden;
   min-height: 0;
-  background-color: #fff;
+  background-color: var(--text-on-accent);
 }
 
 .previewBody iframe {

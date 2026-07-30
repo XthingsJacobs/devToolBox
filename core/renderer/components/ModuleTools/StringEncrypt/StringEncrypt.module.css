@@ -168,6 +168,6 @@
 }
 
 .err {
-  color: #e74c3c;
+  color: var(--accent-error);
   font-size: 11px;
 }

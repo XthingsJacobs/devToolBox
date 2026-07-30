@@ -4,13 +4,14 @@
 
 .dtb-card {
   border: 1px solid var(--border-default);
-  background: var(--bg-secondary);
+  background: var(--bg-elevated);
   border-radius: 12px;
+  box-shadow: var(--shadow-soft);
 }
 
 .dtb-input {
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-tertiary);
+  border: 1px solid var(--control-border);
+  background: var(--control-bg);
   color: var(--text-primary);
   border-radius: 10px;
   padding: 8px 10px;
@@ -23,16 +24,17 @@
 }
 
 .dtb-button {
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  border: 1px solid var(--control-border);
+  background: var(--control-bg);
+  color: var(--text-secondary);
   border-radius: 10px;
   padding: 8px 10px;
 }
 
 .dtb-button:hover:not(:disabled) {
-  border-color: color-mix(in oklab, var(--accent-primary) 60%, var(--border-subtle));
-  background: var(--bg-hover);
+  border-color: color-mix(in oklab, var(--accent-primary) 55%, var(--control-border));
+  background: var(--control-hover-bg);
+  color: var(--text-primary);
 }
 
 .dtb-button:disabled {
@@ -42,7 +44,7 @@
 
 pre,
 .hljs {
-  background: var(--bg-secondary);
+  background: var(--bg-elevated);
   color: var(--text-primary);
 }
 

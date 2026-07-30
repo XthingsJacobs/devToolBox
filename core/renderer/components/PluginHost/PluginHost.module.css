@@ -93,7 +93,7 @@
   border: 1px solid var(--accent-primary);
   border-radius: 9px;
   background: var(--accent-primary);
-  color: #fff;
+  color: var(--text-on-accent);
   font: inherit;
   font-size: 12px;
 }
@@ -132,7 +132,7 @@
   padding: 1px 5px;
   border-radius: 999px;
   background: var(--accent-primary);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 11px;
   line-height: 1.4;
 }
