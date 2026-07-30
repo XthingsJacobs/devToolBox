@@ -38,6 +38,9 @@ jobs:
       - name: Audit production dependencies
         run: pnpm audit:prod
 
+      - name: Format Check
+        run: pnpm format:check
+
       - name: Lint
         run: pnpm lint
 

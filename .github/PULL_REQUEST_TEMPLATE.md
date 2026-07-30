@@ -4,7 +4,7 @@
 
 ## Target Branch
 
-- [ ] dev
+- [ ] main
 
 ## Type
 
