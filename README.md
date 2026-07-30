@@ -44,7 +44,6 @@ Download packaged releases from [GitHub Releases](https://github.com/jacobs-256/
 ## Project
 
 - [Documentation](./docs/index.md)
-- [Roadmap](./docs/project/governance.md#roadmap)
 - [Changelog](./docs/project/changelog.md)
 - [Code of Conduct](./CODE_OF_CONDUCT.md)
 - [Security Policy](./SECURITY.md)

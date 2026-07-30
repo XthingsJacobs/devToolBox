@@ -299,12 +299,12 @@ mountPlugin(<App />, { locale: true });
 
 `mountPlugin(app, options?)` 完成三类工作：
 
-| 行为         | 细节                                                                 |
-| ------------ | -------------------------------------------------------------------- |
-| React 挂载   | 渲染到 `#root`，并返回卸载函数。                                     |
-| 主题同步     | 应用 `document.documentElement.dataset.theme = 'dark' \| 'light'`。  |
+| 行为         | 细节                                                                                                      |
+| ------------ | --------------------------------------------------------------------------------------------------------- |
+| React 挂载   | 渲染到 `#root`，并返回卸载函数。                                                                          |
+| 主题同步     | 应用 `document.documentElement.dataset.theme = 'dark' \| 'light'`。                                       |
 | 可选语言同步 | 使用 `{ locale: true }` 时应用 `dataset.locale` 和 `document.lang`，并通过 `usePluginLocale()` 暴露更新。 |
-| 就绪握手     | React 树提交后发送 `devtoolbox:plugin:ready`。                       |
+| 就绪握手     | React 树提交后发送 `devtoolbox:plugin:ready`。                                                            |
 
 不要在 `index.html` 里再实现第二套就绪循环；请使用该辅助函数，或在非 React 插件中精确复现同样行为。
 

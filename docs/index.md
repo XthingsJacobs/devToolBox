@@ -6,15 +6,15 @@ DevToolBox is a cross-platform desktop toolbox built with Electron, React, TypeS
 
 ## Choose a path
 
-| I want to...                    | Start here                                        |
-| ------------------------------- | ------------------------------------------------- |
-| Install or run DevToolBox       | [Getting Started](getting-started.md)             |
-| Understand the repository       | [Architecture](development/architecture.md)       |
-| Add a built-in tool             | [Built-in Tool Development](development/tools.md) |
-| Build a Marketplace plugin      | [Plugin Development](development/plugins.md)      |
-| Use Plugin SDK APIs             | [Plugin SDK Reference](development/plugin-sdk.md) |
-| Follow UI conventions           | [Design System](development/design-system.md)     |
-| Contribute or report an issue   | [Project and Community](project/governance.md)    |
+| I want to...                  | Start here                                        |
+| ----------------------------- | ------------------------------------------------- |
+| Install or run DevToolBox     | [Getting Started](getting-started.md)             |
+| Understand the repository     | [Architecture](development/architecture.md)       |
+| Add a built-in tool           | [Built-in Tool Development](development/tools.md) |
+| Build a Marketplace plugin    | [Plugin Development](development/plugins.md)      |
+| Use Plugin SDK APIs           | [Plugin SDK Reference](development/plugin-sdk.md) |
+| Follow UI conventions         | [Design System](development/design-system.md)     |
+| Contribute or report an issue | [Project and Community](project/governance.md)    |
 
 ## How the application is organized
 
@@ -41,7 +41,7 @@ Built-in tools and Marketplace plugins are intentionally separate extension mode
 
 ### Project information
 
-- [Project and Community](project/governance.md): contributing, community policies, roadmap, releases, and documentation ownership.
+- [Project and Community](project/governance.md): contributing, community policies, releases, and documentation ownership.
 - [Changelog](project/changelog.md): documentation-level release notes.
 - [Notice](project/notice.md): copyright and third-party software notice.
 

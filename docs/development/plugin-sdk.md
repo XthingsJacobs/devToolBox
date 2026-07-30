@@ -299,12 +299,12 @@ mountPlugin(<App />, { locale: true });
 
 `mountPlugin(app, options?)` does three things:
 
-| Behavior             | Details                                                                |
-| -------------------- | ---------------------------------------------------------------------- |
-| React mount          | Renders into `#root` and returns an unmount function.                  |
-| Theme sync           | Applies `document.documentElement.dataset.theme = 'dark' \| 'light'`.  |
+| Behavior             | Details                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| React mount          | Renders into `#root` and returns an unmount function.                                                                    |
+| Theme sync           | Applies `document.documentElement.dataset.theme = 'dark' \| 'light'`.                                                    |
 | Optional locale sync | With `{ locale: true }`, applies `dataset.locale` and `document.lang`, then exposes updates through `usePluginLocale()`. |
-| Readiness handshake  | Sends `devtoolbox:plugin:ready` after the React tree commits.          |
+| Readiness handshake  | Sends `devtoolbox:plugin:ready` after the React tree commits.                                                            |
 
 Do not implement a second readiness loop in `index.html`; use this helper or reproduce the same behavior exactly for non-React plugins.
 

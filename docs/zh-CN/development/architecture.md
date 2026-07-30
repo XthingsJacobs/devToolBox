@@ -164,6 +164,15 @@ Marketplace 模块遵循相同规则。共享 Vite 配置会在每个插件的 `
 
 `pnpm supply-chain:generate` 读取已安装的生产依赖树，拒绝缺失或禁止的许可证，并生成 CycloneDX SBOM 和 `THIRD_PARTY_NOTICES.md`。打包会把构建、包体校验和元数据生成作为一个准备步骤。发布工作流还会发布这些文件和 `SHA256SUMS`；Plugin SDK 和 Marketplace 发布流程为各自产物生成校验和。
 
+### 已知第三方构建 warning
+
+当构建命令最终成功退出时，`pnpm build` 可能打印以下已跟踪且当前可接受的第三方 warning：
+
+- `javascript-obfuscator` 发布的浏览器代码中包含 `eval`。该包被隔离在 JavaScript 格式化工具的延迟 Worker chunk 中，包体预算也单独跟踪该 chunk。
+- `terser` 可能包含 Rollup 无法解释并会在打包时移除的注释标记。该 warning 来自依赖源码，不会改变应用代码生成。
+
+不要全局屏蔽这些 warning。应通过升级或替换产生 warning 的依赖来移除它们；任何变更后都需要重新运行 `pnpm build` 和 `pnpm bundle:check`。
+
 ## IPC 约定
 
 内置操作和 Marketplace 操作都遵循以下规则：

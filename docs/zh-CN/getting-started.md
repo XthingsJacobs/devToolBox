@@ -161,10 +161,10 @@ Windows PowerShell：
 
 请使用 Node.js 20 或更高版本、pnpm 10 或更高版本和当前锁文件。如果依赖不完整，请重新运行 `pnpm install`。
 
-
 ### Windows 窗口缺少原生控制按钮
 
 Windows 和 Linux 的开发窗口会以最大化方式打开，而不是进入独占全屏，因此应保留系统原生的最小化、最大化和关闭按钮。如果看不到这些按钮，请确认正在运行包含当前主进程窗口行为的构建，并重启 DevToolBox。
+
 ### 录制导出提示缺少 `ffmpeg`
 
 `KvsWebrtcViewer` 的录制导出需要系统安装 `ffmpeg`。在 macOS 上运行：

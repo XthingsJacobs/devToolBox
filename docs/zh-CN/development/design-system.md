@@ -14,12 +14,12 @@
 
 ## 权威来源
 
-| 关注点                           | 来源                                                |
-| -------------------------------- | --------------------------------------------------- |
-| 运行时颜色、字体、圆角和布局变量 | `core/renderer/theme/variables.css`                 |
-| 共享工具样式                     | `core/renderer/theme/toolkit.css`                   |
-| 共享 React 组件和 Hook           | `core/packages/ui/`                                 |
-| 工具级可复用布局模式             | `core/renderer/components/` 下的现有组件            |
+| 关注点                           | 来源                                     |
+| -------------------------------- | ---------------------------------------- |
+| 运行时颜色、字体、圆角和布局变量 | `core/renderer/theme/variables.css`      |
+| 共享工具样式                     | `core/renderer/theme/toolkit.css`        |
+| 共享 React 组件和 Hook           | `core/packages/ui/`                      |
+| 工具级可复用布局模式             | `core/renderer/components/` 下的现有组件 |
 
 当设计稿中的值与运行时变量不一致时，应更新设计稿或记录有意差异；不要为了匹配过时稿件而增加局部 CSS 覆盖。
 

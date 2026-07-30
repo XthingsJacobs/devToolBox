@@ -44,7 +44,6 @@ DevToolBox 是一款使用 Electron、React、TypeScript 和 Vite 构建的跨�
 ## 项目信息
 
 - [完整文档](index.md)
-- [路线图](project/governance.md#路线图)
 - [更新记录](project/changelog.md)
 - [社区行为准则](../../CODE_OF_CONDUCT.md)
 - [安全策略](../../SECURITY.md)

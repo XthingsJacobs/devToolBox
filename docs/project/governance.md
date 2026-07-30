@@ -24,32 +24,7 @@ Technical starting points:
 
 Do not open a public issue for a suspected security vulnerability.
 
-## Roadmap
-
-DevToolBox is evolving as a plugin-first, all-in-one desktop toolbox for general developers.
-
-### Now: stabilize and improve adoption
-
-- Improve the first-run, installation, update, and diagnostics experience.
-- Harden Marketplace registry and plugin installation reliability.
-- Back up the enrolled Marketplace signing key, configure the release secret, and complete the audit-to-strict rollout.
-- Publish clear plugin-authoring tutorials and best practices.
-- Curate a small set of high-quality reference plugins.
-
-### Next: grow the plugin ecosystem
-
-- Add a gallery with screenshots, tags, and better discovery.
-- Establish plugin submission validation, review checklists, and CI helpers.
-- Document community publisher enrollment and signing-key rotation.
-- Expand shared plugin UI primitives and internationalization helpers.
-
-### Later: support larger workflows
-
-- Add collections, saved presets, and export-oriented workflow tools.
-- Explore optional shared workspace synchronization for teams.
-- Expand network diagnostics and protocol tooling through plugins.
-
-### How to help
+## How to help
 
 - Pick a `good first issue` or `help wanted` issue.
 - Propose a plugin idea through a feature request.

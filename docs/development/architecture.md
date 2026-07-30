@@ -164,6 +164,15 @@ The production Renderer smoke test loads `dist/index.html` through the real sand
 
 `pnpm supply-chain:generate` reads the installed production dependency tree, rejects missing or disallowed licenses, and writes a CycloneDX SBOM plus `THIRD_PARTY_NOTICES.md`. Packaging runs build, bundle validation, and metadata generation as one preparation step. Release workflows also publish those files and a `SHA256SUMS` list; the Plugin SDK and Marketplace release paths generate checksums for their own artifacts.
 
+### Known third-party build warnings
+
+`pnpm build` may print third-party warnings that are currently tracked and acceptable when the build exits successfully:
+
+- `javascript-obfuscator` ships browser code that contains `eval`. The package is isolated behind the JavaScript formatter's lazy Worker chunk, and bundle budgets track that chunk separately.
+- `terser` may contain a comment annotation that Rollup cannot interpret and removes during bundling. This warning comes from the dependency source and does not change application code generation.
+
+Do not suppress these warnings globally. Remove them by upgrading or replacing the dependency that emits the warning, and rerun `pnpm build` plus `pnpm bundle:check` after any change.
+
 ## IPC conventions
 
 Use these rules for both built-in and Marketplace operations:
@@ -197,7 +206,7 @@ Security-sensitive changes should also follow the repository [Security Policy](h
 | ------------------------------- | -------------------------------------------------------------------------- |
 | Built-in tool UI or logic       | `core/renderer/components/ModuleTools/<ToolName>/`                         |
 | Application navigation or pages | `core/renderer/components/`                                                |
-| Sanitized generated HTML         | `core/renderer/components/SafeHtml/`                                       |
+| Sanitized generated HTML        | `core/renderer/components/SafeHtml/`                                       |
 | Themes and shared styles        | `core/renderer/theme/`                                                     |
 | Shared React primitives         | `core/packages/ui/`                                                        |
 | Native or privileged operation  | `core/main/ipc/` or `core/main/modules/`, plus preload and renderer typing |
