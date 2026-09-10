@@ -4,10 +4,10 @@ DevToolBox is open-source software. This section provides project policies and c
 
 ## Policies
 
-- [Contributing](CONTRIBUTING.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
-- [Security](SECURITY.md)
-- [Support](SUPPORT.md)
+- [Contributing](contributing.md)
+- [Code of Conduct](code-of-conduct.md)
+- [Security](security.md)
+- [Support](support.md)
 
 ## Notices
 
@@ -15,4 +15,4 @@ DevToolBox is open-source software. This section provides project policies and c
 
 ## Changelog
 
-- [CHANGELOG](CHANGELOG.md)
+- [Changelog](changelog.md)

@@ -7,6 +7,7 @@ These scripts support development and contributor workflows for DevToolBox.
 - `lint-modules.mjs`: Validates the structure and metadata of tool modules.
 - `new-tool.mjs`: Generates a new tool module scaffold under `core/renderer/components/ModuleTools/`.
 - `exec-without-node-options.mjs`: Runs a command with `NODE_OPTIONS` cleared (helps avoid issues with injected node options).
+- `prune-broken-pnpm-links.mjs`: Removes broken pnpm hoisted symlinks before Electron packaging.
 
 ## Usage
 
@@ -20,6 +21,9 @@ pnpm new:tool
 # Create a new tool module (non-interactive examples)
 pnpm new:tool TimestampConverter --category dev-tools
 pnpm new:tool UrlCodec --id url-encode --with-help
+
+# Clean broken pnpm hoisted symlinks before packaging
+pnpm prune:pnpm-links
 ```
 
 ## Notes for Contributors

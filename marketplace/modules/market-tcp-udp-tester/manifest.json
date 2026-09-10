@@ -1,0 +1,14 @@
+{
+  "id": "market-tcp-udp-tester",
+  "name": "TCP/UDP Tester",
+  "description": "TCP/UDP debugging tool (server + client) with saved endpoints",
+  "version": "0.1.0",
+  "sdkVersion": "1.0",
+  "entry": "package/index.html",
+  "categoryId": "network-tools",
+  "author": "DevToolBox",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/XthingsJacobs/devToolBox",
+  "repository": "https://github.com/XthingsJacobs/devToolBox",
+  "permissions": ["storage:kv", "net:socket"]
+}

@@ -42,6 +42,7 @@ function saveThemeSetting(setting: ThemeSetting): void {
 
 let currentSetting: ThemeSetting = 'auto';
 let currentTheme: Theme = 'dark';
+let onThemeChangedCb: ((theme: Theme) => void) | null = null;
 
 export function getCurrentTheme(): Theme {
   return currentTheme;
@@ -58,6 +59,7 @@ export function setCurrentThemeSetting(setting: ThemeSetting): void {
 }
 
 export function register(onThemeChanged: (theme: Theme) => void): void {
+  onThemeChangedCb = onThemeChanged;
   currentSetting = loadThemeSetting();
   currentTheme = resolveTheme(currentSetting);
 
@@ -70,6 +72,12 @@ export function register(onThemeChanged: (theme: Theme) => void): void {
   ipcMain.handle('app:getTheme', () => {
     return { setting: currentSetting, theme: currentTheme };
   });
+}
+
+export function applyThemeSetting(setting: ThemeSetting): void {
+  const next: ThemeSetting = setting === 'auto' || setting === 'dark' || setting === 'light' ? setting : 'auto';
+  setCurrentThemeSetting(next);
+  onThemeChangedCb?.(currentTheme);
 }
 
 export function broadcastThemeChange(theme: Theme): void {

@@ -5,6 +5,7 @@ export type PluginPermission =
   | 'fs:read'
   | 'fs:write'
   | 'storage:kv'
+  | 'net:socket'
   | 'bluetooth'
   | 'serial'
   | 'usb'

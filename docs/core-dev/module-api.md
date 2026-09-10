@@ -2,7 +2,7 @@
 
 Tool modules are defined by a `config.tsx` file and discovered automatically.
 
-This document applies to built-in modules shipped with the app. Marketplace plugins use a separate SDK surface described in `docs/plugin-sdk.md`.
+This document applies to built-in modules shipped with the app. Marketplace plugins use a separate SDK surface described in `docs/plugin-dev/sdk.md`.
 
 ## ModuleConfig
 

@@ -47,6 +47,12 @@ export interface ElectronAPI {
   getLocale: () => Promise<{ setting: 'auto' | 'en' | 'zh-CN'; locale: 'en' | 'zh-CN' }>;
   setTheme: (theme: 'auto' | 'dark' | 'light') => Promise<void>;
   getTheme: () => Promise<{ setting: 'auto' | 'dark' | 'light'; theme: 'dark' | 'light' }>;
+  getUpdateSettings: () => Promise<{ autoCheck: boolean; ignoredVersion?: string }>;
+  setAutoUpdateCheck: (enabled: boolean) => Promise<void>;
+  getStorageInfo: () => Promise<{ cacheBytes: number }>;
+  clearStorage: () => Promise<{ success: boolean; cacheBytes?: number; canceled?: boolean; error?: string }>;
+  resetAllSettings: () => Promise<{ success: boolean; canceled?: boolean; error?: string }>;
+  deleteAllData: () => Promise<{ success: boolean; relaunch?: boolean; canceled?: boolean; error?: string }>;
   onLocaleChanged: (cb: (event: any, locale: string) => void) => void;
   offLocaleChanged: (cb: (event: any, locale: string) => void) => void;
   onThemeChanged: (cb: (event: any, theme: string) => void) => void;
@@ -184,6 +190,17 @@ export interface ElectronAPI {
   pluginSystemGetInfo: (pluginId: string) => Promise<{ ok: boolean; data?: any; error?: any }>;
   pluginSystemGetEnv: (pluginId: string, keys: string[]) => Promise<{ ok: boolean; data?: any; error?: any }>;
   pluginLog: (pluginId: string, params: any) => Promise<{ ok: boolean; data?: any; error?: any }>;
+  pluginSocketServerStart: (pluginId: string, params: any) => Promise<{ ok: boolean; data?: any; error?: any }>;
+  pluginSocketServerStop: (pluginId: string) => Promise<{ ok: boolean; data?: any; error?: any }>;
+  pluginSocketServerStatus: (pluginId: string) => Promise<{ ok: boolean; data?: any; error?: any }>;
+  pluginSocketServerSend: (pluginId: string, params: any) => Promise<{ ok: boolean; data?: any; error?: any }>;
+  pluginSocketServerKick: (pluginId: string, params: any) => Promise<{ ok: boolean; data?: any; error?: any }>;
+  pluginSocketClientConnect: (pluginId: string, params: any) => Promise<{ ok: boolean; data?: any; error?: any }>;
+  pluginSocketClientDisconnect: (pluginId: string) => Promise<{ ok: boolean; data?: any; error?: any }>;
+  pluginSocketClientStatus: (pluginId: string) => Promise<{ ok: boolean; data?: any; error?: any }>;
+  pluginSocketClientSend: (pluginId: string, params: any) => Promise<{ ok: boolean; data?: any; error?: any }>;
+  onPluginSocketEvent: (cb: (pluginId: string, ev: any) => void) => any;
+  offPluginSocketEvent: (handler: any) => void;
   httpRequest: (params: {
     url: string;
     method?: string;

@@ -24,6 +24,14 @@ pnpm --filter @devtoolbox/plugin-<market-id> build
 
 The build output is written to the plugin `package/` directory defined by its manifest entry.
 
+## Network Tools (Socket)
+
+For TCP/UDP-style tools, plugins must use the host-provided socket capability (plugins run in an iframe and cannot use Node network APIs directly).
+
+- Manifest permissions: include `net:socket`
+- SDK methods: call `sdk.socket.*` and subscribe to `domain: 'socket'` events
+- Contract details: see `docs/plugin-dev/sdk.md`
+
 ## Local Install via Registry
 
 DevToolBox installs marketplace plugins via a `registry.json`. For local development, you can generate a local zip and a `file://` registry:

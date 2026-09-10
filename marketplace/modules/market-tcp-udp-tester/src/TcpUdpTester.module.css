@@ -1,0 +1,134 @@
+.page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab {
+  padding: 8px 12px;
+}
+
+.tabActive {
+  background: var(--bg-hover);
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.row > label {
+  min-width: 92px;
+  color: var(--text-quaternary);
+}
+
+.grow {
+  flex: 1;
+}
+
+.card {
+  padding: 12px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.logWrap {
+  flex: 1;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+}
+
+.logHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.logBox {
+  flex: 1;
+  overflow: auto;
+  padding: 10px 12px;
+  font-family: var(--font-family-mono);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.endpointItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.endpointMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.endpointTitle {
+  font-weight: 600;
+}
+
+.endpointSub {
+  color: var(--text-quaternary);
+}
+
+.modalMask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.modal {
+  width: min(520px, 100%);
+  padding: 12px;
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.modalTitle {
+  font-weight: 600;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+}

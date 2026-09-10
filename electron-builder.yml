@@ -31,3 +31,6 @@ nsis:
   allowToChangeInstallationDirectory: true
 publish:
   provider: github
+  owner: XthingsJacobs
+  repo: devToolBox
+  channel: latest

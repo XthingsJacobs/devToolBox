@@ -44,6 +44,7 @@ function saveLocaleSetting(setting: LocaleSetting): void {
 
 let currentSetting: LocaleSetting = 'auto';
 let currentLocale: Locale = 'en';
+let onLocaleChangedCb: ((locale: Locale) => void) | null = null;
 
 export function getCurrentLocale(): Locale {
   return currentLocale;
@@ -60,6 +61,7 @@ export function setCurrentLocaleSetting(setting: LocaleSetting): void {
 }
 
 export function register(onLocaleChanged: (locale: Locale) => void): void {
+  onLocaleChangedCb = onLocaleChanged;
   currentSetting = loadLocaleSetting();
   currentLocale = resolveLocale(currentSetting);
 
@@ -72,6 +74,12 @@ export function register(onLocaleChanged: (locale: Locale) => void): void {
   ipcMain.handle('app:getLocale', () => {
     return { setting: currentSetting, locale: currentLocale };
   });
+}
+
+export function applyLocaleSetting(setting: LocaleSetting): void {
+  const next: LocaleSetting = setting === 'auto' || setting === 'en' || setting === 'zh-CN' ? setting : 'auto';
+  setCurrentLocaleSetting(next);
+  onLocaleChangedCb?.(currentLocale);
 }
 
 export function broadcastLocaleChange(locale: Locale): void {

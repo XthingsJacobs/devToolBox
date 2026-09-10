@@ -106,6 +106,16 @@ async function callSdk(pluginId: string, method: string, params: unknown): Promi
     return api.pluginSystemGetEnv(pluginId, keys);
   }
 
+  if (method === 'socket.serverStart') return api.pluginSocketServerStart(pluginId, params);
+  if (method === 'socket.serverStop') return api.pluginSocketServerStop(pluginId);
+  if (method === 'socket.serverStatus') return api.pluginSocketServerStatus(pluginId);
+  if (method === 'socket.serverSend') return api.pluginSocketServerSend(pluginId, params);
+  if (method === 'socket.serverKick') return api.pluginSocketServerKick(pluginId, params);
+  if (method === 'socket.clientConnect') return api.pluginSocketClientConnect(pluginId, params);
+  if (method === 'socket.clientDisconnect') return api.pluginSocketClientDisconnect(pluginId);
+  if (method === 'socket.clientStatus') return api.pluginSocketClientStatus(pluginId);
+  if (method === 'socket.clientSend') return api.pluginSocketClientSend(pluginId, params);
+
   return { ok: false, error: { code: 'not_supported', message: `Unknown method: ${method}` } };
 }
 
@@ -190,6 +200,18 @@ export default function PluginHost({ pluginId, entryUrl }: PluginHostProps) {
     if (!iframeWin) return;
     iframeWin.postMessage({ type: 'devtoolbox:locale', locale }, '*');
   }, [locale, ready]);
+
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.onPluginSocketEvent || !api?.offPluginSocketEvent) return;
+    const handler = api.onPluginSocketEvent((pid: string, ev: unknown) => {
+      if (pid !== pluginId) return;
+      const iframeWin = iframeRef.current?.contentWindow;
+      if (!iframeWin) return;
+      iframeWin.postMessage({ type: 'devtoolbox:sdk:event', domain: 'socket', payload: ev }, '*');
+    });
+    return () => api.offPluginSocketEvent(handler);
+  }, [pluginId]);
 
   if (!src) return <div className={styles.empty}>Plugin not available.</div>;
 

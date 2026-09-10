@@ -11,7 +11,7 @@ body {
   background: var(--bg-primary);
   color: var(--text-primary);
   overflow: hidden;
-  user-select: none;
+  user-select: auto;
 }
 
 .mono,
@@ -124,4 +124,3 @@ select {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-

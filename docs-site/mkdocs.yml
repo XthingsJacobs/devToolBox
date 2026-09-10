@@ -26,27 +26,35 @@ plugins:
       type: date
 
 nav:
-  - Product Overview:
-      - Home: index.md
-      - Architecture: architecture.md
-      - Codebase: codebase.md
-      - Developer Guide: dev-guide.md
-  - Installation Guide:
-      - Installation: installation.md
-      - CLI: cli.md
-      - Troubleshooting: troubleshooting.md
-  - Plugin Development:
-      - Plugin SDK: plugin-sdk.md
-      - Marketplace Packaging: marketplace.md
-      - IPC API: ipc-api.md
-      - Module API: module-api.md
-      - UI Guidelines: ui-guidelines.md
-  - Open Source:
-      - Overview: open-source.md
-      - Contributing: CONTRIBUTING.md
-      - Code of Conduct: CODE_OF_CONDUCT.md
-      - Security: SECURITY.md
-      - Support: SUPPORT.md
-      - Roadmap: ROADMAP.md
-      - Changelog: CHANGELOG.md
-      - Notice: notice.md
+  - Home:
+      - Docs Home: index.md
+  - Users:
+      - User Guide: users/guide.md
+      - FAQ: users/faq.md
+      - Support: governance/support.md
+      - Security Policy: governance/security.md
+  - Plugin Developers:
+      - Plugin Dev Guide: plugin-dev/guide.md
+      - Plugin SDK Contract: plugin-dev/sdk.md
+      - Marketplace Packaging: plugin-dev/packaging.md
+  - Core Developers:
+      - Core Dev Guide: core-dev/guide.md
+      - Installation (From Source): core-dev/installation-from-source.md
+      - Architecture: core-dev/architecture.md
+      - Codebase: core-dev/codebase.md
+      - Built-in Modules: core-dev/built-in-modules.md
+      - IPC API: core-dev/ipc-api.md
+      - Module API: core-dev/module-api.md
+      - UI Guidelines: core-dev/ui-guidelines.md
+      - CLI: shared/cli.md
+      - Troubleshooting: shared/troubleshooting.md
+      - Docs Maintenance: core-dev/docs-readme.md
+  - Governance:
+      - Open Source: governance/open-source.md
+      - Contributing: governance/contributing.md
+      - Code of Conduct: governance/code-of-conduct.md
+      - Security: governance/security.md
+      - Support: governance/support.md
+      - Roadmap: governance/roadmap.md
+      - Changelog: governance/changelog.md
+      - Notice: governance/notice.md

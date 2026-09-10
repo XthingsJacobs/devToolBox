@@ -10,23 +10,21 @@ import {
   saveMarketplaceRegistryUrl,
 } from '../../marketplace/registry';
 import {
-  VscColorMode,
   VscDebug,
   VscFolderOpened,
+  VscGithub,
   VscGlobe,
   VscInfo,
-  VscKeyboardTab,
   VscLock,
+  VscMail,
   VscSettingsGear,
+  VscSparkle,
   VscSync,
   VscTrash,
 } from 'react-icons/vsc';
 
 type SectionId =
   | 'general'
-  | 'appearance'
-  | 'language'
-  | 'shortcuts'
   | 'data'
   | 'import'
   | 'privacy'
@@ -35,9 +33,6 @@ type SectionId =
 
 const NAV = [
   { id: 'general' as const, label: 'General', Icon: VscSettingsGear, group: 'App' },
-  { id: 'appearance' as const, label: 'Appearance', Icon: VscColorMode, group: 'App' },
-  { id: 'language' as const, label: 'Language', Icon: VscGlobe, group: 'App' },
-  { id: 'shortcuts' as const, label: 'Shortcuts', Icon: VscKeyboardTab, group: 'App' },
   { id: 'data' as const, label: 'Data & Cache', Icon: VscFolderOpened, group: 'System' },
   { id: 'import' as const, label: 'Import / Export', Icon: VscDebug, group: 'System' },
   { id: 'privacy' as const, label: 'Privacy', Icon: VscLock, group: 'System' },
@@ -51,24 +46,86 @@ export default function SettingsPage() {
   const { setting: themeSetting, setThemeSetting } = useTheme();
   const { setting: localeSetting, setLocale } = useI18n();
   const [active, setActive] = useState<SectionId>('general');
-  const [saved, setSaved] = useState(false);
   const [versionText, setVersionText] = useState(`v${APP_VERSION}`);
+  const [appInfo, setAppInfo] = useState<{ company?: string; version?: string; build?: string } | null>(null);
+  const [iconSmallUrl, setIconSmallUrl] = useState<string | null>(null);
+  const [iconLargeUrl, setIconLargeUrl] = useState<string | null>(null);
   const [registryUrl, setRegistryUrl] = useState('');
+  const [autoCheckUpdates, setAutoCheckUpdates] = useState(false);
+  const [cacheBytes, setCacheBytes] = useState<number | null>(null);
+  const [clearingCache, setClearingCache] = useState(false);
 
   useEffect(() => {
     const api = window.electronAPI;
     if (!api?.getAppInfo) return;
     void api.getAppInfo().then((v) => {
-      const r = v as { version?: unknown };
+      const r = v as { version?: unknown; build?: unknown; company?: unknown };
       const ver = typeof r?.version === 'string' ? r.version : '';
       if (ver) setVersionText(`v${ver}`);
+      setAppInfo({
+        company: typeof r?.company === 'string' ? r.company : undefined,
+        version: ver || undefined,
+        build: typeof r?.build === 'string' ? r.build : undefined,
+      });
     });
+  }, []);
+
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.getAppIcon) return;
+    void api.getAppIcon('normal').then((v) => setIconSmallUrl(typeof v === 'string' ? v : null)).catch(() => undefined);
+    void api.getAppIcon('large').then((v) => setIconLargeUrl(typeof v === 'string' ? v : null)).catch(() => undefined);
   }, []);
 
   useEffect(() => {
     if (!ALLOW_CUSTOM_MARKETPLACE_REGISTRY_URL) return;
     setRegistryUrl(loadMarketplaceRegistryUrl());
   }, []);
+
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.getUpdateSettings) return;
+    void api
+      .getUpdateSettings()
+      .then((res) => {
+        const r = res as { autoCheck?: unknown };
+        setAutoCheckUpdates(Boolean(r?.autoCheck));
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (active !== 'data') return;
+    const api = window.electronAPI;
+    if (!api?.getStorageInfo) return;
+    void api
+      .getStorageInfo()
+      .then((res) => {
+        const r = res as { cacheBytes?: unknown };
+        const b = typeof r?.cacheBytes === 'number' ? r.cacheBytes : 0;
+        setCacheBytes(Number.isFinite(b) && b >= 0 ? b : 0);
+      })
+      .catch(() => undefined);
+  }, [active]);
+
+  const resetAllSettings = async () => {
+    const api = window.electronAPI;
+    if (!api?.resetAllSettings) return;
+    const res = (await api.resetAllSettings()) as { success?: unknown; canceled?: unknown };
+    if (res?.canceled) return;
+    if (!res?.success) return;
+    if (ALLOW_CUSTOM_MARKETPLACE_REGISTRY_URL) setRegistryUrl(loadMarketplaceRegistryUrl());
+    void api.getUpdateSettings?.().then((r) => {
+      const s = r as { autoCheck?: unknown };
+      setAutoCheckUpdates(Boolean(s?.autoCheck));
+    });
+  };
+
+  const deleteAllData = async () => {
+    const api = window.electronAPI;
+    if (!api?.deleteAllData) return;
+    await api.deleteAllData();
+  };
 
   const activeNav = useMemo(() => NAV.find((n) => n.id === active), [active]);
 
@@ -111,65 +168,36 @@ export default function SettingsPage() {
 
       <main className={styles.content}>
         <div className={styles.inner}>
-          <div className={styles.header}>
-            <div className={styles.headerLeft}>
-              {activeNav && (
-                <div className={styles.headerIcon}>
-                  <activeNav.Icon />
+          {active !== 'about' && (
+            <div className={styles.header}>
+              <div className={styles.headerLeft}>
+                {activeNav && (
+                  <div className={styles.headerIcon}>
+                    <activeNav.Icon />
+                  </div>
+                )}
+                <div>
+                  <div className={styles.headerTitle}>{activeNav?.label}</div>
+                  <div className={styles.headerSub}>{desc(active)}</div>
                 </div>
-              )}
-              <div>
-                <div className={styles.headerTitle}>{activeNav?.label}</div>
-                <div className={styles.headerSub}>{desc(active)}</div>
               </div>
             </div>
-            <button
-              type="button"
-              className={styles.saveBtn}
-              data-saved={saved ? '1' : '0'}
-              onClick={() => {
-                setSaved(true);
-                window.setTimeout(() => setSaved(false), 1800);
-              }}
-            >
-              {saved ? 'Saved!' : 'Save Changes'}
-            </button>
-          </div>
+          )}
 
           {active === 'general' && (
             <div className={styles.stack}>
               <Card title="Application" subtitle="Core behavior and startup options">
-                <Row label="Auto-check for updates" desc="Automatically check for new versions on startup">
-                  <Toggle value />
-                </Row>
-                <Divider />
-                <Row label="Send usage statistics" desc="Help improve DevToolBox with anonymous usage data">
-                  <Toggle />
-                </Row>
-                <Divider />
-                <Row label="Desktop notifications" desc="Show notifications for completed operations">
-                  <Toggle value />
+                <Row label="Auto-check for updates" desc="Check on startup and once per hour in the background">
+                  <Toggle
+                    value={autoCheckUpdates}
+                    onChange={(next) => {
+                      setAutoCheckUpdates(next);
+                      void window.electronAPI?.setAutoUpdateCheck?.(next);
+                    }}
+                  />
                 </Row>
               </Card>
 
-              <Card title="Editor" subtitle="Monospace editor preferences">
-                <Row label="Font size" desc="Monospace editor font size">
-                  <Select value="13" options={['11', '12', '13', '14', '16', '18']} onChange={() => {}} />
-                </Row>
-                <Divider />
-                <Row label="Word wrap" desc="Wrap long lines in the editor">
-                  <Toggle value />
-                </Row>
-                <Divider />
-                <Row label="Tab size" desc="Number of spaces per indent level">
-                  <Select value="2" options={['2', '4', '8']} onChange={() => {}} />
-                </Row>
-              </Card>
-            </div>
-          )}
-
-          {active === 'appearance' && (
-            <div className={styles.stack}>
               <Card title="Theme" subtitle="Choose your interface color scheme">
                 <div className={styles.themeRow}>
                   {[
@@ -184,27 +212,19 @@ export default function SettingsPage() {
                       data-active={themeSetting === t.id ? '1' : '0'}
                       onClick={() => setThemeSetting(t.id)}
                     >
-                      <div className={styles.themePreview} data-theme={t.id} />
+                      <div
+                        className={styles.themePreview}
+                        data-theme={t.id}
+                        style={{ height: 46, borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+                      >
+                        <ThemePreviewSvg mode={t.id} />
+                      </div>
                       <div className={styles.themeLabel}>{t.label}</div>
                     </button>
                   ))}
                 </div>
               </Card>
 
-              <Card title="Density" subtitle="Adjust interface information density">
-                <div className={styles.densityRow}>
-                  {['Compact', 'Comfortable', 'Spacious'].map((d) => (
-                    <button key={d} type="button" className={styles.densityBtn} data-active={d === 'Comfortable' ? '1' : '0'}>
-                      {d}
-                    </button>
-                  ))}
-                </div>
-              </Card>
-            </div>
-          )}
-
-          {active === 'language' && (
-            <div className={styles.stack}>
               <Card title="Interface Language" subtitle="Set the display language for DevToolBox UI">
                 <div className={styles.langList}>
                   {[
@@ -239,10 +259,34 @@ export default function SettingsPage() {
               <Card title="Storage" subtitle="Manage application data and cache">
                 <Row label="Cache size" desc="Temporary data and compiled tool outputs">
                   <div className={styles.cacheRow}>
-                    <span className={styles.cachePill}>148 MB</span>
-                    <button type="button" className={styles.smallBtn}>
+                    <span className={styles.cachePill}>{cacheBytes === null ? '-' : formatBytes(cacheBytes)}</span>
+                    <button
+                      type="button"
+                      className={styles.smallBtn}
+                      disabled={clearingCache}
+                      onClick={async () => {
+                        const api = window.electronAPI;
+                        if (!api?.clearStorage) return;
+                        if (clearingCache) return;
+                        setClearingCache(true);
+                        try {
+                          const res = (await api.clearStorage()) as {
+                            success?: unknown;
+                            canceled?: unknown;
+                            cacheBytes?: unknown;
+                          };
+                          if (res?.canceled) return;
+                          if (res?.success) {
+                            const b = typeof res?.cacheBytes === 'number' ? res.cacheBytes : 0;
+                            setCacheBytes(Number.isFinite(b) && b >= 0 ? b : 0);
+                          }
+                        } finally {
+                          setClearingCache(false);
+                        }
+                      }}
+                    >
                       <VscTrash />
-                      Clear
+                      {clearingCache ? 'Clearing…' : 'Clear'}
                     </button>
                   </div>
                 </Row>
@@ -274,37 +318,22 @@ export default function SettingsPage() {
                 </Card>
               )}
 
-              <DangerCard />
+              <DangerCard onResetAllSettings={resetAllSettings} onDeleteAllData={deleteAllData} />
             </div>
           )}
 
           {active === 'about' && (
-            <div className={styles.stack}>
-              <Card title="DevToolBox" subtitle="Developer productivity utilities hub">
-                <div className={styles.aboutHero}>
-                  <div className={styles.aboutLogo}>⚙️</div>
-                  <div>
-                    <div className={styles.aboutName}>DevToolBox</div>
-                    <div className={styles.aboutMeta}>{`Version ${versionText.startsWith('v') ? versionText.slice(1) : versionText}`}</div>
-                  </div>
-                </div>
-                <div className={styles.kv}>
-                  {[
-                    ['License', 'Apache-2.0'],
-                    ['Runtime', 'Electron + React'],
-                    ['Platform', 'macOS / Windows'],
-                  ].map(([k, v]) => (
-                    <div key={k} className={styles.kvRow}>
-                      <span className={styles.kvKey}>{k}</span>
-                      <span className={styles.kvVal}>{v}</span>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
+            <AboutPanel
+              title={appInfo?.version ? 'DevToolBox' : 'DevToolBox'}
+              versionText={
+                appInfo?.version && appInfo?.build ? `Version ${appInfo.version} (Build ${appInfo.build})` : `Version ${versionText.startsWith('v') ? versionText.slice(1) : versionText}`
+              }
+              iconSmallUrl={iconSmallUrl}
+              iconLargeUrl={iconLargeUrl}
+            />
           )}
 
-          {!['general', 'appearance', 'language', 'data', 'about'].includes(active) && (
+          {!['general', 'data', 'about'].includes(active) && (
             <div className={styles.empty}>
               <div className={styles.emptyIcon}>
                 <VscLock />
@@ -321,10 +350,7 @@ export default function SettingsPage() {
 
 function desc(id: SectionId) {
   const map: Record<SectionId, string> = {
-    general: 'App behavior, editor preferences and startup options',
-    appearance: 'Theme, density and visual customizations',
-    language: 'Interface display language and locale',
-    shortcuts: 'Custom keyboard shortcut bindings',
+    general: 'App behavior, theme and language preferences',
     data: 'Cache management, storage and history',
     import: 'Import and export your DevToolBox configuration',
     privacy: 'Telemetry, crash reporting and data sharing',
@@ -332,6 +358,17 @@ function desc(id: SectionId) {
     about: 'Version info, license and credits',
   };
   return map[id];
+}
+
+function formatBytes(bytes: number): string {
+  const b = Number.isFinite(bytes) && bytes >= 0 ? bytes : 0;
+  if (b < 1024) return `${b} B`;
+  const kb = b / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  const mb = kb / 1024;
+  if (mb < 1024) return `${mb.toFixed(1)} MB`;
+  const gb = mb / 1024;
+  return `${gb.toFixed(1)} GB`;
 }
 
 function Card({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
@@ -360,32 +397,169 @@ function Row({ label, desc, children }: { label: string; desc: string; children:
   );
 }
 
-function Divider() {
-  return <div className={styles.divider} />;
-}
-
-function Toggle({ value = false }: { value?: boolean }) {
-  const [on, setOn] = useState(value);
+function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button type="button" className={styles.toggle} data-on={on ? '1' : '0'} onClick={() => setOn((v) => !v)} aria-label="Toggle">
-      <span className={styles.toggleDot} data-on={on ? '1' : '0'} />
+    <button
+      type="button"
+      className={styles.toggle}
+      data-on={value ? '1' : '0'}
+      onClick={() => onChange(!value)}
+      aria-label="Toggle"
+    >
+      <span className={styles.toggleDot} data-on={value ? '1' : '0'} />
     </button>
   );
 }
 
-function Select({ value, options, onChange }: { value: string; options: string[]; onChange: (v: string) => void }) {
+function ThemePreviewSvg({ mode }: { mode: 'auto' | 'dark' | 'light' }) {
+  const left = mode === 'auto' ? 0 : null;
+  const topL = mode === 'light' ? '#f0f3f6' : '#161b22';
+  const sideL = mode === 'light' ? '#e4e9ed' : '#21262d';
+  const mainL = mode === 'light' ? '#fafbfc' : '#0d1117';
+  const topR = '#f0f3f6';
+  const sideR = '#e4e9ed';
+  const mainR = '#fafbfc';
+  const top = mode === 'auto' ? 'url(#tpTop)' : topL;
+  const side = mode === 'auto' ? 'url(#tpSide)' : sideL;
+  const main = mode === 'auto' ? 'url(#tpMain)' : mainL;
+
   return (
-    <select className={styles.select} value={value} onChange={(e) => onChange(e.target.value)}>
-      {options.map((o) => (
-        <option key={o} value={o}>
-          {o}
-        </option>
-      ))}
-    </select>
+    <svg viewBox="0 0 100 46" style={{ width: '100%', height: '100%', display: 'block' }} preserveAspectRatio="none">
+      {left !== null && (
+        <defs>
+          <linearGradient id="tpTop" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#161b22" />
+            <stop offset="0.5" stopColor="#161b22" />
+            <stop offset="0.5" stopColor={topR} />
+            <stop offset="1" stopColor={topR} />
+          </linearGradient>
+          <linearGradient id="tpSide" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#21262d" />
+            <stop offset="0.5" stopColor="#21262d" />
+            <stop offset="0.5" stopColor={sideR} />
+            <stop offset="1" stopColor={sideR} />
+          </linearGradient>
+          <linearGradient id="tpMain" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#0d1117" />
+            <stop offset="0.5" stopColor="#0d1117" />
+            <stop offset="0.5" stopColor={mainR} />
+            <stop offset="1" stopColor={mainR} />
+          </linearGradient>
+        </defs>
+      )}
+
+      <rect x="0" y="0" width="100" height="14" fill={top} />
+      <rect x="0" y="14" width="28" height="32" fill={side} />
+      <rect x="28" y="14" width="72" height="32" fill={main} />
+    </svg>
   );
 }
 
-function DangerCard() {
+function AboutPanel({
+  title,
+  versionText,
+  iconSmallUrl,
+  iconLargeUrl,
+}: {
+  title: string;
+  versionText: string;
+  iconSmallUrl: string | null;
+  iconLargeUrl: string | null;
+}) {
+  return (
+    <div className={styles.aboutPanel}>
+      <div className={styles.aboutHeaderRow}>
+        <div className={styles.aboutHeaderLeft}>
+          <div className={styles.aboutHeaderBadge}>
+            {iconSmallUrl ? <img className={styles.aboutAppIconSmall} src={iconSmallUrl} alt="" /> : <VscSparkle size={16} />}
+          </div>
+          <div className={styles.aboutHeaderTitle}>About {title}</div>
+        </div>
+      </div>
+
+      <div className={styles.aboutContent}>
+        <div className={styles.aboutHero2}>
+          <div className={styles.aboutHeroIcon}>
+            {iconLargeUrl ? <img className={styles.aboutAppIconLarge} src={iconLargeUrl} alt="" /> : <VscSparkle size={36} />}
+          </div>
+          <div className={styles.aboutHeroTitle}>{title}</div>
+          <div className={styles.aboutHeroSub}>Developer Productivity Suite</div>
+          <div className={styles.aboutHeroMeta}>{versionText}</div>
+        </div>
+
+        <div className={styles.aboutDesc2}>
+          A comprehensive collection of developer tools designed to streamline your workflow. From encoding/decoding utilities to text formatting and network diagnostics.
+        </div>
+
+        <div className={styles.aboutGrid}>
+          <InfoItem label="License" value="MIT License" />
+          <InfoItem label="Platform" value="Cross-platform" />
+          <InfoItem label="Framework" value="React + TypeScript" />
+          <InfoItem label="Last Updated" value={new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })} />
+        </div>
+
+        <div className={styles.aboutLinks}>
+          <LinkButton icon={<VscGithub size={14} />} label="View on GitHub" href="https://github.com/devtoolbox" />
+          <LinkButton icon={<VscGlobe size={14} />} label="Official Website" href="https://devtoolbox.dev" />
+          <LinkButton icon={<VscMail size={14} />} label="Contact Support" href="mailto:support@devtoolbox.dev" />
+        </div>
+      </div>
+
+      <div className={styles.aboutFooter}>
+        <div className={styles.aboutFooterText}>© {new Date().getFullYear()} {title}. All rights reserved.</div>
+      </div>
+    </div>
+  );
+}
+
+function InfoItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={styles.aboutInfoItem}>
+      <div className={styles.aboutInfoLabel}>{label}</div>
+      <div className={styles.aboutInfoValue}>{value}</div>
+    </div>
+  );
+}
+
+function LinkButton({ icon, label, href }: { icon: React.ReactNode; label: string; href: string }) {
+  return (
+    <a className={styles.aboutLinkBtn} href={href} target="_blank" rel="noopener noreferrer">
+      <span className={styles.aboutLinkIcon}>{icon}</span>
+      <span>{label}</span>
+    </a>
+  );
+}
+
+function DangerCard({
+  onResetAllSettings,
+  onDeleteAllData,
+}: {
+  onResetAllSettings: () => Promise<void>;
+  onDeleteAllData: () => Promise<void>;
+}) {
+  const [busyReset, setBusyReset] = useState(false);
+  const [busyDelete, setBusyDelete] = useState(false);
+
+  const reset = async () => {
+    if (busyReset) return;
+    setBusyReset(true);
+    try {
+      await onResetAllSettings();
+    } finally {
+      setBusyReset(false);
+    }
+  };
+
+  const del = async () => {
+    if (busyDelete) return;
+    setBusyDelete(true);
+    try {
+      await onDeleteAllData();
+    } finally {
+      setBusyDelete(false);
+    }
+  };
+
   return (
     <div className={styles.danger}>
       <div className={styles.dangerHead}>
@@ -396,21 +570,27 @@ function DangerCard() {
         </div>
       </div>
       <div className={styles.dangerBody}>
-        {[
-          { label: 'Reset All Settings', desc: 'Restore all settings to factory defaults' },
-          { label: 'Delete All Data', desc: 'Permanently delete all local app data and history' },
-        ].map((x, idx) => (
-          <div key={x.label} className={styles.dangerRow} data-divider={idx > 0 ? '1' : '0'}>
-            <div>
-              <div className={styles.dangerRowLabel}>{x.label}</div>
-              <div className={styles.dangerRowDesc}>{x.desc}</div>
-            </div>
-            <button type="button" className={styles.dangerBtn}>
-              <VscTrash />
-              {x.label.startsWith('Delete') ? 'Delete' : 'Reset'}
-            </button>
+        <div className={styles.dangerRow} data-divider="0">
+          <div>
+            <div className={styles.dangerRowLabel}>Reset All Settings</div>
+            <div className={styles.dangerRowDesc}>Restore theme, language and update preferences to defaults</div>
           </div>
-        ))}
+          <button type="button" className={styles.dangerBtn} disabled={busyReset} onClick={reset}>
+            <VscTrash />
+            {busyReset ? 'Resetting…' : 'Reset'}
+          </button>
+        </div>
+
+        <div className={styles.dangerRow} data-divider="1">
+          <div>
+            <div className={styles.dangerRowLabel}>Delete All Data</div>
+            <div className={styles.dangerRowDesc}>Permanently delete all local app data (including plugins)</div>
+          </div>
+          <button type="button" className={styles.dangerBtn} disabled={busyDelete} onClick={del}>
+            <VscTrash />
+            {busyDelete ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
       </div>
     </div>
   );

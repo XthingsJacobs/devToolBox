@@ -31,6 +31,8 @@ Recommended permission keys:
 - HTTP
   - `http:external` (plugin may access external network)
   - `http:proxy` (plugin may call `sdk.http.request`)
+- Network
+  - `net:socket` (plugin may use the host socket API for TCP/UDP testing)
 - File system
   - `fs:dialog` (plugin may open file dialogs)
   - `fs:read` / `fs:write` (plugin may read/write via tokens)
@@ -114,6 +116,47 @@ Methods:
 - `sdk.storage.delete({ key })`
 - `sdk.storage.list({ prefix? })`
 - `sdk.storage.clear()`
+
+### sdk.socket (Host-implemented)
+
+Marketplace plugins run in an isolated iframe runtime and must not use Node network modules directly. The host provides a socket capability that supports both TCP and UDP with a unified API surface.
+
+Permission:
+
+- Requires `net:socket`
+
+Methods:
+
+- `sdk.socket.serverStart({ protocol: 'tcp' | 'udp', host: string, port: number })`
+- `sdk.socket.serverStop()`
+- `sdk.socket.serverStatus()`
+- `sdk.socket.serverSend({ protocol: 'tcp' | 'udp', encoding: 'utf8' | 'hex' | 'base64', payload: string, connId?: string, remote?: string })`
+  - TCP: omit `connId` to broadcast to all connected clients
+  - UDP: set `remote` as `host:port` (if omitted, host may use the last-seen remote address)
+- `sdk.socket.serverKick({ connId: string })` (TCP only)
+- `sdk.socket.clientConnect({ protocol: 'tcp' | 'udp', host: string, port: number })`
+- `sdk.socket.clientDisconnect()`
+- `sdk.socket.clientStatus()`
+- `sdk.socket.clientSend({ protocol: 'tcp' | 'udp', encoding: 'utf8' | 'hex' | 'base64', payload: string })`
+
+Events:
+
+The host pushes realtime socket events to the plugin via `postMessage`:
+
+```ts
+{ type: 'devtoolbox:sdk:event', domain: 'socket', payload: SocketEvent }
+```
+
+Where `SocketEvent` has a recommended shape:
+
+- `{ type: 'log', target: 'server' | 'client', level: 'info' | 'error', message: string }`
+- `{ type: 'status', target: 'server' | 'client', status: any }`
+- `{ type: 'data', target: 'server' | 'client', data: { direction: 'recv' | 'sent', protocol: 'tcp' | 'udp', bytes: number, remote?: string, connId?: string, text?: string, base64?: string } }`
+
+Notes:
+
+- `payload` decoding is performed by the host based on `encoding`
+- `hex` payloads must have an even length (whitespace may be ignored by the host)
 
 ### sdk.bluetooth (Experimental)
 

@@ -146,7 +146,7 @@ export default function MqttWorkspace({ config, status: externalStatus, onEdit, 
 
   const isMsgListAtBottom = useCallback((el: HTMLDivElement) => {
     const threshold = 24;
-    return el.scrollTop <= threshold;
+    return el.scrollHeight - el.clientHeight - el.scrollTop <= threshold;
   }, []);
 
   const flushPendingMessages = useCallback(() => {
@@ -196,7 +196,7 @@ export default function MqttWorkspace({ config, status: externalStatus, onEdit, 
     scrollAfterFlushRef.current = false;
     const el = msgListRef.current;
     if (!el) return;
-    el.scrollTop = 0;
+    el.scrollTop = el.scrollHeight;
   }, [messages.length]);
 
   const appendMessage = useCallback(
@@ -545,7 +545,7 @@ export default function MqttWorkspace({ config, status: externalStatus, onEdit, 
         : status === 'error'
           ? t('connError')
           : t('disconnected');
-  const orderedMessages = useMemo(() => [...messages].reverse(), [messages]);
+  const orderedMessages = useMemo(() => messages, [messages]);
 
   return (
     <div className={styles.container}>

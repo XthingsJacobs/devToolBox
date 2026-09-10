@@ -222,6 +222,7 @@ export default function JwtTool() {
   const { locale } = useI18n();
   const loc = getModuleLocale(locale, 'JwtTool');
   const mt = useCallback((k: string) => loc?.[k] ?? k, [loc]);
+  const [tab, setTab] = useState<'decode' | 'hmac' | 'oidc' | 'generate'>('decode');
   const [token, setToken] = useState('');
   const [hToken, setHToken] = useState('');
   const [hSecret, setHSecret] = useState('');
@@ -541,203 +542,240 @@ export default function JwtTool() {
     void navigator.clipboard.writeText(t);
   }, []);
   return (
-    <div className={styles.wrap}>
-      <div className={styles.col}>
-        <ToolSection
-          title={mt('tabVerifyHmac')}
-          icon={<VscShield />}
-          accentColor="#27ae60"
-          actions={
-            <ToolButton variant="primary" onClick={handleVerify} disabled={!hToken.trim()}>
-              {mt('verifyBtn')}
-            </ToolButton>
-          }
-        >
-          <ToolTextarea
-            mono
-            value={hToken}
-            onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setHToken(e.target.value)}
-            placeholder={mt('inputPlaceholder')}
-            spellCheck={false}
-            rows={2}
-          />
-          <ToolField label={mt('verifySecret')}>
-            <ToolInput
-              value={hSecret}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setHSecret(e.target.value)}
-              placeholder={mt('verifySecretPlaceholder')}
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <div className={styles.tabs}>
+          <button
+            type="button"
+            className={`${styles.tab} ${tab === 'decode' ? styles.tabActive : ''}`}
+            onClick={() => setTab('decode')}
+          >
+            {mt('tabDecode')}
+          </button>
+          <button
+            type="button"
+            className={`${styles.tab} ${tab === 'hmac' ? styles.tabActive : ''}`}
+            onClick={() => setTab('hmac')}
+          >
+            {mt('tabVerifyHmac')}
+          </button>
+          <button
+            type="button"
+            className={`${styles.tab} ${tab === 'oidc' ? styles.tabActive : ''}`}
+            onClick={() => setTab('oidc')}
+          >
+            {mt('tabVerifyOidc')}
+          </button>
+          <button
+            type="button"
+            className={`${styles.tab} ${tab === 'generate' ? styles.tabActive : ''}`}
+            onClick={() => setTab('generate')}
+          >
+            {mt('tabGenerate')}
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.body}>
+        {tab === 'decode' && (
+          <ToolSection title={mt('tabDecode')} icon={<VscSearch />} accentColor="#8e44ad">
+            <ToolTextarea
+              mono
+              value={token}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setToken(e.target.value)}
+              placeholder={mt('inputPlaceholder')}
               spellCheck={false}
+              rows={3}
             />
-          </ToolField>
-          {hResult.length > 0 && (
-            <div className={styles.verifyRow}>
-              {hResult.map((r, i) => (
-                <span key={i} className={`${styles.badge} ${styles[`b_${r.type}`]}`}>
-                  {r.msg}
-                </span>
-              ))}
-            </div>
-          )}
-        </ToolSection>
-
-        <ToolSection title={mt('tabDecode')} icon={<VscSearch />} accentColor="#8e44ad">
-          <ToolTextarea
-            mono
-            value={token}
-            onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setToken(e.target.value)}
-            placeholder={mt('inputPlaceholder')}
-            spellCheck={false}
-            rows={3}
-          />
-          {decoded && 'error' in decoded && <div className={styles.err}>{decoded.error}</div>}
-          {decoded && 'header' in decoded && (
-            <div className={styles.grid}>
-              <Blk title={mt('header')} copyLabel={mt('copy')} onCopy={() => cp(decoded.header!)}>
-                <pre className={styles.hl} dangerouslySetInnerHTML={{ __html: hl(decoded.header!) }} />
+            {decoded && 'error' in decoded && <div className={styles.err}>{decoded.error}</div>}
+            {decoded && 'header' in decoded && (
+              <div className={styles.grid}>
+                <Blk title={mt('header')} copyLabel={mt('copy')} onCopy={() => cp(decoded.header!)}>
+                  <pre className={styles.hl} dangerouslySetInnerHTML={{ __html: hl(decoded.header!) }} />
+                </Blk>
+                <Blk title={mt('payload')} copyLabel={mt('copy')} onCopy={() => cp(decoded.payload!)}>
+                  <pre className={styles.hl} dangerouslySetInnerHTML={{ __html: hl(decoded.payload!) }} />
+                </Blk>
+              </div>
+            )}
+            {decoded && 'signature' in decoded && (
+              <Blk title={mt('signature')} copyLabel={mt('copy')} onCopy={() => cp(decoded.signature!)}>
+                <code className={styles.sig}>{decoded.signature}</code>
               </Blk>
-              <Blk title={mt('payload')} copyLabel={mt('copy')} onCopy={() => cp(decoded.payload!)}>
-                <pre className={styles.hl} dangerouslySetInnerHTML={{ __html: hl(decoded.payload!) }} />
-              </Blk>
-            </div>
-          )}
-          {decoded && 'signature' in decoded && (
-            <Blk title={mt('signature')} copyLabel={mt('copy')} onCopy={() => cp(decoded.signature!)}>
-              <code className={styles.sig}>{decoded.signature}</code>
-            </Blk>
-          )}
-        </ToolSection>
-      </div>
+            )}
+          </ToolSection>
+        )}
 
-      <div className={styles.col}>
-        <ToolSection
-          title={mt('tabVerifyOidc')}
-          icon={<VscShield />}
-          accentColor="#3498db"
-          actions={
-            <ToolButton variant="primary" onClick={handleOidcVerify} disabled={!oToken.trim() || oidcBusy}>
-              {oidcBusy ? mt('oidcVerifying') : mt('oidcVerifyBtn')}
-            </ToolButton>
-          }
-        >
-          <ToolTextarea
-            mono
-            value={oToken}
-            onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setOToken(e.target.value)}
-            placeholder={mt('inputPlaceholder')}
-            spellCheck={false}
-            rows={2}
-          />
-          <div className={styles.optionsRow}>
-            <label className={styles.checkLabel}>
-              <input type="checkbox" checked={oidcAuto} onChange={(e) => setOidcAuto(e.target.checked)} />
-              {mt('oidcAuto')}
-            </label>
-            <label className={styles.checkLabel}>
-              <input
-                type="checkbox"
-                checked={oidcAllowHttp}
-                onChange={(e) => setOidcAllowHttp(e.target.checked)}
-              />
-              {mt('oidcAllowHttp')}
-            </label>
-          </div>
-          <div className={styles.row}>
-            <ToolField label={mt('oidcAud')}>
+        {tab === 'hmac' && (
+          <ToolSection
+            title={mt('tabVerifyHmac')}
+            icon={<VscShield />}
+            accentColor="#27ae60"
+            actions={
+              <ToolButton variant="primary" onClick={handleVerify} disabled={!hToken.trim()}>
+                {mt('verifyBtn')}
+              </ToolButton>
+            }
+          >
+            <ToolTextarea
+              mono
+              value={hToken}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setHToken(e.target.value)}
+              placeholder={mt('inputPlaceholder')}
+              spellCheck={false}
+              rows={2}
+            />
+            <ToolField label={mt('verifySecret')}>
               <ToolInput
-                value={oidcAud}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setOidcAud(e.target.value)}
-                placeholder={mt('oidcAudPlaceholder')}
+                value={hSecret}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setHSecret(e.target.value)}
+                placeholder={mt('verifySecretPlaceholder')}
                 spellCheck={false}
               />
             </ToolField>
-            <ToolField label={mt('oidcSkew')}>
-              <ToolInput
-                value={oidcSkew}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setOidcSkew(e.target.value)}
-                placeholder="120"
-                spellCheck={false}
-              />
-            </ToolField>
-          </div>
-          {oidcInfo?.issuer && (
-            <div className={styles.oidcMeta}>
-              <div>{mt('oidcIssuer') + ': ' + oidcInfo.issuer}</div>
-              {oidcInfo.jwksUri && <div>{mt('oidcJwksUri') + ': ' + oidcInfo.jwksUri}</div>}
-            </div>
-          )}
-          {oidcResult.length > 0 && (
-            <div className={styles.verifyRow}>
-              {oidcResult.map((r, i) => (
-                <span key={i} className={`${styles.badge} ${styles[`b_${r.type}`]}`}>
-                  {r.msg}
-                </span>
-              ))}
-            </div>
-          )}
-          {oidcDecoded && (
-            <div className={styles.grid}>
-              <Blk title={mt('header')} copyLabel={mt('copy')} onCopy={() => cp(oidcDecoded.header)}>
-                <pre className={styles.hl} dangerouslySetInnerHTML={{ __html: hl(oidcDecoded.header) }} />
-              </Blk>
-              <Blk title={mt('payload')} copyLabel={mt('copy')} onCopy={() => cp(oidcDecoded.payload)}>
-                <pre className={styles.hl} dangerouslySetInnerHTML={{ __html: hl(oidcDecoded.payload) }} />
-              </Blk>
-            </div>
-          )}
-          {oidcDecoded && (
-            <Blk title={mt('signature')} copyLabel={mt('copy')} onCopy={() => cp(oidcDecoded.signature)}>
-              <code className={styles.sig}>{oidcDecoded.signature}</code>
-            </Blk>
-          )}
-          {oidcJwksKey && (
-            <Blk
-              title={`${mt('jwksKey')}${oidcJwksKid ? ` (${oidcJwksKid})` : ''}`}
-              copyLabel={mt('copy')}
-              onCopy={() => cp(oidcJwksKey)}
-            >
-              <pre className={styles.hl} dangerouslySetInnerHTML={{ __html: hl(oidcJwksKey) }} />
-            </Blk>
-          )}
-        </ToolSection>
-      </div>
+            {hResult.length > 0 && (
+              <div className={styles.verifyRow}>
+                {hResult.map((r, i) => (
+                  <span key={i} className={`${styles.badge} ${styles[`b_${r.type}`]}`}>
+                    {r.msg}
+                  </span>
+                ))}
+              </div>
+            )}
+          </ToolSection>
+        )}
 
-      <div className={styles.col}>
-        <ToolSection
-          title={mt('tabGenerate')}
-          icon={<VscKey />}
-          accentColor="#f39c12"
-          actions={
-            <ToolButton variant="primary" onClick={handleGen}>
-              {mt('generateBtn')}
-            </ToolButton>
-          }
-        >
-          <div className={styles.row}>
-            <ToolField label={mt('algorithm')}>
-              <ToolSelect value={gAlg} onChange={(e: ChangeEvent<HTMLSelectElement>) => setGAlg(e.target.value)}>
-                <option>HS256</option>
-                <option>HS384</option>
-                <option>HS512</option>
-              </ToolSelect>
-            </ToolField>
-            <ToolField label={mt('secret')}>
-              <ToolInput
-                value={gSecret}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setGSecret(e.target.value)}
-                placeholder={mt('secretPlaceholder')}
-                spellCheck={false}
-              />
-            </ToolField>
-          </div>
-          <JsonArea label={mt('headerInput')} value={gHeader} onChange={setGHeader} rows={4} />
-          <JsonArea label={mt('payloadInput')} value={gPayload} onChange={setGPayload} rows={6} />
-          {gError && <div className={styles.err}>{gError}</div>}
-          {gOutput && (
-            <Blk title={mt('generatedToken')} copyLabel={mt('copy')} onCopy={() => cp(gOutput)}>
-              <code className={styles.tok}>{gOutput}</code>
-            </Blk>
-          )}
-        </ToolSection>
+        {tab === 'oidc' && (
+          <ToolSection
+            title={mt('tabVerifyOidc')}
+            icon={<VscShield />}
+            accentColor="#3498db"
+            actions={
+              <ToolButton variant="primary" onClick={handleOidcVerify} disabled={!oToken.trim() || oidcBusy}>
+                {oidcBusy ? mt('oidcVerifying') : mt('oidcVerifyBtn')}
+              </ToolButton>
+            }
+          >
+            <ToolTextarea
+              mono
+              value={oToken}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setOToken(e.target.value)}
+              placeholder={mt('inputPlaceholder')}
+              spellCheck={false}
+              rows={2}
+            />
+            <div className={styles.optionsRow}>
+              <label className={styles.checkLabel}>
+                <input type="checkbox" checked={oidcAuto} onChange={(e) => setOidcAuto(e.target.checked)} />
+                {mt('oidcAuto')}
+              </label>
+              <label className={styles.checkLabel}>
+                <input
+                  type="checkbox"
+                  checked={oidcAllowHttp}
+                  onChange={(e) => setOidcAllowHttp(e.target.checked)}
+                />
+                {mt('oidcAllowHttp')}
+              </label>
+            </div>
+            <div className={styles.row}>
+              <ToolField label={mt('oidcAud')}>
+                <ToolInput
+                  value={oidcAud}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setOidcAud(e.target.value)}
+                  placeholder={mt('oidcAudPlaceholder')}
+                  spellCheck={false}
+                />
+              </ToolField>
+              <ToolField label={mt('oidcSkew')}>
+                <ToolInput
+                  value={oidcSkew}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setOidcSkew(e.target.value)}
+                  placeholder="120"
+                  spellCheck={false}
+                />
+              </ToolField>
+            </div>
+            {oidcInfo?.issuer && (
+              <div className={styles.oidcMeta}>
+                <div>{mt('oidcIssuer') + ': ' + oidcInfo.issuer}</div>
+                {oidcInfo.jwksUri && <div>{mt('oidcJwksUri') + ': ' + oidcInfo.jwksUri}</div>}
+              </div>
+            )}
+            {oidcResult.length > 0 && (
+              <div className={styles.verifyRow}>
+                {oidcResult.map((r, i) => (
+                  <span key={i} className={`${styles.badge} ${styles[`b_${r.type}`]}`}>
+                    {r.msg}
+                  </span>
+                ))}
+              </div>
+            )}
+            {oidcDecoded && (
+              <div className={styles.grid}>
+                <Blk title={mt('header')} copyLabel={mt('copy')} onCopy={() => cp(oidcDecoded.header)}>
+                  <pre className={styles.hl} dangerouslySetInnerHTML={{ __html: hl(oidcDecoded.header) }} />
+                </Blk>
+                <Blk title={mt('payload')} copyLabel={mt('copy')} onCopy={() => cp(oidcDecoded.payload)}>
+                  <pre className={styles.hl} dangerouslySetInnerHTML={{ __html: hl(oidcDecoded.payload) }} />
+                </Blk>
+              </div>
+            )}
+            {oidcDecoded && (
+              <Blk title={mt('signature')} copyLabel={mt('copy')} onCopy={() => cp(oidcDecoded.signature)}>
+                <code className={styles.sig}>{oidcDecoded.signature}</code>
+              </Blk>
+            )}
+            {oidcJwksKey && (
+              <Blk
+                title={`${mt('jwksKey')}${oidcJwksKid ? ` (${oidcJwksKid})` : ''}`}
+                copyLabel={mt('copy')}
+                onCopy={() => cp(oidcJwksKey)}
+              >
+                <pre className={styles.hl} dangerouslySetInnerHTML={{ __html: hl(oidcJwksKey) }} />
+              </Blk>
+            )}
+          </ToolSection>
+        )}
+
+        {tab === 'generate' && (
+          <ToolSection
+            title={mt('tabGenerate')}
+            icon={<VscKey />}
+            accentColor="#f39c12"
+            actions={
+              <ToolButton variant="primary" onClick={handleGen}>
+                {mt('generateBtn')}
+              </ToolButton>
+            }
+          >
+            <div className={styles.row}>
+              <ToolField label={mt('algorithm')}>
+                <ToolSelect value={gAlg} onChange={(e: ChangeEvent<HTMLSelectElement>) => setGAlg(e.target.value)}>
+                  <option>HS256</option>
+                  <option>HS384</option>
+                  <option>HS512</option>
+                </ToolSelect>
+              </ToolField>
+              <ToolField label={mt('secret')}>
+                <ToolInput
+                  value={gSecret}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setGSecret(e.target.value)}
+                  placeholder={mt('secretPlaceholder')}
+                  spellCheck={false}
+                />
+              </ToolField>
+            </div>
+            <JsonArea label={mt('headerInput')} value={gHeader} onChange={setGHeader} rows={4} />
+            <JsonArea label={mt('payloadInput')} value={gPayload} onChange={setGPayload} rows={6} />
+            {gError && <div className={styles.err}>{gError}</div>}
+            {gOutput && (
+              <Blk title={mt('generatedToken')} copyLabel={mt('copy')} onCopy={() => cp(gOutput)}>
+                <code className={styles.tok}>{gOutput}</code>
+              </Blk>
+            )}
+          </ToolSection>
+        )}
       </div>
     </div>
   );

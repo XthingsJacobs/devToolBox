@@ -28,6 +28,7 @@ Check local environment (Node/pnpm/Git):
 ./cli.sh dev
 ./cli.sh build
 ./cli.sh plugin create
+./cli.sh plugin
 ./cli.sh plugin <market-id>
 ./cli.sh plugin all
 ./cli.sh package <macos|windows|all> [arm64|x64|universal]
@@ -122,12 +123,17 @@ Create a new marketplace plugin template (interactive):
 Build + pack a marketplace plugin into a local registry zip:
 
 ```bash
+./cli.sh plugin
 ./cli.sh plugin <market-id>
 ```
 
+Running `./cli.sh plugin` without arguments lists marketplace plugins from `marketplace/modules`, lets you
+choose one, choose `All`, or input a plugin ID manually.
+
 Build + pack all marketplace plugins into `marketplace/registry.local.json`:
+
 ```bash
 ./cli.sh plugin all
 ```
 
-See also: [Marketplace Packaging](marketplace.md)
+See also: [Marketplace Packaging](../plugin-dev/packaging.md)

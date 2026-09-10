@@ -5,7 +5,8 @@ import { register as registerAppIpc } from './ipc/app';
 import { register as registerMarketplaceIpc } from './ipc/marketplace';
 import { register as registerBackupIpc } from './ipc/backup';
 import { register as registerHttpIpc } from './ipc/http';
-import { checkForUpdatesInteractive, initUpdater } from './updater';
+import { register as registerStorageIpc } from './ipc/storage';
+import { checkForUpdatesInteractive, configureAutoUpdate, initUpdater } from './updater';
 import {
   register as registerLocaleIpc,
   getCurrentLocale,
@@ -20,6 +21,7 @@ import {
   broadcastThemeChange,
   setCurrentThemeSetting,
 } from './ipc/theme';
+import { register as registerUpdatesIpc, getCurrentUpdateSettings } from './ipc/updates';
 
 // Auto-scan module-level IPC (removing a module folder removes its IPC automatically)
 const moduleIpcFiles = import.meta.glob<{ register: () => void }>(
@@ -366,10 +368,14 @@ registerThemeIpc((theme) => {
   broadcastThemeChange(getCurrentTheme());
   buildMenu();
 });
+registerUpdatesIpc((settings) => {
+  configureAutoUpdate(settings);
+});
 registerFileIpc();
 registerAppIpc(APP_VERSION, BUILD_NUMBER);
 registerMarketplaceIpc();
 registerBackupIpc();
+registerStorageIpc();
 
 // Auto-register all module-level IPC (dedupe: each register function is called only once)
 const registeredIpc = new Set<() => void>();
@@ -387,6 +393,7 @@ app.on('ready', () => {
   createWindow();
   registerHttpIpc();
   initUpdater(() => mainWindow);
+  configureAutoUpdate(getCurrentUpdateSettings());
 });
 
 app.on('before-quit', (e) => {

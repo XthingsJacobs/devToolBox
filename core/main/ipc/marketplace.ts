@@ -4,6 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import crypto from 'crypto';
 import net from 'net';
+import dgram from 'dgram';
 import { fileURLToPath, pathToFileURL } from 'url';
 import extract from 'extract-zip';
 
@@ -14,6 +15,7 @@ type PluginPermission =
   | 'fs:read'
   | 'fs:write'
   | 'storage:kv'
+  | 'net:socket'
   | 'bluetooth'
   | 'serial'
   | 'usb'
@@ -364,6 +366,233 @@ function safeRemoveDir(dir: string): void {
 const fileTokenMap = new Map<string, Map<string, string>>();
 const pathTokenMap = new Map<string, Map<string, string>>();
 
+type SocketProtocol = 'tcp' | 'udp';
+
+type SocketEvent =
+  | { type: 'log'; target: 'server' | 'client'; level: 'info' | 'error'; message: string }
+  | {
+      type: 'data';
+      target: 'server' | 'client';
+      data: {
+        direction: 'recv' | 'sent';
+        protocol: SocketProtocol;
+        bytes: number;
+        remote?: string;
+        connId?: string;
+        text?: string;
+        base64?: string;
+      };
+    }
+  | { type: 'status'; target: 'server' | 'client'; status: unknown };
+
+type SocketConnInfo = {
+  id: string;
+  remote: string;
+  connectedAt: string;
+  recvBytes: number;
+  sentBytes: number;
+};
+
+type SocketPluginState = {
+  server: {
+    protocol: SocketProtocol;
+    host: string;
+    port: number;
+    tcpServer: net.Server | null;
+    udpSocket: dgram.Socket | null;
+    tcpClients: Map<string, { socket: net.Socket; info: SocketConnInfo }>;
+    lastRemote?: string;
+    totalRecvBytes: number;
+    totalSentBytes: number;
+  };
+  client: {
+    protocol: SocketProtocol;
+    remoteHost: string;
+    remotePort: number;
+    tcpSocket: net.Socket | null;
+    udpSocket: dgram.Socket | null;
+    totalRecvBytes: number;
+    totalSentBytes: number;
+  };
+};
+
+const socketPluginStates = new Map<string, SocketPluginState>();
+
+function getSocketState(pluginId: string): SocketPluginState {
+  const hit = socketPluginStates.get(pluginId);
+  if (hit) return hit;
+  const created: SocketPluginState = {
+    server: {
+      protocol: 'tcp',
+      host: '0.0.0.0',
+      port: 0,
+      tcpServer: null,
+      udpSocket: null,
+      tcpClients: new Map<string, { socket: net.Socket; info: SocketConnInfo }>(),
+      lastRemote: undefined,
+      totalRecvBytes: 0,
+      totalSentBytes: 0,
+    },
+    client: {
+      protocol: 'tcp',
+      remoteHost: '',
+      remotePort: 0,
+      tcpSocket: null,
+      udpSocket: null,
+      totalRecvBytes: 0,
+      totalSentBytes: 0,
+    },
+  };
+  socketPluginStates.set(pluginId, created);
+  return created;
+}
+
+function sendSocketEvent(pluginId: string, ev: SocketEvent): void {
+  BrowserWindow.getAllWindows().forEach((w) => {
+    try {
+      w.webContents.send('plugin:socketEvent', pluginId, ev);
+    } catch {
+      void 0;
+    }
+  });
+}
+
+function socketNowIso(): string {
+  return new Date().toISOString();
+}
+
+function socketTruncateText(s: string, maxLen = 800): string {
+  if (s.length <= maxLen) return s;
+  return s.slice(0, maxLen) + '…';
+}
+
+function socketIsProbablyUtf8Text(s: string): boolean {
+  if (!s) return true;
+  if (s.includes('\uFFFD')) return false;
+  let ctrl = 0;
+  for (let i = 0; i < s.length; i += 1) {
+    const c = s.charCodeAt(i);
+    const isOk = c === 9 || c === 10 || c === 13 || c >= 32;
+    if (!isOk) ctrl += 1;
+  }
+  return ctrl <= Math.max(1, Math.floor(s.length * 0.02));
+}
+
+function socketFormatBuf(buf: Buffer): { bytes: number; text?: string; base64?: string } {
+  const text = buf.toString('utf8');
+  if (socketIsProbablyUtf8Text(text)) return { bytes: buf.length, text: socketTruncateText(text) };
+  return { bytes: buf.length, base64: socketTruncateText(buf.toString('base64')) };
+}
+
+function socketDecodePayload(payload: string, encoding: string): Buffer {
+  if (encoding === 'hex') {
+    const raw = payload.trim().replace(/\s+/g, '');
+    if (!raw) return Buffer.alloc(0);
+    if (raw.length % 2 !== 0) throw new Error('Invalid hex payload');
+    return Buffer.from(raw, 'hex');
+  }
+  if (encoding === 'base64') {
+    const raw = payload.trim();
+    if (!raw) return Buffer.alloc(0);
+    return Buffer.from(raw, 'base64');
+  }
+  return Buffer.from(payload, 'utf8');
+}
+
+async function stopSocketServer(pluginId: string): Promise<void> {
+  const st = getSocketState(pluginId);
+  const s = st.server;
+  for (const c of s.tcpClients.values()) {
+    try {
+      c.socket.destroy();
+    } catch {
+      void 0;
+    }
+  }
+  s.tcpClients.clear();
+
+  if (s.udpSocket) {
+    try {
+      await new Promise<void>((resolve) => s.udpSocket?.close(() => resolve()));
+    } catch {
+      void 0;
+    }
+    s.udpSocket = null;
+  }
+
+  if (s.tcpServer) {
+    try {
+      await new Promise<void>((resolve) => s.tcpServer?.close(() => resolve()));
+    } catch {
+      void 0;
+    }
+    s.tcpServer = null;
+  }
+
+  s.port = 0;
+  s.lastRemote = undefined;
+  s.totalRecvBytes = 0;
+  s.totalSentBytes = 0;
+  sendSocketEvent(pluginId, { type: 'status', target: 'server', status: buildSocketServerStatus(pluginId) });
+}
+
+async function stopSocketClient(pluginId: string): Promise<void> {
+  const st = getSocketState(pluginId);
+  const c = st.client;
+  if (c.udpSocket) {
+    try {
+      await new Promise<void>((resolve) => c.udpSocket?.close(() => resolve()));
+    } catch {
+      void 0;
+    }
+    c.udpSocket = null;
+  }
+  if (c.tcpSocket) {
+    try {
+      c.tcpSocket.destroy();
+    } catch {
+      void 0;
+    }
+    c.tcpSocket = null;
+  }
+  c.remoteHost = '';
+  c.remotePort = 0;
+  c.totalRecvBytes = 0;
+  c.totalSentBytes = 0;
+  sendSocketEvent(pluginId, { type: 'status', target: 'client', status: buildSocketClientStatus(pluginId) });
+}
+
+function buildSocketServerStatus(pluginId: string): unknown {
+  const st = getSocketState(pluginId);
+  const s = st.server;
+  return {
+    running: Boolean(s.tcpServer || s.udpSocket),
+    protocol: s.protocol,
+    host: s.host,
+    port: s.port,
+    connections: Array.from(s.tcpClients.values()).map((x) => ({ id: x.info.id, remote: x.info.remote })),
+    lastRemote: s.lastRemote,
+    stats: { totalRecvBytes: s.totalRecvBytes, totalSentBytes: s.totalSentBytes },
+  };
+}
+
+function buildSocketClientStatus(pluginId: string): unknown {
+  const st = getSocketState(pluginId);
+  const c = st.client;
+  return {
+    connected: Boolean((c.protocol === 'tcp' ? c.tcpSocket : c.udpSocket) && c.remoteHost && c.remotePort),
+    protocol: c.protocol,
+    remote: c.remoteHost && c.remotePort ? `${c.remoteHost}:${c.remotePort}` : '',
+    stats: { totalRecvBytes: c.totalRecvBytes, totalSentBytes: c.totalSentBytes },
+  };
+}
+
+async function cleanupSocketPlugin(pluginId: string): Promise<void> {
+  if (!socketPluginStates.has(pluginId)) return;
+  await Promise.all([stopSocketServer(pluginId), stopSocketClient(pluginId)]);
+  socketPluginStates.delete(pluginId);
+}
+
 function setToken(map: Map<string, Map<string, string>>, pluginId: string, token: string, value: string): void {
   const inner = map.get(pluginId) ?? new Map<string, string>();
   inner.set(token, value);
@@ -509,7 +738,7 @@ export function register(): void {
     }));
   });
 
-  ipcMain.handle('marketplace:setEnabled', (_event, id: string, enabled: boolean) => {
+  ipcMain.handle('marketplace:setEnabled', async (_event, id: string, enabled: boolean) => {
     try {
       const state = readState();
       const rec = state.installed[id];
@@ -517,17 +746,19 @@ export function register(): void {
       rec.enabled = Boolean(enabled);
       state.installed[id] = rec;
       writeState(state);
+      if (!rec.enabled) await cleanupSocketPlugin(rec.id);
       return { success: true };
     } catch (e: unknown) {
       return { success: false, error: e instanceof Error ? e.message : String(e) };
     }
   });
 
-  ipcMain.handle('marketplace:uninstall', (_event, id: string) => {
+  ipcMain.handle('marketplace:uninstall', async (_event, id: string) => {
     try {
       const state = readState();
       const rec = state.installed[id];
       if (!rec) return { success: false, error: 'Plugin not installed' };
+      await cleanupSocketPlugin(rec.id);
       fileTokenMap.delete(rec.id);
       pathTokenMap.delete(rec.id);
 
@@ -717,6 +948,359 @@ export function register(): void {
     else console.log(...args);
 
     return ok(true);
+  });
+
+  ipcMain.handle('plugin:socketServerStart', async (_event, pluginId: string, params: unknown) => {
+    const rec = assertInstalledPlugin(pluginId);
+    if (!rec) return err('not_installed', 'Plugin not installed');
+    if (!hasPermission(rec.manifest, 'net:socket')) return err('permission_denied', 'Missing permission: net:socket');
+    try {
+      const p = isRecord(params) ? params : {};
+      const protocol: SocketProtocol = asString(p.protocol, 'tcp') === 'udp' ? 'udp' : 'tcp';
+      const host = asString(p.host, '0.0.0.0').trim() || '0.0.0.0';
+      const port = Math.floor(Number((p as Record<string, unknown>).port ?? 0));
+      if (!port || port < 1 || port > 65535) return err('invalid_params', 'Invalid port');
+
+      await stopSocketServer(pluginId);
+
+      const st = getSocketState(pluginId);
+      st.server.protocol = protocol;
+      st.server.host = host;
+      st.server.port = port;
+      st.server.lastRemote = undefined;
+      st.server.totalRecvBytes = 0;
+      st.server.totalSentBytes = 0;
+
+      sendSocketEvent(pluginId, { type: 'log', target: 'server', level: 'info', message: `${protocol} server start ${host}:${port}` });
+
+      if (protocol === 'tcp') {
+        const srv = net.createServer();
+        st.server.tcpServer = srv;
+
+        srv.on('connection', (socket) => {
+          const id = crypto.randomBytes(8).toString('hex');
+          const remote = `${socket.remoteAddress ?? '-'}:${socket.remotePort ?? ''}`;
+          const info: SocketConnInfo = { id, remote, connectedAt: socketNowIso(), recvBytes: 0, sentBytes: 0 };
+          st.server.tcpClients.set(id, { socket, info });
+          sendSocketEvent(pluginId, { type: 'log', target: 'server', level: 'info', message: `tcp client connected ${remote} (${id})` });
+          sendSocketEvent(pluginId, { type: 'status', target: 'server', status: buildSocketServerStatus(pluginId) });
+
+          socket.on('data', (buf) => {
+            info.recvBytes += buf.length;
+            st.server.totalRecvBytes += buf.length;
+            const fmt = socketFormatBuf(buf);
+            sendSocketEvent(pluginId, {
+              type: 'data',
+              target: 'server',
+              data: { direction: 'recv', protocol: 'tcp', remote, connId: id, ...fmt },
+            });
+            sendSocketEvent(pluginId, { type: 'status', target: 'server', status: buildSocketServerStatus(pluginId) });
+          });
+          socket.on('close', () => {
+            st.server.tcpClients.delete(id);
+            sendSocketEvent(pluginId, { type: 'log', target: 'server', level: 'info', message: `tcp client closed ${remote} (${id})` });
+            sendSocketEvent(pluginId, { type: 'status', target: 'server', status: buildSocketServerStatus(pluginId) });
+          });
+          socket.on('error', (e) => {
+            sendSocketEvent(pluginId, {
+              type: 'log',
+              target: 'server',
+              level: 'error',
+              message: `tcp client error ${remote} (${id}) ${e instanceof Error ? e.message : String(e)}`,
+            });
+          });
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          srv.listen(port, host, () => resolve());
+          srv.once('error', reject);
+        });
+
+        const status = buildSocketServerStatus(pluginId);
+        sendSocketEvent(pluginId, { type: 'status', target: 'server', status });
+        return ok(status);
+      }
+
+      const sock = dgram.createSocket('udp4');
+      st.server.udpSocket = sock;
+      sock.on('error', (e) => {
+        sendSocketEvent(pluginId, {
+          type: 'log',
+          target: 'server',
+          level: 'error',
+          message: `udp server error ${e instanceof Error ? e.message : String(e)}`,
+        });
+      });
+      sock.on('message', (msg, rinfo) => {
+        const remote = `${rinfo.address}:${rinfo.port}`;
+        st.server.lastRemote = remote;
+        st.server.totalRecvBytes += msg.length;
+        const fmt = socketFormatBuf(msg);
+        sendSocketEvent(pluginId, { type: 'data', target: 'server', data: { direction: 'recv', protocol: 'udp', remote, ...fmt } });
+        sendSocketEvent(pluginId, { type: 'status', target: 'server', status: buildSocketServerStatus(pluginId) });
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        sock.bind(port, host, () => resolve());
+        sock.once('error', reject);
+      });
+
+      const status = buildSocketServerStatus(pluginId);
+      sendSocketEvent(pluginId, { type: 'status', target: 'server', status });
+      return ok(status);
+    } catch (e: unknown) {
+      return err('io_error', e instanceof Error ? e.message : String(e));
+    }
+  });
+
+  ipcMain.handle('plugin:socketServerStop', async (_event, pluginId: string) => {
+    const rec = assertInstalledPlugin(pluginId);
+    if (!rec) return err('not_installed', 'Plugin not installed');
+    if (!hasPermission(rec.manifest, 'net:socket')) return err('permission_denied', 'Missing permission: net:socket');
+    try {
+      await stopSocketServer(pluginId);
+      return ok(buildSocketServerStatus(pluginId));
+    } catch (e: unknown) {
+      return err('io_error', e instanceof Error ? e.message : String(e));
+    }
+  });
+
+  ipcMain.handle('plugin:socketServerStatus', (_event, pluginId: string) => {
+    const rec = assertInstalledPlugin(pluginId);
+    if (!rec) return err('not_installed', 'Plugin not installed');
+    if (!hasPermission(rec.manifest, 'net:socket')) return err('permission_denied', 'Missing permission: net:socket');
+    try {
+      return ok(buildSocketServerStatus(pluginId));
+    } catch (e: unknown) {
+      return err('io_error', e instanceof Error ? e.message : String(e));
+    }
+  });
+
+  ipcMain.handle('plugin:socketServerKick', (_event, pluginId: string, params: unknown) => {
+    const rec = assertInstalledPlugin(pluginId);
+    if (!rec) return err('not_installed', 'Plugin not installed');
+    if (!hasPermission(rec.manifest, 'net:socket')) return err('permission_denied', 'Missing permission: net:socket');
+    try {
+      const st = getSocketState(pluginId);
+      const p = isRecord(params) ? params : {};
+      const connId = asString(p.connId).trim();
+      const hit = connId ? st.server.tcpClients.get(connId) : null;
+      if (hit) {
+        try {
+          hit.socket.destroy();
+        } catch {
+          void 0;
+        }
+        st.server.tcpClients.delete(connId);
+      }
+      const status = buildSocketServerStatus(pluginId);
+      sendSocketEvent(pluginId, { type: 'status', target: 'server', status });
+      return ok(status);
+    } catch (e: unknown) {
+      return err('io_error', e instanceof Error ? e.message : String(e));
+    }
+  });
+
+  ipcMain.handle('plugin:socketServerSend', async (_event, pluginId: string, params: unknown) => {
+    const rec = assertInstalledPlugin(pluginId);
+    if (!rec) return err('not_installed', 'Plugin not installed');
+    if (!hasPermission(rec.manifest, 'net:socket')) return err('permission_denied', 'Missing permission: net:socket');
+    try {
+      const st = getSocketState(pluginId);
+      const p = isRecord(params) ? params : {};
+      const protocol: SocketProtocol = asString(p.protocol, st.server.protocol) === 'udp' ? 'udp' : 'tcp';
+      const encoding = asString(p.encoding, 'utf8');
+      const payload = asString(p.payload, '');
+      const buf = socketDecodePayload(payload, encoding);
+
+      if (protocol === 'tcp') {
+        const connId = asString(p.connId).trim();
+        const targets = connId
+          ? st.server.tcpClients.get(connId)
+            ? [st.server.tcpClients.get(connId)!]
+            : []
+          : Array.from(st.server.tcpClients.values());
+        for (const t of targets) {
+          try {
+            t.socket.write(buf);
+            t.info.sentBytes += buf.length;
+            st.server.totalSentBytes += buf.length;
+            const fmt = socketFormatBuf(buf);
+            sendSocketEvent(pluginId, {
+              type: 'data',
+              target: 'server',
+              data: { direction: 'sent', protocol: 'tcp', remote: t.info.remote, connId: t.info.id, ...fmt },
+            });
+          } catch (e) {
+            sendSocketEvent(pluginId, {
+              type: 'log',
+              target: 'server',
+              level: 'error',
+              message: `tcp send error ${t.info.remote} (${t.info.id}) ${e instanceof Error ? e.message : String(e)}`,
+            });
+          }
+        }
+        const status = buildSocketServerStatus(pluginId);
+        sendSocketEvent(pluginId, { type: 'status', target: 'server', status });
+        return ok(true);
+      }
+
+      const remote = asString(p.remote, st.server.lastRemote ?? '').trim();
+      const [rh, rp] = remote.includes(':') ? remote.split(':', 2) : [remote, ''];
+      const rport = Math.floor(Number(rp));
+      if (!st.server.udpSocket) return err('invalid_state', 'UDP server not running');
+      if (!rh || !rport || rport < 1 || rport > 65535) return err('invalid_params', 'Invalid remote');
+      await new Promise<void>((resolve, reject) => {
+        st.server.udpSocket?.send(buf, rport, rh, (e) => {
+          if (e) reject(e);
+          else resolve();
+        });
+      });
+      st.server.totalSentBytes += buf.length;
+      const fmt = socketFormatBuf(buf);
+      sendSocketEvent(pluginId, { type: 'data', target: 'server', data: { direction: 'sent', protocol: 'udp', remote: `${rh}:${rport}`, ...fmt } });
+      const status = buildSocketServerStatus(pluginId);
+      sendSocketEvent(pluginId, { type: 'status', target: 'server', status });
+      return ok(true);
+    } catch (e: unknown) {
+      return err('io_error', e instanceof Error ? e.message : String(e));
+    }
+  });
+
+  ipcMain.handle('plugin:socketClientConnect', async (_event, pluginId: string, params: unknown) => {
+    const rec = assertInstalledPlugin(pluginId);
+    if (!rec) return err('not_installed', 'Plugin not installed');
+    if (!hasPermission(rec.manifest, 'net:socket')) return err('permission_denied', 'Missing permission: net:socket');
+    try {
+      const p = isRecord(params) ? params : {};
+      const protocol: SocketProtocol = asString(p.protocol, 'tcp') === 'udp' ? 'udp' : 'tcp';
+      const host = asString(p.host, '').trim();
+      const port = Math.floor(Number((p as Record<string, unknown>).port ?? 0));
+      if (!host) return err('invalid_params', 'Invalid host');
+      if (!port || port < 1 || port > 65535) return err('invalid_params', 'Invalid port');
+
+      await stopSocketClient(pluginId);
+
+      const st = getSocketState(pluginId);
+      st.client.protocol = protocol;
+      st.client.remoteHost = host;
+      st.client.remotePort = port;
+      st.client.totalRecvBytes = 0;
+      st.client.totalSentBytes = 0;
+
+      sendSocketEvent(pluginId, { type: 'log', target: 'client', level: 'info', message: `${protocol} client connect ${host}:${port}` });
+
+      if (protocol === 'tcp') {
+        const sock = new net.Socket();
+        st.client.tcpSocket = sock;
+        sock.on('data', (buf) => {
+          st.client.totalRecvBytes += buf.length;
+          const fmt = socketFormatBuf(buf);
+          sendSocketEvent(pluginId, { type: 'data', target: 'client', data: { direction: 'recv', protocol: 'tcp', remote: `${host}:${port}`, ...fmt } });
+          sendSocketEvent(pluginId, { type: 'status', target: 'client', status: buildSocketClientStatus(pluginId) });
+        });
+        sock.on('close', () => {
+          sendSocketEvent(pluginId, { type: 'log', target: 'client', level: 'info', message: `tcp client closed` });
+          void stopSocketClient(pluginId);
+        });
+        sock.on('error', (e) => {
+          sendSocketEvent(pluginId, { type: 'log', target: 'client', level: 'error', message: `tcp client error ${e instanceof Error ? e.message : String(e)}` });
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          sock.connect(port, host, () => resolve());
+          sock.once('error', reject);
+        });
+        const status = buildSocketClientStatus(pluginId);
+        sendSocketEvent(pluginId, { type: 'status', target: 'client', status });
+        return ok(status);
+      }
+
+      const sock = dgram.createSocket('udp4');
+      st.client.udpSocket = sock;
+      sock.on('error', (e) => {
+        sendSocketEvent(pluginId, { type: 'log', target: 'client', level: 'error', message: `udp client error ${e instanceof Error ? e.message : String(e)}` });
+      });
+      sock.on('message', (msg, rinfo) => {
+        st.client.totalRecvBytes += msg.length;
+        const fmt = socketFormatBuf(msg);
+        sendSocketEvent(pluginId, { type: 'data', target: 'client', data: { direction: 'recv', protocol: 'udp', remote: `${rinfo.address}:${rinfo.port}`, ...fmt } });
+        sendSocketEvent(pluginId, { type: 'status', target: 'client', status: buildSocketClientStatus(pluginId) });
+      });
+      await new Promise<void>((resolve, reject) => {
+        sock.bind(0, () => resolve());
+        sock.once('error', reject);
+      });
+
+      const status = buildSocketClientStatus(pluginId);
+      sendSocketEvent(pluginId, { type: 'status', target: 'client', status });
+      return ok(status);
+    } catch (e: unknown) {
+      return err('io_error', e instanceof Error ? e.message : String(e));
+    }
+  });
+
+  ipcMain.handle('plugin:socketClientDisconnect', async (_event, pluginId: string) => {
+    const rec = assertInstalledPlugin(pluginId);
+    if (!rec) return err('not_installed', 'Plugin not installed');
+    if (!hasPermission(rec.manifest, 'net:socket')) return err('permission_denied', 'Missing permission: net:socket');
+    try {
+      await stopSocketClient(pluginId);
+      return ok(buildSocketClientStatus(pluginId));
+    } catch (e: unknown) {
+      return err('io_error', e instanceof Error ? e.message : String(e));
+    }
+  });
+
+  ipcMain.handle('plugin:socketClientStatus', (_event, pluginId: string) => {
+    const rec = assertInstalledPlugin(pluginId);
+    if (!rec) return err('not_installed', 'Plugin not installed');
+    if (!hasPermission(rec.manifest, 'net:socket')) return err('permission_denied', 'Missing permission: net:socket');
+    try {
+      return ok(buildSocketClientStatus(pluginId));
+    } catch (e: unknown) {
+      return err('io_error', e instanceof Error ? e.message : String(e));
+    }
+  });
+
+  ipcMain.handle('plugin:socketClientSend', async (_event, pluginId: string, params: unknown) => {
+    const rec = assertInstalledPlugin(pluginId);
+    if (!rec) return err('not_installed', 'Plugin not installed');
+    if (!hasPermission(rec.manifest, 'net:socket')) return err('permission_denied', 'Missing permission: net:socket');
+    try {
+      const st = getSocketState(pluginId);
+      const p = isRecord(params) ? params : {};
+      const protocol: SocketProtocol = asString(p.protocol, st.client.protocol) === 'udp' ? 'udp' : 'tcp';
+      const encoding = asString(p.encoding, 'utf8');
+      const payload = asString(p.payload, '');
+      const buf = socketDecodePayload(payload, encoding);
+      if (!st.client.remoteHost || !st.client.remotePort) return err('invalid_state', 'Client not connected');
+
+      if (protocol === 'tcp') {
+        if (!st.client.tcpSocket) return err('invalid_state', 'TCP client not connected');
+        st.client.tcpSocket.write(buf);
+        st.client.totalSentBytes += buf.length;
+        const fmt = socketFormatBuf(buf);
+        sendSocketEvent(pluginId, { type: 'data', target: 'client', data: { direction: 'sent', protocol: 'tcp', remote: `${st.client.remoteHost}:${st.client.remotePort}`, ...fmt } });
+        sendSocketEvent(pluginId, { type: 'status', target: 'client', status: buildSocketClientStatus(pluginId) });
+        return ok(true);
+      }
+
+      if (!st.client.udpSocket) return err('invalid_state', 'UDP client not ready');
+      await new Promise<void>((resolve, reject) => {
+        st.client.udpSocket?.send(buf, st.client.remotePort, st.client.remoteHost, (e) => {
+          if (e) reject(e);
+          else resolve();
+        });
+      });
+      st.client.totalSentBytes += buf.length;
+      const fmt = socketFormatBuf(buf);
+      sendSocketEvent(pluginId, { type: 'data', target: 'client', data: { direction: 'sent', protocol: 'udp', remote: `${st.client.remoteHost}:${st.client.remotePort}`, ...fmt } });
+      sendSocketEvent(pluginId, { type: 'status', target: 'client', status: buildSocketClientStatus(pluginId) });
+      return ok(true);
+    } catch (e: unknown) {
+      return err('io_error', e instanceof Error ? e.message : String(e));
+    }
   });
 
   ipcMain.handle('plugin:httpRequest', async (_event, pluginId: string, params: unknown) => {

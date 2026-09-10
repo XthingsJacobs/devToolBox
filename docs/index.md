@@ -1,22 +1,32 @@
-# DevToolBox
+# DevToolBox Docs
 
-DevToolBox is a cross-platform desktop toolbox built with Electron and React.
+DevToolBox has three primary audiences. Start from the section that matches your role:
 
-## What you can do
+## 1) Users (Daily Use)
 
-- Run built-in developer utilities (formatters, converters, network tools, etc.)
-- Install and run marketplace plugins in an isolated runtime (iframe + SDK)
+If you download DevToolBox to use built-in tools and marketplace plugins:
 
-## Key concepts
+- [User Guide](users/guide.md)
+- [FAQ (Users)](users/faq.md)
+- [Support / Bug Reports](governance/support.md)
 
-- The app is split into Electron main/preload/renderer processes.
-- Built-in tools are auto-discovered and rendered inside a shared layout.
-- Marketplace plugins communicate with the host only through the Plugin SDK.
+## 2) Marketplace Plugin Developers
 
-## Quick links
+If you build and publish marketplace plugins:
 
-- [Installation](installation.md)
-- [CLI](cli.md)
-- [Plugin SDK](plugin-sdk.md)
-- [Troubleshooting](troubleshooting.md)
+- [Plugin Developer Guide](plugin-dev/guide.md)
+- [Plugin SDK Contract](plugin-dev/sdk.md)
+- [Marketplace Packaging (Local Dev)](plugin-dev/packaging.md)
 
+## 3) Core Developers / Contributors
+
+If you work on DevToolBox core (Electron main/preload/renderer) and built-in tool modules:
+
+- [Core Developer Guide](core-dev/guide.md)
+- [Architecture](core-dev/architecture.md)
+- [Codebase Map](core-dev/codebase.md)
+- [Built-in Modules](core-dev/built-in-modules.md)
+
+## Policies and Governance
+
+- [Open Source](governance/open-source.md)

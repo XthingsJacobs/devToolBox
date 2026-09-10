@@ -2,16 +2,23 @@ import { app, dialog, BrowserWindow, type BrowserWindow as BrowserWindowType } f
 import { autoUpdater, type UpdateDownloadedEvent, type UpdateInfo } from 'electron-updater';
 import path from 'node:path';
 import { readFile, writeFile, rm } from 'node:fs/promises';
+import { setIgnoredUpdateVersion, type UpdateSettings } from './ipc/updates';
+import { getCurrentLocale } from './ipc/locale';
 
 type GetWindow = () => BrowserWindow | null;
 
 let getWindowRef: GetWindow | null = null;
-let interactive = false;
 let downloading = false;
 let progressWin: BrowserWindowType | null = null;
 let progressPercent = 0;
+let activeSource: 'manual' | 'background' | null = null;
+let installOnDownload = false;
+let autoCheckEnabled = false;
+let ignoredVersion: string | null = null;
+let timer: NodeJS.Timeout | null = null;
 
 const UPDATE_STATE_FILE = () => path.join(app.getPath('userData'), 'updater-state.json');
+const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 
 function getWin(): BrowserWindow | null {
   return getWindowRef ? getWindowRef() : null;
@@ -59,6 +66,24 @@ function splitVersion(version: string): { base: string; build: string | null } {
   const last = parts[parts.length - 1] || '';
   const build = /^\d{6,}$/.test(last) ? last : null;
   return { base, build };
+}
+
+function compareVersions(a: string, b: string): number {
+  const pa = String(a || '').replace(/^v/i, '').split('.')[0] ? String(a || '').replace(/^v/i, '').split('.') : [];
+  const pb = String(b || '').replace(/^v/i, '').split('.')[0] ? String(b || '').replace(/^v/i, '').split('.') : [];
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i += 1) {
+    const na = Number.parseInt(pa[i] ?? '0', 10);
+    const nb = Number.parseInt(pb[i] ?? '0', 10);
+    if (Number.isNaN(na) || Number.isNaN(nb)) break;
+    if (na > nb) return 1;
+    if (na < nb) return -1;
+  }
+  return 0;
+}
+
+function isZh(): boolean {
+  return getCurrentLocale() === 'zh-CN';
 }
 
 async function showMessageBox(options: Electron.MessageBoxOptions): Promise<Electron.MessageBoxReturnValue> {
@@ -182,63 +207,97 @@ function closeProgressUi(): void {
 }
 
 async function onUpdateAvailable(info: UpdateInfo): Promise<void> {
-  if (!interactive) return;
+  const source = activeSource;
+  if (!source) return;
+  if (source === 'background' && !autoCheckEnabled) {
+    activeSource = null;
+    return;
+  }
   if (downloading) return;
+  if (source === 'background' && ignoredVersion && compareVersions(info.version, ignoredVersion) <= 0) {
+    activeSource = null;
+    return;
+  }
   const { base, build } = splitVersion(info.version);
   const notes = asText(info.releaseNotes);
   const detail = [build ? `Build: ${build}` : '', notes].filter(Boolean).join('\n');
+  const zh = isZh();
   const r = await showMessageBox({
     type: 'info',
-    title: 'Update Available',
-    message: `A new version is available: v${base || info.version}`,
+    title: zh ? '发现新版本' : 'Update Available',
+    message: zh ? `检测到新版本：v${base || info.version}` : `A new version is available: v${base || info.version}`,
     detail: detail ? detail.slice(0, 6000) : '',
-    buttons: ['Download', 'Later'],
+    buttons: zh ? ['现在升级', '稍后升级', '不再提醒'] : ['Update Now', 'Later', 'Skip This Version'],
     defaultId: 0,
     cancelId: 1,
     noLink: true,
   });
-  if (r.response !== 0) {
-    interactive = false;
+  if (r.response === 2) {
+    ignoredVersion = info.version;
+    setIgnoredUpdateVersion(info.version);
+    activeSource = null;
     return;
   }
+  if (r.response !== 0) {
+    activeSource = null;
+    installOnDownload = false;
+    return;
+  }
+  installOnDownload = true;
   downloading = true;
   progressPercent = 0;
-  updateProgressUi('Downloading update...', 0);
+  updateProgressUi(zh ? '正在下载更新...' : 'Downloading update...', 0);
   try {
     await autoUpdater.downloadUpdate();
   } catch (e: unknown) {
     downloading = false;
-    interactive = false;
+    activeSource = null;
     closeProgressUi();
     const msg = e instanceof Error ? e.message : String(e);
     await showMessageBox({
       type: 'error',
-      title: 'Update Error',
-      message: 'Failed to download update.',
+      title: zh ? '更新失败' : 'Update Error',
+      message: zh ? '下载更新失败。' : 'Failed to download update.',
       detail: msg,
     });
   }
 }
 
 async function onUpdateDownloaded(info: UpdateInfo): Promise<void> {
-  if (!interactive) return;
+  const source = activeSource;
+  if (!source) return;
   downloading = false;
   closeProgressUi();
   const notes = asText(info.releaseNotes);
+  const zh = isZh();
+  if (installOnDownload) {
+    activeSource = null;
+    installOnDownload = false;
+    await writeUpdateState({ pendingVersion: info.version });
+    updateProgressUi(zh ? '正在安装...' : 'Installing...', 100);
+    setTimeout(() => {
+      autoUpdater.quitAndInstall(false, true);
+    }, 200);
+    return;
+  }
+  if (source !== 'manual') {
+    activeSource = null;
+    return;
+  }
   const r = await showMessageBox({
     type: 'info',
-    title: 'Ready to Install',
-    message: `Update downloaded: v${info.version}`,
+    title: zh ? '已准备安装' : 'Ready to Install',
+    message: zh ? `更新已下载：v${info.version}` : `Update downloaded: v${info.version}`,
     detail: notes ? notes.slice(0, 6000) : '',
-    buttons: ['Install and Relaunch', 'Later'],
+    buttons: zh ? ['现在升级', '稍后升级'] : ['Install and Relaunch', 'Later'],
     defaultId: 0,
     cancelId: 1,
     noLink: true,
   });
-  interactive = false;
+  activeSource = null;
   if (r.response === 0) {
     await writeUpdateState({ pendingVersion: info.version });
-    updateProgressUi('Installing...', 100);
+    updateProgressUi(zh ? '正在安装...' : 'Installing...', 100);
     setTimeout(() => {
       autoUpdater.quitAndInstall(false, true);
     }, 200);
@@ -246,15 +305,35 @@ async function onUpdateDownloaded(info: UpdateInfo): Promise<void> {
 }
 
 async function onError(e: Error): Promise<void> {
-  if (!interactive) return;
-  interactive = false;
+  if (activeSource !== 'manual') {
+    activeSource = null;
+    downloading = false;
+    closeProgressUi();
+    return;
+  }
+  activeSource = null;
   downloading = false;
+  closeProgressUi();
+  const zh = isZh();
   await showMessageBox({
     type: 'error',
-    title: 'Update Error',
-    message: 'Update check failed.',
+    title: zh ? '更新失败' : 'Update Error',
+    message: zh ? '检查更新失败。' : 'Update check failed.',
     detail: e?.message ? e.message : String(e),
   });
+}
+
+function stopTimer(): void {
+  if (!timer) return;
+  clearInterval(timer);
+  timer = null;
+}
+
+function startTimer(): void {
+  stopTimer();
+  timer = setInterval(() => {
+    void checkForUpdatesBackground();
+  }, CHECK_INTERVAL_MS);
 }
 
 export function initUpdater(getWindow: GetWindow): void {
@@ -277,21 +356,27 @@ export function initUpdater(getWindow: GetWindow): void {
   const u = autoUpdater as unknown as UpdaterEmitter;
   u.addListener('update-available', (info: UpdateInfo) => void onUpdateAvailable(info));
   u.addListener('update-not-available', (info: UpdateInfo) => {
-    if (!interactive) return;
-    interactive = false;
+    if (activeSource !== 'manual') {
+      activeSource = null;
+      return;
+    }
+    activeSource = null;
+    const zh = isZh();
     void showMessageBox({
       type: 'info',
-      title: 'Up to Date',
-      message: 'You are using the latest version.',
-      detail: `Current version: v${app.getVersion()}\nLatest from feed: v${info.version}`,
+      title: zh ? '已是最新版本' : 'Up to Date',
+      message: zh ? '你正在使用最新版本。' : 'You are using the latest version.',
+      detail: zh
+        ? `当前版本：v${app.getVersion()}\n服务器最新：v${info.version}`
+        : `Current version: v${app.getVersion()}\nLatest from feed: v${info.version}`,
     });
   });
   u.addListener('update-downloaded', (event: UpdateDownloadedEvent) => void onUpdateDownloaded(event));
   u.addListener('download-progress', (info: { percent?: number }) => {
-    if (!interactive) return;
+    if (!activeSource) return;
     if (!downloading) return;
     const p = typeof info.percent === 'number' && Number.isFinite(info.percent) ? info.percent : 0;
-    updateProgressUi('Downloading update...', p);
+    updateProgressUi(isZh() ? '正在下载更新...' : 'Downloading update...', p);
   });
   u.addListener('error', (e: Error) => void onError(e));
   void readUpdateState().then(async (state) => {
@@ -317,13 +402,40 @@ export async function checkForUpdatesInteractive(): Promise<void> {
     });
     return;
   }
-  if (interactive) return;
-  interactive = true;
+  if (activeSource) return;
+  activeSource = 'manual';
   downloading = false;
   try {
     await autoUpdater.checkForUpdates();
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     await onError(new Error(msg));
+  }
+}
+
+async function checkForUpdatesBackground(): Promise<void> {
+  if (!app.isPackaged) return;
+  if (!autoCheckEnabled) return;
+  if (activeSource) return;
+  if (downloading) return;
+  activeSource = 'background';
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch {
+    activeSource = null;
+  }
+}
+
+export function configureAutoUpdate(settings: UpdateSettings): void {
+  autoCheckEnabled = Boolean(settings.autoCheck);
+  ignoredVersion = settings.ignoredVersion ? String(settings.ignoredVersion) : null;
+  if (!app.isPackaged) return;
+  if (autoCheckEnabled) {
+    startTimer();
+    setTimeout(() => {
+      void checkForUpdatesBackground();
+    }, 1500);
+  } else {
+    stopTimer();
   }
 }

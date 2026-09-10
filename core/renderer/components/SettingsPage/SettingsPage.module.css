@@ -71,8 +71,8 @@
 }
 
 .navItem[data-active='1'] {
-  background: #1f3a5f;
-  color: var(--accent-secondary);
+  background: var(--bg-active);
+  color: var(--accent-primary);
 }
 
 .navIndicator {
@@ -83,7 +83,7 @@
   width: 3px;
   height: 16px;
   border-radius: 999px;
-  background: var(--accent-secondary);
+  background: var(--accent-primary);
 }
 
 .navIcon {
@@ -127,9 +127,9 @@
   width: 36px;
   height: 36px;
   border-radius: 12px;
-  background: #1f3a5f;
-  border: 1px solid color-mix(in oklab, var(--accent-primary) 20%, transparent);
-  color: var(--accent-secondary);
+  background: color-mix(in oklab, var(--accent-primary) 14%, var(--bg-secondary));
+  border: 1px solid color-mix(in oklab, var(--accent-primary) 24%, var(--border-default));
+  color: var(--accent-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -302,27 +302,74 @@
 }
 
 .themeCard[data-active='1'] {
-  border-color: var(--accent-secondary);
-  background: #1f3a5f;
+  border-color: var(--accent-primary);
+  background: color-mix(in oklab, var(--accent-primary) 10%, var(--bg-primary));
 }
 
 .themePreview {
   height: 46px;
   border-radius: 10px;
   border: 1px solid var(--border-default);
-  background: var(--bg-secondary);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.themePreview[data-theme='auto'] {
-  background: linear-gradient(90deg, #0d1117, #ffffff);
+.tpTop {
+  height: 14px;
+  background: transparent;
 }
 
-.themePreview[data-theme='dark'] {
+.tpBody {
+  flex: 1;
+  display: flex;
+}
+
+.tpSide {
+  width: 28%;
+  background: transparent;
+}
+
+.tpMain {
+  flex: 1;
+  background: transparent;
+}
+
+.themePreview[data-theme='auto'] .tpTop {
+  background: linear-gradient(90deg, #161b22 0 50%, #f0f3f6 50% 100%);
+}
+
+.themePreview[data-theme='auto'] .tpSide {
+  background: linear-gradient(90deg, #21262d 0 50%, #e4e9ed 50% 100%);
+}
+
+.themePreview[data-theme='auto'] .tpMain {
+  background: linear-gradient(90deg, #0d1117 0 50%, #fafbfc 50% 100%);
+}
+
+.themePreview[data-theme='dark'] .tpTop {
+  background: #161b22;
+}
+
+.themePreview[data-theme='dark'] .tpSide {
+  background: #21262d;
+}
+
+.themePreview[data-theme='dark'] .tpMain {
   background: #0d1117;
 }
 
-.themePreview[data-theme='light'] {
-  background: #ffffff;
+.themePreview[data-theme='light'] .tpTop {
+  background: #f0f3f6;
+}
+
+.themePreview[data-theme='light'] .tpSide {
+  background: #e4e9ed;
+}
+
+.themePreview[data-theme='light'] .tpMain {
+  background: #fafbfc;
 }
 
 .themeLabel {
@@ -332,7 +379,7 @@
 }
 
 .themeCard[data-active='1'] .themeLabel {
-  color: var(--accent-secondary);
+  color: var(--accent-primary);
 }
 
 .densityRow {
@@ -353,9 +400,9 @@
 }
 
 .densityBtn[data-active='1'] {
-  background: #1f3a5f;
+  background: color-mix(in oklab, var(--accent-primary) 10%, var(--bg-secondary));
   border-color: var(--accent-primary);
-  color: var(--accent-secondary);
+  color: var(--accent-primary);
   font-weight: 500;
 }
 
@@ -382,7 +429,7 @@
 }
 
 .langItem[data-active='1'] {
-  background: #1f3a5f;
+  background: color-mix(in oklab, var(--accent-primary) 10%, var(--bg-secondary));
   border-color: color-mix(in oklab, var(--accent-primary) 25%, transparent);
 }
 
@@ -440,9 +487,9 @@
 .notice {
   margin-top: 10px;
   padding: 10px 14px;
-  background: #0a1628;
+  background: color-mix(in oklab, var(--accent-primary) 8%, var(--bg-secondary));
   border-radius: 12px;
-  border: 1px solid color-mix(in oklab, var(--accent-primary) 20%, transparent);
+  border: 1px solid color-mix(in oklab, var(--accent-primary) 18%, var(--border-default));
   font-size: 12px;
   color: var(--text-quaternary);
 }
@@ -456,7 +503,7 @@
 .cachePill {
   font-size: 12px;
   color: var(--accent-warning);
-  background: color-mix(in oklab, var(--accent-warning) 12%, #000);
+  background: color-mix(in oklab, var(--accent-warning) 12%, var(--bg-secondary));
   border: 1px solid color-mix(in oklab, var(--accent-warning) 20%, transparent);
   border-radius: 10px;
   padding: 3px 10px;
@@ -575,7 +622,7 @@
   height: 30px;
   padding: 0 12px;
   border-radius: 10px;
-  background: #2d1a1a;
+  background: var(--accent-error-bg);
   border: 1px solid color-mix(in oklab, var(--accent-error) 22%, transparent);
   color: var(--accent-error);
   font-size: 12px;
@@ -586,7 +633,7 @@
 }
 
 .dangerBtn:hover {
-  background: #3d1c1c;
+  background: color-mix(in oklab, var(--accent-error) 10%, var(--accent-error-bg));
 }
 
 .aboutHero {
@@ -594,6 +641,204 @@
   align-items: center;
   gap: 14px;
   padding: 6px 0 14px;
+}
+
+.aboutPanel {
+  max-width: 520px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.aboutHeaderRow {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+}
+
+.aboutHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.aboutHeaderBadge {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent-primary) 35%, transparent),
+    color-mix(in oklab, var(--cat-security) 35%, transparent)
+  );
+  border: 1px solid color-mix(in oklab, var(--accent-primary) 50%, transparent);
+  color: var(--accent-secondary);
+}
+
+.aboutAppIconSmall {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: block;
+}
+
+.aboutHeaderTitle {
+  font-size: 15px;
+  color: var(--text-primary);
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aboutContent {
+  padding: 22px 20px;
+}
+
+.aboutHero2 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.aboutHeroIcon {
+  width: 80px;
+  height: 80px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent-primary) 25%, transparent),
+    color-mix(in oklab, var(--cat-security) 25%, transparent)
+  );
+  border: 2px solid color-mix(in oklab, var(--accent-primary) 40%, transparent);
+  color: var(--accent-secondary);
+}
+
+.aboutAppIconLarge {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  display: block;
+}
+
+.aboutHeroTitle {
+  font-size: 20px;
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.aboutHeroSub {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-bottom: 2px;
+}
+
+.aboutHeroMeta {
+  font-size: 12px;
+  color: var(--text-quaternary);
+  font-family: var(--font-family-mono);
+}
+
+.aboutDesc2 {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+
+.aboutGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.aboutInfoItem {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.aboutInfoLabel {
+  font-size: 10px;
+  color: var(--text-disabled);
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.aboutInfoValue {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.aboutLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.aboutLinkBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: 13px;
+  text-decoration: none;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.aboutLinkBtn:hover {
+  background: var(--bg-hover);
+  border-color: color-mix(in oklab, var(--accent-primary) 40%, transparent);
+}
+
+.aboutLinkIcon {
+  color: var(--accent-secondary);
+  display: inline-flex;
+  align-items: center;
+}
+
+.aboutFooter {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-top: 1px solid var(--border-default);
+  background: var(--bg-secondary);
+}
+
+.aboutFooterText {
+  font-size: 11px;
+  color: var(--text-disabled);
 }
 
 .aboutLogo {
@@ -606,6 +851,13 @@
   align-items: center;
   justify-content: center;
   font-size: 28px;
+}
+
+.aboutLogo img {
+  width: 68px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: 18px;
 }
 
 .aboutName {

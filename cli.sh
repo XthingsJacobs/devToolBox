@@ -85,7 +85,8 @@ Commands:
   build                         Build renderer + main/preload
   clear                         Clear local user data / marketplace artifacts (interactive)
   plugin create                  Create a marketplace plugin template (interactive)
-  plugin <market-id>             Build + pack a marketplace plugin into a local registry zip (interactive)
+  plugin                         Select, build, and pack marketplace plugin(s) into a local registry zip
+  plugin <market-id|all>         Build + pack marketplace plugin(s) into a local registry zip
   package <macos|windows|all> [arch]   Package installers (.dmg/.exe)
   check                          Run local quality/security checks (lint + typecheck + test)
   tool new                       Create a new built-in tool template (delegates to pnpm new:tool)
@@ -101,25 +102,79 @@ ensure_cmd() {
   fi
 }
 
+package_pnpm_spec() {
+  if command -v node >/dev/null 2>&1; then
+    node -e 'try { const pm = require("./package.json").packageManager || ""; const m = pm.match(/^pnpm@(.+)$/); process.stdout.write(m ? pm : "pnpm@10.10.0"); } catch { process.stdout.write("pnpm@10.10.0"); }'
+  else
+    echo "pnpm@10.10.0"
+  fi
+}
+
+PNPM_CMD=()
+ensure_pnpm() {
+  if [[ "${#PNPM_CMD[@]}" -gt 0 ]]; then
+    return 0
+  fi
+
+  if command -v pnpm >/dev/null 2>&1; then
+    PNPM_CMD=(pnpm)
+    return 0
+  fi
+
+  local spec
+  spec="$(package_pnpm_spec)"
+
+  if command -v corepack >/dev/null 2>&1; then
+    print_info "pnpm not found; trying Corepack ($spec)..."
+    corepack enable >/dev/null 2>&1 || true
+    corepack prepare "$spec" --activate >/dev/null 2>&1 || true
+    if corepack pnpm -v >/dev/null 2>&1; then
+      PNPM_CMD=(corepack pnpm)
+      return 0
+    fi
+    if command -v pnpm >/dev/null 2>&1; then
+      PNPM_CMD=(pnpm)
+      return 0
+    fi
+  fi
+
+  if command -v npm >/dev/null 2>&1; then
+    print_info "pnpm not found; using $spec via npm exec."
+    PNPM_CMD=(npm exec --yes --package "$spec" -- pnpm)
+    return 0
+  fi
+
+  print_error "Missing command: pnpm"
+  print_error "Install one of:"
+  print_error "  npm install -g $spec"
+  print_error "  brew install pnpm"
+  exit 1
+}
+
+run_pnpm() {
+  ensure_pnpm
+  "${PNPM_CMD[@]}" "$@"
+}
+
 cmd_doctor() {
   ensure_cmd node
-  ensure_cmd pnpm
-  print_ok "Node $(node -v) | pnpm $(pnpm -v)"
+  ensure_pnpm
+  print_ok "Node $(node -v) | pnpm $("${PNPM_CMD[@]}" -v)"
   if command -v git >/dev/null 2>&1; then
     print_ok "Git $(git --version | awk '{print $3}')"
   fi
 }
 
 cmd_dev() {
-  ensure_cmd pnpm
+  ensure_pnpm
   unset NODE_OPTIONS
   export DEVTOOLBOX_DEBUG="${DEVTOOLBOX_DEBUG:-1}"
-  pnpm dev
+  run_pnpm dev
 }
 
 cmd_build() {
-  ensure_cmd pnpm
-  pnpm build
+  ensure_pnpm
+  run_pnpm build
 }
 
 cmd_clear() {
@@ -214,8 +269,24 @@ cmd_clear() {
   print_ok "Done"
 }
 
+marketplace_plugin_ids() {
+  if [[ ! -d marketplace/modules ]]; then
+    return 0
+  fi
+  find marketplace/modules -maxdepth 1 -type d -name 'market-*' -print | while IFS= read -r d; do
+    [[ -f "$d/manifest.json" ]] || continue
+    basename "$d"
+  done | sort
+}
+
+marketplace_plugin_name() {
+  local id="$1"
+  local manifest_path="marketplace/modules/$id/manifest.json"
+  node -e 'const fs = require("fs"); const p = process.argv[1]; try { const m = JSON.parse(fs.readFileSync(p, "utf8")); process.stdout.write(typeof m.name === "string" ? m.name : ""); } catch {}' "$manifest_path"
+}
+
 cmd_plugin() {
-  ensure_cmd pnpm
+  ensure_pnpm
   ensure_cmd node
   local action="${1:-}"
   shift || true
@@ -561,14 +632,60 @@ EOF
   fi
 
   local plugin_id="$action"
-  if [[ "$plugin_id" == "all" ]]; then
+  if [[ -z "$plugin_id" ]]; then
     local ids=()
-    while IFS= read -r d; do
-      local base
-      base="$(basename "$d")"
-      [[ -z "$base" ]] && continue
-      ids+=("$base")
-    done < <(find marketplace/modules -maxdepth 1 -type d -name 'market-*' -print)
+    while IFS= read -r id; do
+      [[ -z "$id" ]] && continue
+      ids+=("$id")
+    done < <(marketplace_plugin_ids)
+
+    if [[ ${#ids[@]} -gt 0 ]]; then
+      print_info "Marketplace plugins:"
+      echo "  [A] All"
+      local idx=1
+      for id in "${ids[@]}"; do
+        local plugin_name
+        plugin_name="$(marketplace_plugin_name "$id")"
+        if [[ -n "$plugin_name" ]]; then
+          echo "  [$idx] $id - $plugin_name"
+        else
+          echo "  [$idx] $id"
+        fi
+        idx=$((idx + 1))
+      done
+      echo "  [I] Input plugin ID"
+
+      local picked
+      picked="$(prompt 'Select plugin index, All, or plugin ID' '1')"
+      local picked_clean
+      picked_clean="$(echo "$picked" | tr -d '[:space:]')"
+      local picked_lc
+      picked_lc="$(echo "$picked_clean" | tr '[:upper:]' '[:lower:]')"
+
+      if [[ "$picked_lc" == "a" || "$picked_lc" == "all" ]]; then
+        plugin_id="all"
+      elif [[ "$picked_lc" == "i" || "$picked_lc" == "input" ]]; then
+        plugin_id="$(prompt 'Plugin ID (e.g. market-hello-tool)' '')"
+      elif [[ "$picked_clean" =~ ^[0-9]+$ && "$picked_clean" -ge 1 && "$picked_clean" -le "${#ids[@]}" ]]; then
+        plugin_id="${ids[$((picked_clean - 1))]}"
+      else
+        plugin_id="$picked_clean"
+      fi
+    else
+      print_info "No marketplace plugins found under marketplace/modules"
+      plugin_id="$(prompt 'Plugin ID (e.g. market-hello-tool)' '')"
+    fi
+  fi
+
+  plugin_id="$(echo "$plugin_id" | tr -d '[:space:]')"
+  local plugin_id_lc
+  plugin_id_lc="$(echo "$plugin_id" | tr '[:upper:]' '[:lower:]')"
+  if [[ "$plugin_id_lc" == "all" ]]; then
+    local ids=()
+    while IFS= read -r id; do
+      [[ -z "$id" ]] && continue
+      ids+=("$id")
+    done < <(marketplace_plugin_ids)
 
     if [[ ${#ids[@]} -eq 0 ]]; then
       print_error "No marketplace plugins found under marketplace/modules"
@@ -578,7 +695,7 @@ EOF
     print_info "Building plugins: ${#ids[@]}"
     for id in "${ids[@]}"; do
       print_info "  build: $id"
-      pnpm --filter "@devtoolbox/plugin-$id" build
+      run_pnpm --filter "@devtoolbox/plugin-$id" build
     done
     print_ok "All plugin builds completed"
 
@@ -587,10 +704,6 @@ EOF
     print_ok "Plugin pack completed"
     return
   fi
-  if [[ -z "$plugin_id" ]]; then
-    plugin_id="$(prompt 'Plugin ID (e.g. market-hello-tool)' '')"
-  fi
-  plugin_id="$(echo "$plugin_id" | tr -d '[:space:]')"
   if [[ -z "$plugin_id" ]]; then
     print_error "Plugin ID is required"
     exit 1
@@ -609,7 +722,7 @@ EOF
   fi
 
   print_info "Building plugin: $plugin_id"
-  pnpm --filter "@devtoolbox/plugin-$plugin_id" build
+  run_pnpm --filter "@devtoolbox/plugin-$plugin_id" build
   print_ok "Plugin build completed"
 
   print_info "Packing plugin into local registry zip (merge): $plugin_id"
@@ -639,7 +752,7 @@ cmd_package() {
   fi
 
   ensure_cmd node
-  ensure_cmd pnpm
+  ensure_pnpm
 
   local builder_args=""
   case "$platform" in
@@ -669,12 +782,16 @@ cmd_package() {
   unset NODE_OPTIONS
 
   print_info "Installing dependencies..."
-  pnpm install
+  run_pnpm install --frozen-lockfile --force
   print_ok "Dependencies installed"
 
   print_info "Building..."
-  pnpm build
+  run_pnpm build
   print_ok "Build completed"
+
+  print_info "Pruning broken pnpm hoisted symlinks..."
+  node scripts/prune-broken-pnpm-links.mjs
+  print_ok "pnpm symlink check completed"
 
   if ! (node -p "require('electron/package.json').version" >/dev/null 2>&1); then
     print_error "Cannot resolve electron from node_modules. Run pnpm install in devToolBox."
@@ -682,7 +799,7 @@ cmd_package() {
   fi
 
   print_info "Packaging ($platform${arch:+/$arch})..."
-  pnpm exec electron-builder $builder_args
+  run_pnpm exec electron-builder $builder_args --publish never
   print_ok "Packaging completed"
 
   if [[ -d release ]]; then
@@ -701,16 +818,16 @@ cmd_package() {
 }
 
 cmd_check() {
-  ensure_cmd pnpm
-  pnpm lint
-  pnpm typecheck
-  pnpm test
+  ensure_pnpm
+  run_pnpm lint
+  run_pnpm typecheck
+  run_pnpm test
   print_ok "Checks passed"
 }
 
 cmd_tool_new() {
-  ensure_cmd pnpm
-  pnpm new:tool
+  ensure_pnpm
+  run_pnpm new:tool
 }
 
 main() {

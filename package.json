@@ -1,9 +1,13 @@
 {
   "name": "devtoolbox",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Cross-platform desktop toolbox",
   "author": "Jacobs",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/XthingsJacobs/devToolBox.git"
+  },
   "private": true,
   "main": "dist-electron/main/index.js",
   "packageManager": "pnpm@10.10.0",
@@ -24,10 +28,11 @@
     "lint": "pnpm lint:modules && eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "prune:pnpm-links": "node scripts/prune-broken-pnpm-links.mjs",
     "postinstall": "pnpm rebuild -r electron esbuild",
-    "package:mac": "pnpm run build && electron-builder --mac --publish never",
-    "package:win": "pnpm run build && electron-builder --win --publish never",
-    "package:all": "pnpm run build && electron-builder --mac --win --publish never"
+    "package:mac": "pnpm run build && pnpm prune:pnpm-links && electron-builder --mac --publish never",
+    "package:win": "pnpm run build && pnpm prune:pnpm-links && electron-builder --win --publish never",
+    "package:all": "pnpm run build && pnpm prune:pnpm-links && electron-builder --mac --win --publish never"
   },
   "dependencies": {
     "@codemirror/commands": "6.10.3",

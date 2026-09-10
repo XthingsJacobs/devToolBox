@@ -16,6 +16,7 @@ It aims to be a plugin-first, all-in-one workspace for everyday developer utilit
 
 - Download: https://github.com/XthingsJacobs/devToolBox/releases
 - Install plugins: Modules → Marketplace → Refresh → Install
+- User docs: [docs/index.md](./docs/index.md) → [users/guide.md](./docs/users/guide.md)
 
 ## Featured Tools
 
@@ -45,6 +46,12 @@ pnpm install
 pnpm dev
 ```
 
+Contributor docs:
+
+- Core dev guide: [core-dev/guide.md](./docs/core-dev/guide.md)
+- CLI: [shared/cli.md](./docs/shared/cli.md)
+- Troubleshooting: [shared/troubleshooting.md](./docs/shared/troubleshooting.md)
+
 Quality gates:
 
 ```bash
@@ -66,8 +73,8 @@ pnpm package:win
 
 This repo includes a marketplace workspace under `marketplace/`. A plugin is a self-contained web UI that runs in an isolated iframe and talks to the host via SDK.
 
-- SDK contract: [plugin-sdk.md](./docs/plugin-sdk.md)
-- Plugin packaging & local registry: [marketplace.md](./docs/marketplace.md)
+- SDK contract: [sdk.md](./docs/plugin-dev/sdk.md)
+- Plugin packaging & local registry: [packaging.md](./docs/plugin-dev/packaging.md)
 
 Quick flow:
 
@@ -79,27 +86,28 @@ node marketplace/scripts/pack-local.mjs market-<id>
 
 Then in DevToolBox:
 
-- Settings → Marketplace Registry URL → `file:///.../marketplace/registry.local.json`
+- Settings → Marketplace (Dev) → Registry URL → `file:///.../marketplace/registry.local.json`
 - Modules → Refresh → Install
 
 ## Contributing
 
-- Contributing guide: [CONTRIBUTING.md](./CONTRIBUTING.md)
-- Roadmap: [ROADMAP.md](./ROADMAP.md)
-- Development guide: [dev-guide.md](./docs/dev-guide.md)
-- Code of conduct: [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
-- Security policy: [SECURITY.md](./SECURITY.md)
-- Support: [SUPPORT.md](./SUPPORT.md)
+- Contributing guide: [contributing.md](./docs/governance/contributing.md)
+- Roadmap: [roadmap.md](./docs/governance/roadmap.md)
+- Built-in modules: [built-in-modules.md](./docs/core-dev/built-in-modules.md)
+- Code of conduct: [code-of-conduct.md](./docs/governance/code-of-conduct.md)
+- Security policy: [security.md](./docs/governance/security.md)
+- Support: [support.md](./docs/governance/support.md)
 
 ## Repository Layout
 
 ```text
 devtoolbox/
 ├── core/                              Electron app (main + preload + renderer)
-├── docs/                              Developer documentation (MkDocs source)
-├── docs-site/                         MkDocs site config
-├── marketplace/                       Marketplace plugins workspace
-├── scripts/                           Repo tooling (lint / scaffolding / release helpers)
+├── marketplace/                       Marketplace plugins workspace (and local registry tooling)
+├── docs/                              Documentation source (MkDocs)
+├── docs-site/                         MkDocs site config (publish pipeline)
+├── .github/                           CI / release workflows
+├── cli.sh                             Repo CLI helpers
 ├── package.json
 └── pnpm-workspace.yaml
 ```

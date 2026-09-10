@@ -2,22 +2,12 @@
 
 This document describes how to build, test, and extend DevToolBox.
 
-## Prerequisites
-
-- Node.js 20 (see `.nvmrc`)
-- pnpm 10
-
-## Install & Run
-
-```bash
-pnpm install
-pnpm dev
-```
+For setup and common workflows, see the [Core Developer Guide](guide.md).
 
 ## CLI
 
 For contributors, `cli.sh` provides a unified command entry (dev/build/package/check/marketplace).
-See [cli.md](./cli.md).
+See [CLI](../shared/cli.md).
 
 ## Quality Gates
 
@@ -77,4 +67,4 @@ Recommended workflow:
 
 ## Troubleshooting
 
-See [troubleshooting.md](./troubleshooting.md).
+See [Troubleshooting](../shared/troubleshooting.md).

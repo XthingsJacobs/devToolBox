@@ -37,6 +37,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getLocale: () => ipcRenderer.invoke('app:getLocale'),
   setTheme: (theme: string) => ipcRenderer.invoke('app:setTheme', theme),
   getTheme: () => ipcRenderer.invoke('app:getTheme'),
+  getUpdateSettings: () => ipcRenderer.invoke('updates:getSettings'),
+  setAutoUpdateCheck: (enabled: boolean) => ipcRenderer.invoke('updates:setAutoCheck', enabled),
+  getStorageInfo: () => ipcRenderer.invoke('storage:getInfo'),
+  clearStorage: () => ipcRenderer.invoke('storage:clear'),
+  resetAllSettings: () => ipcRenderer.invoke('storage:resetSettings'),
+  deleteAllData: () => ipcRenderer.invoke('storage:deleteAllData'),
   onLocaleChanged: (cb: (event: IpcRendererEvent, locale: string) => void) => {
     localeCallbacks.add(cb);
   },
@@ -205,6 +211,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pluginSystemGetInfo: (pluginId: string) => ipcRenderer.invoke('plugin:systemGetInfo', pluginId),
   pluginSystemGetEnv: (pluginId: string, keys: string[]) => ipcRenderer.invoke('plugin:systemGetEnv', pluginId, keys),
   pluginLog: (pluginId: string, params: unknown) => ipcRenderer.invoke('plugin:log', pluginId, params),
+  pluginSocketServerStart: (pluginId: string, params: unknown) =>
+    ipcRenderer.invoke('plugin:socketServerStart', pluginId, params),
+  pluginSocketServerStop: (pluginId: string) => ipcRenderer.invoke('plugin:socketServerStop', pluginId),
+  pluginSocketServerStatus: (pluginId: string) => ipcRenderer.invoke('plugin:socketServerStatus', pluginId),
+  pluginSocketServerSend: (pluginId: string, params: unknown) =>
+    ipcRenderer.invoke('plugin:socketServerSend', pluginId, params),
+  pluginSocketServerKick: (pluginId: string, params: unknown) =>
+    ipcRenderer.invoke('plugin:socketServerKick', pluginId, params),
+  pluginSocketClientConnect: (pluginId: string, params: unknown) =>
+    ipcRenderer.invoke('plugin:socketClientConnect', pluginId, params),
+  pluginSocketClientDisconnect: (pluginId: string) => ipcRenderer.invoke('plugin:socketClientDisconnect', pluginId),
+  pluginSocketClientStatus: (pluginId: string) => ipcRenderer.invoke('plugin:socketClientStatus', pluginId),
+  pluginSocketClientSend: (pluginId: string, params: unknown) =>
+    ipcRenderer.invoke('plugin:socketClientSend', pluginId, params),
+  onPluginSocketEvent: (cb: (pluginId: string, ev: unknown) => void) => {
+    const handler = (_e: IpcRendererEvent, pid: string, ev: unknown) => cb(pid, ev);
+    ipcRenderer.on('plugin:socketEvent', handler);
+    return handler;
+  },
+  offPluginSocketEvent: (handler: unknown) => {
+    if (typeof handler === 'function') ipcRenderer.removeListener('plugin:socketEvent', handler as Listener);
+  },
   httpRequest: (params: unknown) => ipcRenderer.invoke('http:request', params),
   mqttConnect: (params: unknown) => ipcRenderer.invoke('mqtt:connect', params),
   mqttDisconnect: (id: string) => ipcRenderer.invoke('mqtt:disconnect', id),
