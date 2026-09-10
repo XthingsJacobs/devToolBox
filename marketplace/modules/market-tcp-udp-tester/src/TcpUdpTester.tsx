@@ -145,8 +145,8 @@ export default function TcpUdpTester() {
       const type = asString(ev.type);
       const target = asString(ev.target);
       if (type === 'status') {
-        if (target === 'server') setServerStatus((ev as Record<string, unknown>).status);
-        else if (target === 'client') setClientStatus((ev as Record<string, unknown>).status);
+        if (target === 'server') setServerStatus(ev.status);
+        else if (target === 'client') setClientStatus(ev.status);
         return;
       }
 
@@ -157,7 +157,7 @@ export default function TcpUdpTester() {
       }
 
       if (type === 'data') {
-        const data = (ev as Record<string, unknown>).data;
+        const data = ev.data;
         if (!isRecord(data)) {
           appendLog(`${target} DATA ${stringify(ev)}`);
           return;
